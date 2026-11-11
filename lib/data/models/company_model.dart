@@ -5,6 +5,7 @@ class CompanyModel {
   final String companyId;
   final String name;
   final String taxNumber;
+  final String corporateIban;
   final List<String> adminIds; // Şirketi yönetecek kişilerin UID'leri
 
   CompanyModel({
@@ -12,6 +13,7 @@ class CompanyModel {
     required this.name,
     required this.taxNumber,
     required this.adminIds,
+    required this.corporateIban,
   });
 
   factory CompanyModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class CompanyModel {
       name: json['name'] as String,
       taxNumber: json['taxNumber'] as String,
       adminIds: List<String>.from(json['adminIds'] ?? []),
+      corporateIban: json['corporateIban'] as String,
     );
   }
 
@@ -29,6 +32,7 @@ class CompanyModel {
       'name': name,
       'taxNumber': taxNumber,
       'adminIds': adminIds,
+      'corporateIban': corporateIban,
     };
   }
 }

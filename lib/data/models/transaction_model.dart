@@ -8,6 +8,7 @@ class TransactionModel {
   final String currency; // 'TRY', 'USD', 'EUR'
   final DateTime timestamp;
   final String type; // 'fast', 'pos_payment', 'wallet_deposit'
+  final String? targetIban;
 
   TransactionModel({
     required this.txId,
@@ -17,6 +18,7 @@ class TransactionModel {
     required this.currency,
     required this.timestamp,
     required this.type,
+    this.targetIban,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class TransactionModel {
       currency: json['currency'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String), // Firestore Timestamp çevrimi eklenebilir
       type: json['type'] as String,
+      targetIban: json['targetIban'] as String?,
     );
   }
 
@@ -40,6 +43,7 @@ class TransactionModel {
       'currency': currency,
       'timestamp': timestamp.toIso8601String(),
       'type': type,
+      if (targetIban != null) 'targetIban': targetIban,
     };
   }
 }
