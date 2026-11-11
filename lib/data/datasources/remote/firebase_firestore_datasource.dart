@@ -1,7 +1,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
-
+import '../../models/wallet_model.dart';
 class FirebaseFirestoreDatasource {
 
   // Firestore veritabanına erişim sağlar.
@@ -74,5 +74,30 @@ class FirebaseFirestoreDatasource {
 
     return UserModel.fromJson(document.data()!);
   }
+
+
+  // Yeni bir cüzdan belgesini Firestore'a kaydeder.
+  Future<void> createWallet(WalletModel wallet) async {
+    await _firestore
+        .collection('wallets')
+        .doc(wallet.walletId)
+        .set(wallet.toJson());
+  }
+
+
+  // Firestore'dan cüzdan bilgilerini getirir.
+  Future<WalletModel?> getWallet(String walletId) async {
+    final document = await _firestore
+        .collection('wallets')
+        .doc(walletId)
+        .get();
+
+    if (!document.exists) {
+      return null;
+    }
+
+    return WalletModel.fromJson(document.data()!);
+  }
+
 
 }
