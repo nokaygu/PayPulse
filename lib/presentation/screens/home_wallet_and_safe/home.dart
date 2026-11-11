@@ -1,14 +1,16 @@
-
 import 'package:flutter/material.dart';
+
 import '../../../data/datasources/remote/firebase_auth_datasource.dart';
 import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/datasources/remote/firebase_notification_datasource.dart';
+
+import '../../../data/models/expense_model.dart';
 
 class HomeAndWalletEkrani extends StatefulWidget {
   const HomeAndWalletEkrani({super.key});
 
   @override
-  State<HomeAndWalletEkrani> createState() =>
-      _HomeAndWalletEkraniState();
+  State<HomeAndWalletEkrani> createState() => _HomeAndWalletEkraniState();
 }
 
 class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
@@ -18,6 +20,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
 
   final authService = FirebaseAuthDatasource();
   final firestoreService = FirebaseFirestoreDatasource();
+  final notificationService = FirebaseNotificationDatasource();
 
   String mesaj = 'Henüz bir işlem yapılmadı.';
   bool isLoading = false;
@@ -42,7 +45,13 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
       await authService.register(
         emailController.text.trim(),
         passwordController.text,
+        name: nameController.text.trim().isEmpty
+            ? 'Kullanıcı'
+            : nameController.text.trim(),
       );
+
+      // Kullanıcı oluşturulduktan sonra FCM token'ını kaydeder.
+      await notificationService.saveTokenToFirestore();
 
       mesajGuncelle('Kayıt başarılı!');
     } catch (e) {
@@ -60,21 +69,39 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
         passwordController.text,
       );
 
+      // Giriş yapan kullanıcının FCM token'ını kaydeder.
+      await notificationService.saveTokenToFirestore();
+
       mesajGuncelle('Giriş başarılı!');
     } catch (e) {
       mesajGuncelle('Giriş hatası: $e');
     }
   }
 
-  // Kullanıcının oturumunu kapatır.
+  // Kullanıcının FCM token'ını siler ve oturumunu kapatır.
   Future<void> cikisYap() async {
     setState(() => isLoading = true);
 
     try {
+      final user = authService.getCurrentUser();
+
+      if (user != null) {
+        print('Token silme işlemi başladı.');
+
+        await firestoreService.deleteFcmToken(user.uid);
+
+        print('FCM token Firestore üzerinden silindi.');
+      } else {
+        print('Giriş yapmış kullanıcı bulunamadı.');
+      }
+
       await authService.logout();
+
+      print('Firebase Authentication çıkışı başarılı.');
 
       mesajGuncelle('Çıkış yapıldı!');
     } catch (e) {
+      print('Çıkış hatası: $e');
       mesajGuncelle('Çıkış hatası: $e');
     }
   }
@@ -160,10 +187,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     setState(() => isLoading = true);
 
     try {
-      await firestoreService.updateUser(
-        uid,
-        nameController.text.trim(),
-      );
+      await firestoreService.updateUser(uid, nameController.text.trim());
 
       mesajGuncelle('Firestore: İsim güncellendi!');
     } catch (e) {
@@ -223,6 +247,106 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     }
   }
 
+  // Firestore'dan şirket bilgilerini getirir.
+  Future<void> sirketGetir() async {
+    final user = authService.getCurrentUser();
+
+    if (user == null) {
+      mesajGuncelle('Önce giriş yapmalısın!');
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final company = await firestoreService.getCompany('company_001');
+
+      if (company == null) {
+        mesajGuncelle('Şirket bulunamadı!');
+        return;
+      }
+
+      mesajGuncelle(
+        'Şirket bilgileri:\n'
+        'Ad: ${company.name}\n'
+        'Vergi No: ${company.taxNumber}\n'
+        'IBAN: ${company.corporateIban}\n'
+        'Yönetici sayısı: ${company.adminIds.length}',
+      );
+    } catch (e) {
+      mesajGuncelle('Şirket getirme hatası: $e');
+    }
+  }
+
+  // Test amaçlı masraf talebi oluşturur.
+  Future<void> masrafOlustur() async {
+    final user = authService.getCurrentUser();
+
+    if (user == null) {
+      mesajGuncelle('Önce giriş yapmalısın!');
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final expense = ExpenseModel(
+        expenseId: 'expense_${DateTime.now().millisecondsSinceEpoch}',
+        employeeId: user.uid,
+        companyId: 'company_001',
+        amount: 15000,
+        vatAmount: 1500,
+        receiptImageUrl: 'test_receipt.jpg',
+        status: 'pending',
+      );
+
+      await firestoreService.createExpense(expense);
+
+      mesajGuncelle(
+        'Masraf talebi oluşturuldu!\n'
+        'Masraf ID: ${expense.expenseId}\n'
+        'Tutar: 150,00 TL\n'
+        'Durum: ${expense.status}',
+      );
+    } catch (e) {
+      mesajGuncelle('Masraf oluşturma hatası: $e');
+    }
+  }
+
+  // Çalışanın masraf taleplerini getirir.
+  Future<void> masraflariGetir() async {
+    final user = authService.getCurrentUser();
+
+    if (user == null) {
+      mesajGuncelle('Önce giriş yapmalısın!');
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final snapshot = await firestoreService
+          .watchEmployeeExpenses(user.uid)
+          .first;
+
+      if (snapshot.isEmpty) {
+        mesajGuncelle('Masraf kaydı bulunamadı.');
+        return;
+      }
+
+      final bilgiler = snapshot
+          .map((expense) {
+            return 'Masraf: ${expense.expenseId}\n'
+                'Tutar: ${(expense.amount / 100).toStringAsFixed(2)} TL\n'
+                'Durum: ${expense.status}';
+          })
+          .join('\n\n');
+
+      mesajGuncelle(bilgiler);
+    } catch (e) {
+      mesajGuncelle('Masraf getirme hatası: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -257,10 +381,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             const Text(
               'Firebase Authentication',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 20),
@@ -309,10 +430,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             const Text(
               'Cloud Firestore CRUD Test',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 16),
@@ -349,10 +467,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
 
             const SizedBox(height: 24),
 
-            if (isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              ),
+            if (isLoading) const Center(child: CircularProgressIndicator()),
 
             const SizedBox(height: 12),
 
@@ -363,24 +478,57 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
 
             const SizedBox(height: 24),
+            const Divider(),
 
-const Divider(),
+            const Text(
+              'WalletModel Test',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
 
-const Text(
-  'WalletModel Test',
-  textAlign: TextAlign.center,
-  style: TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-  ),
-),
+            const SizedBox(height: 16),
 
-const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: isLoading ? null : cuzdanGetir,
+              child: const Text('Cüzdan Getir'),
+            ),
 
-ElevatedButton(
-  onPressed: isLoading ? null : cuzdanGetir,
-  child: const Text('Cüzdan Getir'),
-),
+            const SizedBox(height: 24),
+            const Divider(),
+
+            const Text(
+              'CompanyModel Test',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 16),
+
+            ElevatedButton(
+              onPressed: isLoading ? null : sirketGetir,
+              child: const Text('Şirket Getir'),
+            ),
+
+            const SizedBox(height: 24),
+            const Divider(),
+
+            const Text(
+              'ExpenseModel Test',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 16),
+
+            ElevatedButton(
+              onPressed: isLoading ? null : masrafOlustur,
+              child: const Text('Masraf Oluştur'),
+            ),
+
+            ElevatedButton(
+              onPressed: isLoading ? null : masraflariGetir,
+              child: const Text('Masrafları Getir'),
+            ),
           ],
         ),
       ),

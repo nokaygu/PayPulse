@@ -1,6 +1,7 @@
 import '../../data/models/user_model.dart';
+
 abstract class IUserRepository {
-  Future<List<User?>> getAllUsers();
+  Future<List<UserModel?>> getAllUsers();
   Future<UserModel?> getUserById(String uid);
-// IUrunServisi soyut sınıfının kapanış parantezi
+  // IUrunServisi soyut sınıfının kapanış parantezi
 }
