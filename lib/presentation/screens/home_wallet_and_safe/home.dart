@@ -191,6 +191,39 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     }
   }
 
+  // Firebase Firestore'dan kullanıcının cüzdanını getirir.
+  Future<void> cuzdanGetir() async {
+    final user = authService.getCurrentUser();
+
+    if (user == null) {
+      mesajGuncelle('Önce giriş yapmalısın!');
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final walletId = 'wallet_${user.uid}';
+
+      final wallet = await firestoreService.getWallet(walletId);
+
+      if (wallet == null) {
+        mesajGuncelle('Cüzdan bulunamadı!');
+        return;
+      }
+
+      mesajGuncelle(
+        'Cüzdan bilgileri:\n'
+        'TL: ${(wallet.balanceTl / 100).toStringAsFixed(2)}\n'
+        'USD: ${(wallet.balanceUsd / 100).toStringAsFixed(2)}\n'
+        'EUR: ${(wallet.balanceEur / 100).toStringAsFixed(2)}',
+      );
+    } catch (e) {
+      mesajGuncelle('Cüzdan getirme hatası: $e');
+    }
+  }
+
+
   @override
   void dispose() {
     emailController.dispose();
@@ -330,6 +363,24 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
 
             const SizedBox(height: 24),
+
+const Divider(),
+
+const Text(
+  'WalletModel Test',
+  textAlign: TextAlign.center,
+  style: TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 16),
+
+ElevatedButton(
+  onPressed: isLoading ? null : cuzdanGetir,
+  child: const Text('Cüzdan Getir'),
+),
           ],
         ),
       ),

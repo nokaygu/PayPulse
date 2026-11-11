@@ -25,7 +25,7 @@ class WalletModel {
       balanceTl: json['balanceTl'] as int? ?? 0,
       balanceUsd: json['balanceUsd'] as int? ?? 0,
       balanceEur: json['balanceEur'] as int? ?? 0,
-      iban: json['iban'] as String,
+      iban: json['iban'] as String?,
     );
   }
 
