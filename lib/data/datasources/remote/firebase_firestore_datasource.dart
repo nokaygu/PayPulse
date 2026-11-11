@@ -1,5 +1,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/user_model.dart';
 
 class FirebaseFirestoreDatasource {
 
@@ -50,4 +51,28 @@ class FirebaseFirestoreDatasource {
         .doc(uid)
         .delete();
   }
+
+
+  // Kullanıcı profilini Firestore'a kaydeder.
+  Future<void> createUserProfile(UserModel user) async {
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .set(user.toJson());
+  }
+
+  // Kullanıcı profilini Firestore'dan getirir.
+  Future<UserModel?> getUserProfile(String uid) async {
+    final document = await _firestore
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (!document.exists) {
+      return null;
+    }
+
+    return UserModel.fromJson(document.data()!);
+  }
+
 }
