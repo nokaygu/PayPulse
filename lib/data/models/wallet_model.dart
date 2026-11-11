@@ -7,6 +7,7 @@ class WalletModel {
   final int balanceTl; // Kuruş bazında (Örn: 150.50 TL -> 15050)
   final int balanceUsd;
   final int balanceEur;
+  final String? iban;
 
   WalletModel({
     required this.walletId,
@@ -14,6 +15,7 @@ class WalletModel {
     required this.balanceTl,
     required this.balanceUsd,
     required this.balanceEur,
+    this.iban,
   });
 
   factory WalletModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class WalletModel {
       balanceTl: json['balanceTl'] as int? ?? 0,
       balanceUsd: json['balanceUsd'] as int? ?? 0,
       balanceEur: json['balanceEur'] as int? ?? 0,
+      iban: json['iban'] as String,
     );
   }
 
@@ -33,6 +36,7 @@ class WalletModel {
       'balanceTl': balanceTl,
       'balanceUsd': balanceUsd,
       'balanceEur': balanceEur,
+      if (iban != null) 'iban': iban,
     };
   }
 }
