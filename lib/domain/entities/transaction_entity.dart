@@ -1,15 +1,22 @@
-/// Sistemdeki tüm gerçekleşmiş finansal hareketleri (FAST, POS, Cüzdan Yükleme) temsil eden Domain Entity sınıfı.
-class TransactionEntity {
+import '../../core/utils/equatable.dart';
+
+/// Sistemdeki tüm gerçekleşmiş finansal hareketleri (FAST, POS, Cüzdan) temsil eden Domain Entity sınıfı.
+class TransactionEntity extends Equatable {
   static const int fraudLimitInKurus = 5000000; // 50.000,00 TL
 
   final String txId;
   final String senderId;
   final String receiverId;
-  final int amount; // Kuruş bazında
+  final int amount; // Kuruş bazında (örn: 150000 = 1.500,00 TL)
   final String currency; // 'TRY', 'USD', 'EUR'
   final DateTime timestamp;
-  final String type; // 'fast', 'pos_payment', 'wallet_deposit'
+  final String type; // 'fast', 'pos_payment', 'wallet_deposit', 'salary', 'subscription', 'bill'
   final String? targetIban;
+  final String title; // örn: 'Zeynep Kaya', 'Espresso Lab', 'TechSolutions Maaş'
+  final String category; // örn: 'FAST Transfer', 'Kahve & İçecek', 'Maaş', 'Market', 'Fatura'
+  final bool isExpense; // true: Giden (-), false: Gelen (+)
+  final String dateGroup; // 'BUGÜN, 11 KASIM', 'DÜN, 10 KASIM', 'GEÇEN HAFTA'
+  final String status; // 'Başarılı', 'Beklemede', 'İptal'
 
   const TransactionEntity({
     required this.txId,
@@ -20,14 +27,18 @@ class TransactionEntity {
     required this.timestamp,
     required this.type,
     this.targetIban,
+    this.title = '',
+    this.category = 'Genel',
+    this.isExpense = true,
+    this.dateGroup = 'BUGÜN, 11 KASIM',
+    this.status = 'Başarılı',
   });
 
+  /// TL / Ana birim cinsinden tutar (örn: 1500.00)
   double get amountInMajorUnit => amount / 100.0;
 
   bool get isFastTransfer => type == 'fast';
-
   bool get isPosPayment => type == 'pos_payment';
-
   bool get isWalletDeposit => type == 'wallet_deposit';
 
   /// Fraud alarm kalkanı: 50.000,00 TL (5.000.000 kuruş) ve üzeri işlemler ek doğrulama gerektirir.
@@ -49,6 +60,11 @@ class TransactionEntity {
     DateTime? timestamp,
     String? type,
     String? targetIban,
+    String? title,
+    String? category,
+    bool? isExpense,
+    String? dateGroup,
+    String? status,
   }) {
     return TransactionEntity(
       txId: txId ?? this.txId,
@@ -59,7 +75,28 @@ class TransactionEntity {
       timestamp: timestamp ?? this.timestamp,
       type: type ?? this.type,
       targetIban: targetIban ?? this.targetIban,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      isExpense: isExpense ?? this.isExpense,
+      dateGroup: dateGroup ?? this.dateGroup,
+      status: status ?? this.status,
     );
   }
-}
 
+  @override
+  List<Object?> get props => [
+        txId,
+        senderId,
+        receiverId,
+        amount,
+        currency,
+        timestamp,
+        type,
+        targetIban,
+        title,
+        category,
+        isExpense,
+        dateGroup,
+        status,
+      ];
+}

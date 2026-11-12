@@ -6,6 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../../presentation/screens/auth/bloc/auth_bloc.dart';
 import '../../presentation/screens/auth/bloc/auth_event.dart';
 import '../../presentation/screens/home_wallet_and_safe/home.dart';
+import '../../presentation/screens/transaction_history_screen.dart';
+import '../../presentation/screens/einvoice_archive_screen.dart';
+import '../../presentation/screens/budget_analytics_screen.dart';
+import '../../presentation/screens/profile_settings_screen.dart';
+import '../../presentation/screens/tax_and_vat_report_screen.dart';
 import '../../presentation/shell_navigation/main_shell_wrapper_screen.dart';
 import 'app_routes.dart';
 
@@ -81,30 +86,15 @@ class AppRouter {
             ),
             GoRoute(
               path: AppRoutes.transactions,
-              builder: (context, state) => const _RoutePlaceholderView(
-                title: 'İşlem Geçmişi',
-                subtitle: 'Tümü • Gelen (+) • Giden (-) • QR Ödemeleri',
-                actions: [
-                  _QuickNavButton(
-                    label: 'Son FAST Dekontunu Aç (:txId)',
-                    path: '/home/transfer/receipt/PP-FAST-20261111-849201',
-                  ),
-                ],
-              ),
+              builder: (context, state) => const TransactionHistoryScreen(),
             ),
             GoRoute(
               path: AppRoutes.budget,
-              builder: (context, state) => const _RoutePlaceholderView(
-                title: 'Bütçe ve Analitik',
-                subtitle: 'Haftalık Harcama Trendi & Harcama Kategorileri',
-              ),
+              builder: (context, state) => const BudgetAnalyticsScreen(),
             ),
             GoRoute(
               path: AppRoutes.profile,
-              builder: (context, state) => const _RoutePlaceholderView(
-                title: 'Profil & Ayarlar',
-                subtitle: 'Bireysel Sekme 5',
-              ),
+              builder: (context, state) => const ProfileSettingsScreen(),
             ),
 
             // ================= İŞLETME PANELİ (B2B) SEKMELERİ =================
@@ -147,10 +137,7 @@ class AppRouter {
             ),
             GoRoute(
               path: AppRoutes.businessInvoices,
-              builder: (context, state) => const _RoutePlaceholderView(
-                title: 'E-Fatura & E-Arşiv',
-                subtitle: 'GİB Canlı Entegrasyonu • Gelen & Giden Faturalar',
-              ),
+              builder: (context, state) => const EInvoiceArchiveScreen(),
             ),
             GoRoute(
               path: AppRoutes.businessExpenses,
@@ -183,10 +170,7 @@ class AppRouter {
             ),
             GoRoute(
               path: AppRoutes.businessReports,
-              builder: (context, state) => const _RoutePlaceholderView(
-                title: 'KDV & Gider Matrah Analizi Raporları',
-                subtitle: 'Sadece ADMIN rolü bu sekmeye erişebilir',
-              ),
+              builder: (context, state) => const TaxAndVatReportScreen(),
             ),
 
             // ================= DEEP LINK ÖZEL ROTASI =================
