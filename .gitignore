@@ -77,3 +77,18 @@ local.properties
 *.pbxuser
 *.perspectivev3
 DerivedData/
+
+# Local Firebase configuration: generate locally; never commit.
+/lib/firebase_options.dart
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist
+/macos/Runner/GoogleService-Info.plist
+/web/firebase-config.local.js
+
+# Server credentials and local authentication material.
+**/*service-account*.json
+**/*service_account*.json
+**/*firebase-adminsdk*.json
+*.p12
+*.pfx
+*.key
