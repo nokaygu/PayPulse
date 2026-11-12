@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -30,10 +31,7 @@ class DarkGradientHeroCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: AppColors.heroCardGradient,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.08),
-            width: 1,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
           boxShadow: [
             BoxShadow(
               color: AppColors.darkNavy.withOpacity(0.4),
@@ -80,10 +78,7 @@ class DarkGradientHeroCard extends StatelessWidget {
             ],
             if (bottomChild != null) ...[
               const SizedBox(height: 16),
-              Divider(
-                color: Colors.white.withOpacity(0.12),
-                height: 1,
-              ),
+              Divider(color: Colors.white.withOpacity(0.12), height: 1),
               const SizedBox(height: 14),
               bottomChild!,
             ],
@@ -93,4 +88,3 @@ class DarkGradientHeroCard extends StatelessWidget {
     );
   }
 }
-

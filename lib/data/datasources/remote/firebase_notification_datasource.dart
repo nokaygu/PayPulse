@@ -1,20 +1,22 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_firestore_datasource.dart';
 
+/// Push bildirim servisi.
+/// Android üzerinde FCM ve flutter_local_notifications ile tam teşekküllü çalışır.
+/// macOS ve iOS üzerinde (Apple Developer hesabı/APNs gerekmediği için) sessizce atlanır,
+/// uygulamanın açılışını veya oturum akışlarını kesinlikle engellemez.
 class FirebaseNotificationDatasource {
-  // Firebase Cloud Messaging servisine erişim sağlar.
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-
-  // Yerel bildirimleri göstermek için kullanılır.
-  final FlutterLocalNotificationsPlugin _localNotifications =
+  FirebaseMessaging get _messaging => FirebaseMessaging.instance;
+  FlutterLocalNotificationsPlugin get _localNotifications =>
       FlutterLocalNotificationsPlugin();
 
-  // Android bildirim kanalı.
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'paypulse_notifications',
     'PayPulse Bildirimleri',
@@ -22,28 +24,40 @@ class FirebaseNotificationDatasource {
     importance: Importance.high,
   );
 
-  // Kullanıcıdan bildirim izni ister.
+  /// Kullanıcıdan bildirim izni ister (Yalnızca Android).
   Future<void> requestNotificationPermission() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    if (kIsWeb || !Platform.isAndroid) return;
 
-    print('Bildirim izni: ${settings.authorizationStatus}');
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      debugPrint('Bildirim izni: ${settings.authorizationStatus}');
+    } catch (e) {
+      debugPrint('Bildirim izni isteme atlandı: $e');
+    }
   }
 
-  // Cihazın FCM token değerini getirir.
+  /// Cihazın FCM token değerini getirir (Yalnızca Android).
   Future<String?> getFcmToken() async {
-    final token = await _messaging.getToken();
+    if (kIsWeb || !Platform.isAndroid) return null;
 
-    print('FCM Token: $token');
-
-    return token;
+    try {
+      final token = await _messaging.getToken();
+      debugPrint('FCM Token: $token');
+      return token;
+    } catch (e) {
+      debugPrint('FCM token alma hatası: $e');
+      return null;
+    }
   }
 
-  // Android yerel bildirimlerini hazırlar.
+  /// Android yerel bildirimlerini hazırlar.
   Future<void> initializeLocalNotifications() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -54,7 +68,6 @@ class FirebaseNotificationDatasource {
 
     await _localNotifications.initialize(settings: initializationSettings);
 
-    // Android bildirim kanalını oluşturur.
     await _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -62,17 +75,14 @@ class FirebaseNotificationDatasource {
         ?.createNotificationChannel(_channel);
   }
 
-  // Uygulama açıkken gelen bildirimleri dinler.
+  /// Uygulama açıkken gelen bildirimleri dinler (Yalnızca Android).
   void listenForegroundMessages() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      print('Bildirim geldi!');
-      print('Başlık: ${message.notification?.title}');
-      print('İçerik: ${message.notification?.body}');
+    if (kIsWeb || !Platform.isAndroid) return;
 
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final notification = message.notification;
 
       if (notification != null) {
-        // Bildirimi Android bildirim çubuğunda gösterir.
         await _localNotifications.show(
           id: notification.hashCode,
           title: notification.title,
@@ -91,79 +101,76 @@ class FirebaseNotificationDatasource {
     });
   }
 
-  // Bildirim altyapısını başlatır.
+  /// Bildirim altyapısını başlatır.
+  /// macOS ve iOS üzerinde Apple Developer/APNs bağımlılığı olmaksızın güvenle atlanır.
   Future<void> initialize() async {
-    // FCM yalnızca Android üzerinde aktif.
-    if (!Platform.isAndroid) {
-      print('FCM sadece Android üzerinde aktif.');
+    if (kIsWeb || !Platform.isAndroid) {
+      debugPrint(
+        'FCM ve Local Notifications yalnızca Android üzerinde aktiftir (macOS/iOS/Web atlandı).',
+      );
       return;
     }
 
     try {
-      // Kullanıcıdan bildirim izni iste.
       await requestNotificationPermission();
-
-      // Yerel bildirimleri hazırla.
       await initializeLocalNotifications();
-
-      // Cihazın FCM token değerini al.
       await getFcmToken();
-
-      // Uygulama açıkken bildirimleri dinle.
       listenForegroundMessages();
-
-      // Token değişikliklerini dinle.
       listenTokenRefresh();
-
-      // Kullanıcı oturumu açıksa token'ı Firestore'a kaydet.
       await saveTokenToFirestore();
-
-      print('Firebase bildirim servisi başlatıldı.');
+      debugPrint('Firebase bildirim servisi başlatıldı (Android).');
     } catch (e) {
-      print('FCM başlatma hatası: $e');
+      debugPrint('FCM başlatma hatası: $e');
     }
   }
 
-  // Giriş yapan kullanıcının FCM token'ını kaydeder.
+  /// Giriş yapan kullanıcının FCM token'ını kaydeder (Yalnızca Android).
   Future<void> saveTokenToFirestore() async {
-    if (!Platform.isAndroid) return;
+    if (kIsWeb || !Platform.isAndroid) return;
 
     final user = FirebaseAuth.instance.currentUser;
-
-    // Kullanıcı giriş yapmamışsa kayıt yapma.
     if (user == null) return;
 
     try {
       final token = await _messaging.getToken();
-
       if (token == null) return;
 
       final firestoreService = FirebaseFirestoreDatasource();
-
       await firestoreService.updateFcmToken(user.uid, token);
-
-      print('FCM token Firestore’a kaydedildi.');
+      debugPrint('FCM token Firestore’a kaydedildi.');
     } catch (e) {
-      print('FCM token kaydetme hatası: $e');
+      debugPrint('FCM token kaydetme hatası: $e');
     }
   }
 
-  // Firebase tarafından yenilenen FCM token'ını kaydeder.
+  /// Çıkış anında FCM token'ını siler (Yalnızca Android).
+  /// macOS veya iOS'tan çıkış yapıldığında kullanıcının Android cihazındaki token'ı silinmez!
+  Future<void> deleteTokenOnLogout(String uid) async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
+    try {
+      final firestoreService = FirebaseFirestoreDatasource();
+      await firestoreService.deleteFcmToken(uid);
+      debugPrint('Android FCM token oturum çıkışıyla silindi.');
+    } catch (e) {
+      debugPrint('Token silme hatası: $e');
+    }
+  }
+
+  /// Firebase tarafından yenilenen FCM token'ını kaydeder (Yalnızca Android).
   void listenTokenRefresh() {
+    if (kIsWeb || !Platform.isAndroid) return;
+
     _messaging.onTokenRefresh.listen((newToken) async {
       final user = FirebaseAuth.instance.currentUser;
-
-      // Giriş yapan kullanıcı yoksa işlem yapma.
       if (user == null) return;
 
       try {
         final firestoreService = FirebaseFirestoreDatasource();
-
         await firestoreService.updateFcmToken(user.uid, newToken);
-
-        print('Yeni FCM token Firestore’a kaydedildi.');
+        debugPrint('Yeni FCM token Firestore’a kaydedildi.');
       } catch (e) {
-        print('FCM token güncelleme hatası: $e');
+        debugPrint('FCM token güncelleme hatası: $e');
       }
     });
   }

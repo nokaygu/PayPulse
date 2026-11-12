@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum ViewStatus {
-  loading,
-  error,
-  empty,
-  success,
-}
+enum ViewStatus { loading, error, empty, success }
 
 class FourStateView extends StatelessWidget {
   const FourStateView({
@@ -30,9 +25,7 @@ class FourStateView extends StatelessWidget {
     switch (status) {
       case ViewStatus.loading:
         return const Center(
-          child: CircularProgressIndicator(
-            key: Key('loading-state'),
-          ),
+          child: CircularProgressIndicator(key: Key('loading-state')),
         );
 
       case ViewStatus.error:
@@ -71,10 +64,7 @@ class FourStateView extends StatelessWidget {
             Text(text, textAlign: TextAlign.center),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: onRetry,
-                child: Text(retryLabel),
-              ),
+              OutlinedButton(onPressed: onRetry, child: Text(retryLabel)),
             ],
           ],
         ),

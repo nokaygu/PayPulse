@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/budget_donut_chart.dart';
@@ -867,10 +868,7 @@ class _BudgetAnalyticsScreenState extends State<BudgetAnalyticsScreen> {
                         ? const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0xFF34D399),
-                              Color(0xFF0D9488),
-                            ],
+                            colors: [Color(0xFF34D399), Color(0xFF0D9488)],
                           )
                         : null,
                     color: isActive ? null : const Color(0xFFDBEAFE),
@@ -982,4 +980,3 @@ class _BudgetAnalyticsScreenState extends State<BudgetAnalyticsScreen> {
     );
   }
 }
-

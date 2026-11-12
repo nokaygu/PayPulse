@@ -83,12 +83,11 @@ class SavingsGoalModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        targetAmount,
-        currentAmount,
-        deadline,
-        iconName,
-      ];
+    id,
+    title,
+    targetAmount,
+    currentAmount,
+    deadline,
+    iconName,
+  ];
 }
-

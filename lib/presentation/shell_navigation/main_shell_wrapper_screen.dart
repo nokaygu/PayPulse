@@ -10,10 +10,7 @@ import '../screens/auth/bloc/auth_state.dart';
 class MainShellWrapperScreen extends StatelessWidget {
   final Widget child;
 
-  const MainShellWrapperScreen({
-    super.key,
-    required this.child,
-  });
+  const MainShellWrapperScreen({super.key, required this.child});
 
   static const List<_NavTabItem> _personalTabs = [
     _NavTabItem(
@@ -81,7 +78,7 @@ class MainShellWrapperScreen extends StatelessWidget {
     ),
   ];
 
-  int _calculateSelectedIndex( String location, List<_NavTabItem> tabs) {
+  int _calculateSelectedIndex(String location, List<_NavTabItem> tabs) {
     for (var i = 0; i < tabs.length; i++) {
       if (location.startsWith(tabs[i].path)) {
         return i;
@@ -104,10 +101,7 @@ class MainShellWrapperScreen extends StatelessWidget {
         return Scaffold(
           body: Column(
             children: [
-              _RoleAndModeBanner(
-                authState: authState,
-                isBusiness: isBusiness,
-              ),
+              _RoleAndModeBanner(authState: authState, isBusiness: isBusiness),
               Expanded(child: child),
             ],
           ),
@@ -168,10 +162,7 @@ class _RoleAndModeBanner extends StatelessWidget {
   final AuthState authState;
   final bool isBusiness;
 
-  const _RoleAndModeBanner({
-    required this.authState,
-    required this.isBusiness,
-  });
+  const _RoleAndModeBanner({required this.authState, required this.isBusiness});
 
   @override
   Widget build(BuildContext context) {
@@ -180,12 +171,8 @@ class _RoleAndModeBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isBusiness
-              ? const Color(0xFF0F172A)
-              : const Color(0xFFF8FAFC),
-          border: const Border(
-            bottom: BorderSide(color: Color(0xFFE2E8F0)),
-          ),
+          color: isBusiness ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          border: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
         ),
         child: Row(
           children: [
@@ -198,7 +185,9 @@ class _RoleAndModeBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                isBusiness ? 'Nova Tasarım Ltd. • İşletme' : 'PayPulse Bireysel',
+                isBusiness
+                    ? 'Nova Tasarım Ltd. • İşletme'
+                    : 'PayPulse Bireysel',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -313,4 +302,3 @@ class _NavTabItem {
     required this.activeIcon,
   });
 }
-

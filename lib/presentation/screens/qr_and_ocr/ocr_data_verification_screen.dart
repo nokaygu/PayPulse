@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -64,10 +65,7 @@ class OcrDataVerificationScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('KDV Oranı (%20)'),
-                      Text('₺236,75'),
-                    ],
+                    children: [Text('KDV Oranı (%20)'), Text('₺236,75')],
                   ),
                 ],
               ),
@@ -78,4 +76,3 @@ class OcrDataVerificationScreen extends StatelessWidget {
     );
   }
 }
-

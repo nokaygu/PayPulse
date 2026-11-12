@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -13,7 +14,8 @@ class OcrCameraScannerScreen extends StatefulWidget {
 }
 
 class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
-  int _selectedDocMode = 1; // 0: Fatura (A4), 1: Gider Fişi, 2: E-Arşiv, 3: Sözleşme
+  int _selectedDocMode =
+      1; // 0: Fatura (A4), 1: Gider Fişi, 2: E-Arşiv, 3: Sözleşme
 
   @override
   Widget build(BuildContext context) {
@@ -390,10 +392,11 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                                   const SizedBox(height: 2),
                                   Text(
                                     '₺1.420,50',
-                                    style: AppTextStyles.numericBalance.copyWith(
-                                      color: Colors.white,
-                                      fontSize: 26,
-                                    ),
+                                    style: AppTextStyles.numericBalance
+                                        .copyWith(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -672,4 +675,3 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
     );
   }
 }
-

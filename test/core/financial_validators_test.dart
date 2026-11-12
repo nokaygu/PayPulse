@@ -5,63 +5,38 @@ import 'package:pay_pulse/core/validators/financial_validators.dart';
 void main() {
   group('Luhn', () {
     test('Geçerli 16 haneli kart kabul edilir', () {
-      expect(
-        FinancialValidators.cardNumber('4242 4242 4242 4242'),
-        isNull,
-      );
+      expect(FinancialValidators.cardNumber('4242 4242 4242 4242'), isNull);
     });
 
     test('Yanlış kontrol rakamı reddedilir', () {
-      expect(
-        FinancialValidators.cardNumber('4242 4242 4242 4241'),
-        isNotNull,
-      );
+      expect(FinancialValidators.cardNumber('4242 4242 4242 4241'), isNotNull);
     });
 
     test('Görselde belirtilen numara Luhn geçerli değildir', () {
-      expect(
-        FinancialValidators.isLuhnValid('5400 8291 3847 8912'),
-        isFalse,
-      );
+      expect(FinancialValidators.isLuhnValid('5400 8291 3847 8912'), isFalse);
     });
 
     test('Eksik kart ve sıfırlardan oluşan kart reddedilir', () {
-      expect(
-        FinancialValidators.cardNumber('4242'),
-        isNotNull,
-      );
+      expect(FinancialValidators.cardNumber('4242'), isNotNull);
 
-      expect(
-        FinancialValidators.cardNumber('0000 0000 0000 0000'),
-        isNotNull,
-      );
+      expect(FinancialValidators.cardNumber('0000 0000 0000 0000'), isNotNull);
     });
   });
 
   group('TR IBAN', () {
     test('Geçerli IBAN kabul edilir', () {
       expect(
-        FinancialValidators.iban(
-          'TR33 0006 1005 1978 6457 8413 26',
-        ),
+        FinancialValidators.iban('TR33 0006 1005 1978 6457 8413 26'),
         isNull,
       );
     });
 
     test('Yanlış uzunluk reddedilir', () {
-      expect(
-        FinancialValidators.iban('TR330006'),
-        isNotNull,
-      );
+      expect(FinancialValidators.iban('TR330006'), isNotNull);
     });
 
     test('26 karakter olsa da yanlış kontrol rakamı reddedilir', () {
-      expect(
-        FinancialValidators.iban(
-          'TR330006100519786457841327',
-        ),
-        isNotNull,
-      );
+      expect(FinancialValidators.iban('TR330006100519786457841327'), isNotNull);
     });
   });
 
@@ -76,10 +51,7 @@ void main() {
 
     test('Bakiye üstü transfer reddedilir', () {
       expect(
-        FinancialValidators.amount(
-          '24850,01',
-          balanceKurus: 2485000,
-        ),
+        FinancialValidators.amount('24850,01', balanceKurus: 2485000),
         isNotNull,
       );
     });
@@ -129,19 +101,13 @@ void main() {
     test('Para biçimi ve yazıyla tutar', () {
       expect(FinancialAmount.format(2335000), '₺23.350,00');
 
-      expect(
-        FinancialAmount.inWords(150000),
-        'Bin Beş Yüz Türk Lirası',
-      );
+      expect(FinancialAmount.inWords(150000), 'Bin Beş Yüz Türk Lirası');
     });
   });
 
   group('POS komisyonu', () {
     test('3750 TL için yüzde 1,39 komisyon 52,13 TL', () {
-      expect(
-        FinancialAmount.posCommission(375000),
-        5213,
-      );
+      expect(FinancialAmount.posCommission(375000), 5213);
     });
 
     test('100 TL komisyonu 1,39 TL', () {
@@ -149,10 +115,7 @@ void main() {
     });
 
     test('Negatif tutar reddedilir', () {
-      expect(
-        () => FinancialAmount.posCommission(-1),
-        throwsArgumentError,
-      );
+      expect(() => FinancialAmount.posCommission(-1), throwsArgumentError);
     });
   });
 
@@ -160,22 +123,13 @@ void main() {
     final now = DateTime(2026, 11, 12);
 
     test('İçinde bulunulan ay geçerlidir', () {
-      expect(
-        FinancialValidators.expiry('11 / 26', now: now),
-        isNull,
-      );
+      expect(FinancialValidators.expiry('11 / 26', now: now), isNull);
     });
 
     test('Önceki ay ve geçersiz ay reddedilir', () {
-      expect(
-        FinancialValidators.expiry('10 / 26', now: now),
-        isNotNull,
-      );
+      expect(FinancialValidators.expiry('10 / 26', now: now), isNotNull);
 
-      expect(
-        FinancialValidators.expiry('13 / 28', now: now),
-        isNotNull,
-      );
+      expect(FinancialValidators.expiry('13 / 28', now: now), isNotNull);
     });
   });
 }

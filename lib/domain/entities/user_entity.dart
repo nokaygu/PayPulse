@@ -42,10 +42,12 @@ class UserEntity extends Equatable {
   bool get hasCompany => companyId != null && companyId!.trim().isNotEmpty;
 
   /// Kalan harcama limiti
-  double get remainingLimit => (monthlyLimit - spentThisMonth).clamp(0.0, monthlyLimit);
+  double get remainingLimit =>
+      (monthlyLimit - spentThisMonth).clamp(0.0, monthlyLimit);
 
   /// Limit kullanım yüzdesi (0.0 - 1.0)
-  double get limitUsageRatio => monthlyLimit > 0 ? (spentThisMonth / monthlyLimit).clamp(0.0, 1.0) : 0.0;
+  double get limitUsageRatio =>
+      monthlyLimit > 0 ? (spentThisMonth / monthlyLimit).clamp(0.0, 1.0) : 0.0;
 
   UserEntity copyWith({
     String? uid,
@@ -77,16 +79,16 @@ class UserEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        uid,
-        name,
-        email,
-        role,
-        companyId,
-        customerNo,
-        verificationLevel,
-        iban,
-        monthlyLimit,
-        spentThisMonth,
-        hasB2BAccess,
-      ];
+    uid,
+    name,
+    email,
+    role,
+    companyId,
+    customerNo,
+    verificationLevel,
+    iban,
+    monthlyLimit,
+    spentThisMonth,
+    hasB2BAccess,
+  ];
 }

@@ -26,4 +26,3 @@ abstract class Equatable {
     return true;
   }
 }
-

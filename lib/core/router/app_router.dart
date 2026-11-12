@@ -47,7 +47,8 @@ class AppRouter {
                     GoRoute(
                       path: 'receipt/:txId',
                       builder: (context, state) {
-                        final txId = state.pathParameters['txId'] ??
+                        final txId =
+                            state.pathParameters['txId'] ??
                             'PP-FAST-20261111-849201';
                         return TransferReceiptScreen(txId: txId);
                       },
@@ -137,7 +138,8 @@ class AppRouter {
     }
 
     // 2. KALKAN: Sadece 'admin' rolüne açık olan kritik finansal rotalar:
-    final isAdminOnlyRoute = location == AppRoutes.businessReports ||
+    final isAdminOnlyRoute =
+        location == AppRoutes.businessReports ||
         location == AppRoutes.businessBatchApproval;
 
     if (isAdminOnlyRoute && !authState.canApproveExpenses) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -18,17 +19,14 @@ class WeeklyBarChart extends StatelessWidget {
   final List<BarChartPoint> points;
   final double maxHeight;
 
-  const WeeklyBarChart({
-    super.key,
-    required this.points,
-    this.maxHeight = 120,
-  });
+  const WeeklyBarChart({super.key, required this.points, this.maxHeight = 120});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final double maxVal =
-        points.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+    final double maxVal = points
+        .map((e) => e.value)
+        .reduce((a, b) => a > b ? a : b);
 
     return SizedBox(
       height: maxHeight + 36,
@@ -54,7 +52,7 @@ class WeeklyBarChart extends StatelessWidget {
                               color: AppColors.primaryGreen.withOpacity(0.35),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
-                            )
+                            ),
                           ]
                         : null,
                   ),
@@ -79,4 +77,3 @@ class WeeklyBarChart extends StatelessWidget {
     );
   }
 }
-

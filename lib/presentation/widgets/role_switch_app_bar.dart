@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/router/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -48,9 +49,11 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   if (context.canPop()) {
                     context.pop();
                   } else {
-                    context.go(isBusinessMode
-                        ? AppRoutes.businessOverview
-                        : AppRoutes.home);
+                    context.go(
+                      isBusinessMode
+                          ? AppRoutes.businessOverview
+                          : AppRoutes.home,
+                    );
                   }
                 },
                 borderRadius: BorderRadius.circular(20),
@@ -228,7 +231,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('3 yeni bildirim: FAST ve GİB E-Fatura senkronize edildi.'),
+                        content: Text(
+                          '3 yeni bildirim: FAST ve GİB E-Fatura senkronize edildi.',
+                        ),
                       ),
                     );
                   },
@@ -305,13 +310,18 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
               ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Color(0xFFD1FAE5),
-                  child: Icon(Icons.account_balance_wallet, color: AppColors.primaryGreen),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: AppColors.primaryGreen,
+                  ),
                 ),
                 title: const Text('Deniz Aksoy — Bireysel Cüzdan (B2C)'),
                 subtitle: const Text('Müşteri No: PP-849201 • Kişisel Hesap'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(const AuthRoleChanged('employee'));
+                  context.read<AuthBloc>().add(
+                    const AuthRoleChanged('employee'),
+                  );
                   context.go(AppRoutes.home);
                 },
               ),
@@ -322,7 +332,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Icon(Icons.business_center, color: AppColors.darkNavy),
                 ),
                 title: const Text('Nova Tasarım Ltd. — İşletme Paneli (B2B)'),
-                subtitle: const Text('Finans Yöneticisi (Admin) • POS, Masraf, KDV'),
+                subtitle: const Text(
+                  'Finans Yöneticisi (Admin) • POS, Masraf, KDV',
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
@@ -336,4 +348,3 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 }
-

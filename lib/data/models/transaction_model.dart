@@ -9,7 +9,7 @@ class TransactionModel extends Equatable {
   final int amount; // Kuruş bazında
   final String currency; // 'TRY', 'USD', 'EUR'
   final DateTime timestamp;
-  final String type; // 'fast', 'pos_payment', 'wallet_deposit', 'salary', 'bill', etc.
+  final String type; // 'fast', 'pos_payment', 'wallet_deposit', 'salary', 'bill', 'expense_reimbursement', etc.
   final String? targetIban;
   final String title;
   final String category;
@@ -36,11 +36,15 @@ class TransactionModel extends Equatable {
   double get amountInMajorUnit => amount / 100.0;
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    DateTime parsedTime;
-    if (json['timestamp'] is String) {
-      parsedTime = DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now();
+    final rawTimestamp = json['timestamp'];
+    DateTime parsedDate;
+    if (rawTimestamp is String) {
+      parsedDate = DateTime.tryParse(rawTimestamp) ?? DateTime.now();
+    } else if (rawTimestamp != null &&
+        rawTimestamp.runtimeType.toString().contains('Timestamp')) {
+      parsedDate = (rawTimestamp as dynamic).toDate();
     } else {
-      parsedTime = DateTime.now();
+      parsedDate = DateTime.now();
     }
 
     return TransactionModel(
@@ -49,7 +53,7 @@ class TransactionModel extends Equatable {
       receiverId: json['receiverId'] as String? ?? '',
       amount: (json['amount'] as num?)?.toInt() ?? 0,
       currency: json['currency'] as String? ?? 'TRY',
-      timestamp: parsedTime,
+      timestamp: parsedDate,
       type: json['type'] as String? ?? 'fast',
       targetIban: json['targetIban'] as String?,
       title: json['title'] as String? ?? '',
@@ -148,18 +152,18 @@ class TransactionModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        txId,
-        senderId,
-        receiverId,
-        amount,
-        currency,
-        timestamp,
-        type,
-        targetIban,
-        title,
-        category,
-        isExpense,
-        dateGroup,
-        status,
-      ];
+    txId,
+    senderId,
+    receiverId,
+    amount,
+    currency,
+    timestamp,
+    type,
+    targetIban,
+    title,
+    category,
+    isExpense,
+    dateGroup,
+    status,
+  ];
 }

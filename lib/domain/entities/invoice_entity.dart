@@ -10,10 +10,12 @@ class InvoiceEntity extends Equatable {
   final String documentType; // 'e_fatura', 'e_arsiv', 'e_smm'
   final int totalAmount; // Kuruş bazında (örn: 3482000 = 34.820,00 TL)
   final int vatAmount; // Kuruş bazında
-  final double? withholdingRate; // Tevkifat / Stopaj oranı (örn: 0.50 -> Tevkifat 5/10)
+  final double?
+  withholdingRate; // Tevkifat / Stopaj oranı (örn: 0.50 -> Tevkifat 5/10)
   final String? badgeText; // 'Tevkifat 5/10', 'Demirbaş', 'KDV Muaf'
   final bool isPaid;
-  final bool canPayWithFast; // Aydın Hukuk gibi faturalarda "Anında Öde (FAST)" aksiyonu
+  final bool
+  canPayWithFast; // Aydın Hukuk gibi faturalarda "Anında Öde (FAST)" aksiyonu
   final DateTime issueDate;
   final DateTime? dueDate;
 
@@ -82,21 +84,21 @@ class InvoiceEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        invoiceId,
-        companyId,
-        gibInvoiceNo,
-        counterpartyName,
-        isIncoming,
-        documentType,
-        totalAmount,
-        vatAmount,
-        withholdingRate,
-        badgeText,
-        isPaid,
-        canPayWithFast,
-        issueDate,
-        dueDate,
-      ];
+    invoiceId,
+    companyId,
+    gibInvoiceNo,
+    counterpartyName,
+    isIncoming,
+    documentType,
+    totalAmount,
+    vatAmount,
+    withholdingRate,
+    badgeText,
+    isPaid,
+    canPayWithFast,
+    issueDate,
+    dueDate,
+  ];
 }
 
 typedef EInvoiceEntity = InvoiceEntity;

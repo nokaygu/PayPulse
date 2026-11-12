@@ -20,7 +20,8 @@ class BudgetCategoryEntity extends Equatable {
     this.iconName = 'shopping_cart',
   });
 
-  bool get isLimitWarning => (spentAmount / (allocatedAmount > 0 ? allocatedAmount : 1)) >= 0.90;
+  bool get isLimitWarning =>
+      (spentAmount / (allocatedAmount > 0 ? allocatedAmount : 1)) >= 0.90;
 
   BudgetCategoryEntity copyWith({
     String? categoryId,
@@ -44,14 +45,14 @@ class BudgetCategoryEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        categoryId,
-        title,
-        spentAmount,
-        allocatedAmount,
-        percentage,
-        colorHex,
-        iconName,
-      ];
+    categoryId,
+    title,
+    spentAmount,
+    allocatedAmount,
+    percentage,
+    colorHex,
+    iconName,
+  ];
 }
 
 /// Akıllı tasarruf ve birikim hedefi modeli (örn: Yeni Laptop M4 Pro 21.000 / 35.000 TL).
@@ -72,9 +73,11 @@ class SavingsGoalEntity extends Equatable {
     this.iconName = 'laptop_mac',
   });
 
-  double get progressRatio => targetAmount > 0 ? (currentAmount / targetAmount).clamp(0.0, 1.0) : 0.0;
+  double get progressRatio =>
+      targetAmount > 0 ? (currentAmount / targetAmount).clamp(0.0, 1.0) : 0.0;
   int get progressPercentage => (progressRatio * 100).round();
-  double get remainingAmount => (targetAmount - currentAmount).clamp(0.0, targetAmount);
+  double get remainingAmount =>
+      (targetAmount - currentAmount).clamp(0.0, targetAmount);
 
   SavingsGoalEntity copyWith({
     String? id,
@@ -96,13 +99,13 @@ class SavingsGoalEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        targetAmount,
-        currentAmount,
-        deadline,
-        iconName,
-      ];
+    id,
+    title,
+    targetAmount,
+    currentAmount,
+    deadline,
+    iconName,
+  ];
 }
 
 /// Bireysel Cüzdan aylık bütçe kotasını ve genel analitik durumunu tutan Domain Entity.
@@ -119,15 +122,17 @@ class BudgetEntity extends Equatable {
     required this.savingsGoal,
   });
 
-  double get remainingQuota => (monthlyQuota - totalSpent).clamp(0.0, monthlyQuota);
-  double get usageRatio => monthlyQuota > 0 ? (totalSpent / monthlyQuota).clamp(0.0, 1.0) : 0.0;
+  double get remainingQuota =>
+      (monthlyQuota - totalSpent).clamp(0.0, monthlyQuota);
+  double get usageRatio =>
+      monthlyQuota > 0 ? (totalSpent / monthlyQuota).clamp(0.0, 1.0) : 0.0;
   int get usagePercentage => (usageRatio * 100).round();
 
   @override
   List<Object?> get props => [
-        monthlyQuota,
-        totalSpent,
-        categories,
-        savingsGoal,
-      ];
+    monthlyQuota,
+    totalSpent,
+    categories,
+    savingsGoal,
+  ];
 }

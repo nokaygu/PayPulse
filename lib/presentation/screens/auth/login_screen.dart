@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import 'register_screen.dart';
@@ -264,7 +265,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 52),
-                    side: const BorderSide(color: AppLightColors.outlineVariant),
+                    side: const BorderSide(
+                      color: AppLightColors.outlineVariant,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

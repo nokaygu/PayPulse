@@ -84,10 +84,7 @@ class FinancialValidators {
     return null;
   }
 
-  static String? amount(
-    String? value, {
-    int? balanceKurus,
-  }) {
+  static String? amount(String? value, {int? balanceKurus}) {
     final amountKurus = FinancialAmount.parse(value);
 
     if (amountKurus == null) {
@@ -115,13 +112,9 @@ class FinancialValidators {
     return null;
   }
 
-  static String? expiry(
-    String? value, {
-    DateTime? now,
-  }) {
-    final match = RegExp(
-      r'^([0-9]{2})\s*/\s*([0-9]{2})$',
-    ).firstMatch(value?.trim() ?? '');
+  static String? expiry(String? value, {DateTime? now}) {
+    final match = RegExp(r'^([0-9]{2})\s*/\s*([0-9]{2})$')
+        .firstMatch(value?.trim() ?? '');
 
     if (match == null) {
       return 'Tarihi AA / YY biçiminde giriniz.';

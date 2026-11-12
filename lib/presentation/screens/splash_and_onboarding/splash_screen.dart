@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -47,9 +48,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: AppColors.heroCardGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.heroCardGradient),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -96,4 +95,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-

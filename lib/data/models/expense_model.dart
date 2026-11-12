@@ -38,8 +38,12 @@ class ExpenseModel extends Equatable {
 
   factory ExpenseModel.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate;
-    if (json['date'] is String) {
-      parsedDate = DateTime.tryParse(json['date'] as String) ?? DateTime.now();
+    final rawDate = json['date'];
+    if (rawDate is String) {
+      parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+    } else if (rawDate != null &&
+        rawDate.runtimeType.toString().contains('Timestamp')) {
+      parsedDate = (rawDate as dynamic).toDate();
     } else {
       parsedDate = DateTime.now();
     }
@@ -149,20 +153,20 @@ class ExpenseModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        expenseId,
-        employeeId,
-        employeeName,
-        merchantTitle,
-        category,
-        companyId,
-        amount,
-        vatAmount,
-        receiptImageUrl,
-        status,
-        rejectReason,
-        date,
-        accountingCode,
-      ];
+    expenseId,
+    employeeId,
+    employeeName,
+    merchantTitle,
+    category,
+    companyId,
+    amount,
+    vatAmount,
+    receiptImageUrl,
+    status,
+    rejectReason,
+    date,
+    accountingCode,
+  ];
 }
 
 typedef ExpenseItemModel = ExpenseModel;

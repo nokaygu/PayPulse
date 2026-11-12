@@ -24,9 +24,11 @@ class PosTransactionEntity extends Equatable {
     DateTime? timestamp,
     this.cardMasked = '5401 **** **** 8421',
     this.status = 'Başarılı',
-  })  : commissionAmount = commissionAmount ?? (grossAmount * (commissionRate / 100)),
-        netAmount = netAmount ?? (grossAmount - (grossAmount * (commissionRate / 100))),
-        timestamp = timestamp ?? DateTime.now();
+  }) : commissionAmount =
+           commissionAmount ?? (grossAmount * (commissionRate / 100)),
+       netAmount =
+           netAmount ?? (grossAmount - (grossAmount * (commissionRate / 100))),
+       timestamp = timestamp ?? DateTime.now();
 
   PosTransactionEntity copyWith({
     String? posTxId,
@@ -56,16 +58,15 @@ class PosTransactionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        posTxId,
-        terminalId,
-        customerName,
-        grossAmount,
-        commissionRate,
-        commissionAmount,
-        netAmount,
-        timestamp,
-        cardMasked,
-        status,
-      ];
+    posTxId,
+    terminalId,
+    customerName,
+    grossAmount,
+    commissionRate,
+    commissionAmount,
+    netAmount,
+    timestamp,
+    cardMasked,
+    status,
+  ];
 }
-

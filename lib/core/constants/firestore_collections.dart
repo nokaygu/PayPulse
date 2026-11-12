@@ -29,7 +29,12 @@ class FirestoreCollections {
   /// Şirket ve üye işyeri tanımları
   static const String companies = 'companies';
 
-  /// Bildirimler
+  /// Bildirimler (Uygulama içi bildirim merkezi)
   static const String notifications = 'notifications';
-}
 
+  /// Müşteri tahsilat talepleri / Ödeme linkleri
+  static const String paymentRequests = 'payment_requests';
+
+  /// Güvenli alıcı dizini (Directory Projection - Maskeli İsim & IBAN)
+  static const String recipients = 'recipients';
+}

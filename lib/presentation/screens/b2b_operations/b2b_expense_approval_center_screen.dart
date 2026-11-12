@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -16,7 +17,8 @@ class B2bExpenseApprovalCenterScreen extends StatefulWidget {
 
 class _B2bExpenseApprovalCenterScreenState
     extends State<B2bExpenseApprovalCenterScreen> {
-  int _selectedTab = 0; // 0: Bekleyenler 3, 1: Onaylananlar (18), 2: Reddedilenler
+  int _selectedTab =
+      0; // 0: Bekleyenler 3, 1: Onaylananlar (18), 2: Reddedilenler
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +117,9 @@ class _B2bExpenseApprovalCenterScreenState
                           color: Color(0xFF64748B),
                         ),
                         fillColor: Colors.transparent,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -372,8 +376,7 @@ class _B2bExpenseApprovalCenterScreenState
               vatText: 'KDV %10 (₺180,05)',
               categoryLine: '🍴 Müşteri Akşam Yemeği / Temsil • Dün, 19:15',
               descLine: '🏪 Midpoint Levent Şubesi • Fiş No: 004819',
-              quoteNote:
-                  '"Fintech mobil uygulama lansman toplantısı müşteri ağırlama masrafı."',
+              quoteNote: '"Fintech mobil uygulama lansman toplantısı müşteri ağırlama masrafı."',
               cardAndReceiptNo: 'Kart: Nova Business •••• 8831',
               ocrTitle: '🧾 Fiş Görseli Eklendi (PNG)',
               ocrSubtitle: 'Kart: Nova Business •••• 8831',
@@ -394,8 +397,7 @@ class _B2bExpenseApprovalCenterScreenState
               vatText: 'KDV %20 (₺243,33)',
               categoryLine: '💻 Ofis & Donanım / Ergonomi • 09 Kas, 11:20',
               descLine: '🏪 IKEA Maslak • E-Arşiv Fatura (#E-2026-9921)',
-              quoteNote:
-                  '"Çift monitör kolu ve kablo omurgası (Ergonomik çalışma alanı düzeni)."',
+              quoteNote: '"Çift monitör kolu ve kablo omurgası (Ergonomik çalışma alanı düzeni)."',
               cardAndReceiptNo: '',
               ocrTitle: '',
               ocrSubtitle: '',
@@ -718,13 +720,18 @@ class _B2bExpenseApprovalCenterScreenState
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('$employeeName masraf talebi reddedildi.'),
+                        content: Text(
+                          '$employeeName masraf talebi reddedildi.',
+                        ),
                       ),
                     );
                   },
                   child: const Text(
                     '✕ Reddet',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -766,4 +773,3 @@ class _B2bExpenseApprovalCenterScreenState
     );
   }
 }
-

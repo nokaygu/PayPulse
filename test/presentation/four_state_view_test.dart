@@ -23,9 +23,7 @@ void main() {
     );
   }
 
-  testWidgets('Loading durumunda yüklenme göstergesi görünür', (
-    tester,
-  ) async {
+  testWidgets('Loading durumunda yüklenme göstergesi görünür', (tester) async {
     await showState(tester, ViewStatus.loading);
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -68,9 +66,7 @@ void main() {
       },
     );
 
-    await tester.tap(
-      find.widgetWithText(OutlinedButton, 'Tekrar dene'),
-    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Tekrar dene'));
     await tester.pump();
 
     expect(retryCount, 1);
@@ -84,9 +80,7 @@ void main() {
     expect(find.byType(OutlinedButton), findsNothing);
   });
 
-  testWidgets('Loading sonrasında başarı içeriğine geçilir', (
-    tester,
-  ) async {
+  testWidgets('Loading sonrasında başarı içeriğine geçilir', (tester) async {
     await showState(tester, ViewStatus.loading);
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);

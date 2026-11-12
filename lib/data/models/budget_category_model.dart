@@ -91,13 +91,12 @@ class BudgetCategoryModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        categoryId,
-        title,
-        spentAmount,
-        allocatedAmount,
-        percentage,
-        colorHex,
-        iconName,
-      ];
+    categoryId,
+    title,
+    spentAmount,
+    allocatedAmount,
+    percentage,
+    colorHex,
+    iconName,
+  ];
 }
-

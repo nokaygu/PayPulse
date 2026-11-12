@@ -48,10 +48,7 @@ void main() {
     final formatter = TurkishCurrencyInputFormatter();
     final previous = value('1500,25');
 
-    final result = formatter.formatEditUpdate(
-      previous,
-      value('1500,253'),
-    );
+    final result = formatter.formatEditUpdate(previous, value('1500,253'));
 
     expect(result, previous);
   });
@@ -60,10 +57,7 @@ void main() {
     final formatter = TurkishCurrencyInputFormatter();
     final previous = value('1500');
 
-    final result = formatter.formatEditUpdate(
-      previous,
-      value('1500a'),
-    );
+    final result = formatter.formatEditUpdate(previous, value('1500a'));
 
     expect(result, previous);
   });

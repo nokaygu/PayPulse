@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/custom_numpad_widget.dart';
@@ -72,8 +73,10 @@ class _TransferAmountScreenState extends State<TransferAmountScreen> {
               onBackspacePressed: () {
                 setState(() {
                   if (_amountText.isNotEmpty) {
-                    _amountText =
-                        _amountText.substring(0, _amountText.length - 1);
+                    _amountText = _amountText.substring(
+                      0,
+                      _amountText.length - 1,
+                    );
                   }
                 });
               },
@@ -106,4 +109,3 @@ class _TransferAmountScreenState extends State<TransferAmountScreen> {
     );
   }
 }
-

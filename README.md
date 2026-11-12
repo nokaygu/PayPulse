@@ -139,6 +139,7 @@ lib/presentation/
 
 ### 🗄️ 3.3. Cloud Firestore Veri Şeması (Koleksiyon & Döküman Tasarımı)
 
+#### 📋 Hızlı Koleksiyon Özeti
 - `users`: `{ uid, name, email, role, companyId, customerNo, verificationLevel, iban, monthlyLimit, spentThisMonth, hasB2BAccess }`
 - `wallets`: `{ walletId, ownerId, balances: { TRY, USD, EUR }, updatedAt }`
 - `transactions`: `{ txId, senderId, receiverId, title, category, amount (kuruş), currency, timestamp, type, targetIban, isExpense, dateGroup, status }`
@@ -147,6 +148,263 @@ lib/presentation/
 - `expenses`: `{ expenseId, employeeId, employeeName, merchantTitle, category, companyId, amount, vatAmount, receiptImageUrl, status, accountingCode, date }`
 - `invoices`: `{ invoiceId, companyId, gibInvoiceNo, counterpartyName, isIncoming, documentType, totalAmount, vatAmount, withholdingRate, badgeText, isPaid, canPayWithFast, issueDate }`
 - `pos_transactions`: `{ posTxId, terminalId, customerName, grossAmount, commissionRate, commissionAmount, netAmount, timestamp, cardMasked, status }`
+
+PayPulse NoSQL Cloud Firestore mimarisi; çift yönlü rol yapısını (B2C & B2B), kuruş hassasiyetinde atomik finansal güvenliği ve KVKK veri minimizasyonu prensiplerini destekleyecek şekilde tasarlanmıştır.
+
+#### 📌 3.3.1. Temel Mimari Prensipler
+1. **Kuruş Hassasiyeti (Zero Floating-Point Error):** Tüm parasal değerler (`balanceTl`, `amount`, `vatAmount`) ondalıklı (double/float) yerine tamsayı (`int`) kuruş cinsinden saklanır (Örn: `150.50 ₺` ➡️ `15050`).
+2. **Değiştirilemez Finansal Kayıt (Append-Only Ledger):** `transactions` koleksiyonundaki belgeler atomik transaction ile oluşturulur; güncelleme (`update`) veya silme (`delete`) Firestore güvenlik kurallarıyla kesinlikle yasaklanmıştır.
+3. **KVKK & Veri Minimizasyonu (`recipients` Rehberi):** Para transferi sırasında karşı tarafın bakiye veya e-posta gibi hassas verilerini açığa çıkarmamak için yalnızca maskelenmiş ad ve IBAN tutan genel dizin koleksiyonu kullanılır.
+4. **Çapraz Platform Canlı Bildirimler (`notifications`):** FCM push bildirimlerine ek olarak, masaüstü (macOS/Web) ve cihaz içi anlık bildirimler için Firestore `snapshots()` tabanlı reaktif koleksiyon yapısı işletilir.
+
+---
+
+#### 🗺️ 3.3.2. Varlık İlişki Şeması (Entity-Relationship Diagram)
+
+```mermaid
+erDiagram
+    USERS ||--|| WALLETS : "sahiptir (1:1)"
+    USERS }o--o| COMPANIES : "çalışanıdır (N:1)"
+    COMPANIES ||--|{ WALLETS : "şirket cüzdanı (1:1)"
+    COMPANIES ||--o{ EXPENSES : "masraf talepleri (1:N)"
+    USERS ||--o{ EXPENSES : "masraf oluşturur (1:N)"
+    USERS ||--o{ TRANSACTIONS : "gönderen / alıcı (1:N)"
+    COMPANIES ||--o{ PAYMENT_REQUESTS : "tahsilat talebi üretir (1:N)"
+    USERS ||--o{ NOTIFICATIONS : "bildirim alır (1:N)"
+    USERS ||--o| RECIPIENTS : "güvenli alıcı kaydı (1:1)"
+```
+
+---
+
+#### 📂 3.3.3. Koleksiyon & Belge Detayları
+
+##### 1. `users` (Kullanıcı Profilleri)
+* **Döküman ID:** `userId` (Firebase Auth UID)
+* **Açıklama:** Kullanıcının temel profilini, rolünü (`b2c`, `employee`, `admin`) ve varsa bağlı olduğu şirketi tutar.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `uid` | `String` | Evet | Firebase Auth benzersiz kullanıcı kimliği (`"usr_12345"`) |
+| `name` | `String` | Evet | Kullanıcı tam adı (`"Ahmet Yılmaz"`) |
+| `email` | `String` | Evet | Kayıtlı e-posta adresi (`"ahmet@example.com"`) |
+| `role` | `String` | Evet | Kullanıcı rolü: `'b2c'` \| `'employee'` \| `'admin'` |
+| `companyId` | `String?` | Hayır | Bağlı olunan şirket kimliği (`"comp_softito"`). Yalnızca `employee`/`admin` için doludur. |
+| `fcmToken` | `String?` | Hayır | Cihaz push bildirim token'ı (Android FCM) |
+| `updatedAt` | `Timestamp?` | Hayır | Son profil güncellenme zamanı |
+
+```json
+{
+  "uid": "wJ27XkL998Z",
+  "name": "Ahmet Yılmaz",
+  "email": "ahmet.yilmaz@softito.com",
+  "role": "employee",
+  "companyId": "comp_tech_as",
+  "fcmToken": "fcm_token_device_abc123"
+}
+```
+
+---
+
+##### 2. `wallets` (Bireysel ve Kurumsal Cüzdanlar)
+* **Döküman ID:** `wallet_{userId}` veya `wallet_{companyId}`
+* **Açıklama:** Kullanıcıların ve üye işyerlerinin çoklu para birimi bakiyelerini kuruş cinsinden tutar.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `walletId` | `String` | Evet | Cüzdan ID (`"wallet_wJ27XkL998Z"`) |
+| `ownerId` | `String` | Evet | Cüzdan sahibi: `userId` veya `companyId` |
+| `balanceTl` | `int` | Evet | TL Bakiyesi (Kuruş cinsinden, örn: `150000` = 1.500,00 ₺) |
+| `balanceUsd` | `int` | Evet | USD Bakiyesi (Cent cinsinden, örn: `25000` = 250.00 $) |
+| `balanceEur` | `int` | Evet | EUR Bakiyesi (Cent cinsinden, örn: `10000` = 100.00 €) |
+| `iban` | `String?` | Hayır | Cüzdana tanımlı sanal IBAN (`"TR330006100511123456789012"`) |
+| `lastTxId` | `String?` | Hayır | Bakiye güncelleyen son işlem referansı |
+
+```json
+{
+  "walletId": "wallet_wJ27XkL998Z",
+  "ownerId": "wJ27XkL998Z",
+  "balanceTl": 245000,
+  "balanceUsd": 12050,
+  "balanceEur": 5000,
+  "iban": "TR330006100511123456789012"
+}
+```
+
+---
+
+##### 3. `recipients` (Güvenli Alıcı Dizini - KVKK Kalkanı)
+* **Döküman ID:** `iban` (Standart IBAN formatı, boşluksuz)
+* **Açıklama:** Para transferi ekranında karşı tarafın kullanıcı veya cüzdan dökümanı ifşa edilmeden teyit amaçlı maskelenmiş isim sorgulanmasını sağlar.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `iban` | `String` | Evet | Hedef hesap IBAN numarası (`"TR330006100511123456789012"`) |
+| `userId` | `String` | Evet | IBAN sahibinin UID değeri |
+| `maskedName` | `String` | Evet | Maskelenmiş isim ve soyisim (`"A*** Y*****"`) |
+
+```json
+{
+  "iban": "TR330006100511123456789012",
+  "userId": "wJ27XkL998Z",
+  "maskedName": "A*** Y*****"
+}
+```
+
+---
+
+##### 4. `transactions` (İşlem Geçmişi & Finansal Hareket Defteri)
+* **Döküman ID:** `txId` (`tx_fast_{timestamp}_{random}` veya `tx_pos_{timestamp}`)
+* **Açıklama:** Gerçekleşen tüm bakiye transferlerinin, QR/POS tahsilatlarının ve avans iadelerinin silinemez audit trail defteridir.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `txId` | `String` | Evet | Benzersiz işlem takip numarası |
+| `senderId` | `String` | Evet | Gönderen tarafın `userId` veya `companyId`'si |
+| `receiverId` | `String` | Evet | Alıcı tarafın `userId` veya `companyId`'si |
+| `amount` | `int` | Evet | Transfer tutarı (Kuruş cinsinden, örn: `35000` = 350.00 ₺) |
+| `currency` | `String` | Evet | Para birimi: `'TRY'` \| `'USD'` \| `'EUR'` |
+| `timestamp` | `String / Timestamp`| Evet | İşlemin yapıldığı an (ISO-8601 string veya Firestore Timestamp) |
+| `type` | `String` | Evet | İşlem türü: `'fast'`, `'pos_payment'`, `'payment_link'`, `'wallet_deposit'`, `'expense_reimbursement'` |
+| `targetIban` | `String?` | Hayır | Transfer hedef IBAN bilgisi |
+
+```json
+{
+  "txId": "tx_fast_1731435600000_482",
+  "senderId": "wJ27XkL998Z",
+  "receiverId": "comp_tech_as",
+  "amount": 45000,
+  "currency": "TRY",
+  "timestamp": "2026-11-12T18:20:00.000Z",
+  "type": "fast",
+  "targetIban": "TR120006100511987654321098"
+}
+```
+
+---
+
+##### 5. `expenses` (Şirket Personel Masraf & Fiş Yönetimi)
+* **Döküman ID:** `expenseId` (`exp_{timestamp}_{random}`)
+* **Açıklama:** Çalışanların yüklediği harcama fişlerinin, KDV tutarlarının ve yönetici onay/red yaşam döngüsünün yönetildiği koleksiyon.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `expenseId` | `String` | Evet | Benzersiz masraf fiş kimliği |
+| `employeeId`| `String` | Evet | Masrafı giren personelin UID'si |
+| `companyId` | `String` | Evet | Personelin bağlı olduğu şirket kimliği |
+| `amount` | `int` | Evet | Toplam masraf tutarı (Kuruş cinsinden) |
+| `vatAmount` | `int` | Evet | KDV tutarı (Kuruş cinsinden) |
+| `receiptImageUrl`| `String` | Evet | Firebase Storage'daki makbuz/fiş görsel URL'i |
+| `status` | `String` | Evet | Masraf durumu: `'pending'` \| `'approved'` \| `'rejected'` |
+| `rejectReason` | `String?` | Hayır | Yönetici reddetmişse açıklama metni |
+
+```json
+{
+  "expenseId": "exp_1731439200000_12",
+  "employeeId": "wJ27XkL998Z",
+  "companyId": "comp_tech_as",
+  "amount": 75000,
+  "vatAmount": 15000,
+  "receiptImageUrl": "https://firebasestorage.googleapis.com/.../receipt_789.jpg",
+  "status": "pending",
+  "rejectReason": null
+}
+```
+
+---
+
+##### 6. `companies` (KOBİ / Üye İşyeri Kurumsal Bilgileri)
+* **Döküman ID:** `companyId` (Örn: `comp_tech_as`)
+* **Açıklama:** B2B modülü kapsamındaki tüzel kişilikler, vergi no, şirket IBAN'ı ve yönetim yetkisine sahip kullanıcı listesi.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `companyId` | `String` | Evet | Şirket kimliği (`"comp_tech_as"`) |
+| `name` | `String` | Evet | Şirket ticari unvanı (`"Tech A.Ş."`) |
+| `taxNumber` | `String` | Evet | 10 haneli Vergi Kimlik Numarası (`"1234567890"`) |
+| `corporateIban` | `String` | Evet | Şirket ana ticari IBAN'ı |
+| `adminIds` | `List<String>` | Evet | Şirket adına onay ve yönetim yetkisi olan UID listesi |
+
+```json
+{
+  "companyId": "comp_tech_as",
+  "name": "SoftITO FinTech Çözümleri A.Ş.",
+  "taxNumber": "9876543210",
+  "corporateIban": "TR550006100511888888888888",
+  "adminIds": ["admin_uid_001", "admin_uid_002"]
+}
+```
+
+---
+
+##### 7. `payment_requests` (Dinamik Tahsilat & Ödeme Linkleri / QR)
+* **Döküman ID:** `requestId` (`payreq_{timestamp}_{random}`)
+* **Açıklama:** Üye işyerinin sanal POS veya link ile tahsilat için ürettiği dinamik ödeme talepleri.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `requestId` | `String` | Evet | Benzersiz ödeme talep kimliği |
+| `merchantId`| `String` | Evet | Tahsilatı talep eden işletme (`companyId`) |
+| `amount` | `int` | Evet | Talep edilen tahsilat tutarı (Kuruş cinsinden) |
+| `currency` | `String` | Evet | Para birimi (`'TRY'`) |
+| `status` | `String` | Evet | Talep durumu: `'pending'` \| `'completed'` \| `'cancelled'` |
+| `description`| `String` | Evet | Hizmet / ürün açıklaması (`"Yazılım Danışmanlık Bedeli"`) |
+| `payerId` | `String?` | Hayır | Ödemeyi tamamlayan kullanıcının UID'si |
+| `completedAt`| `Timestamp?` | Hayır | Ödemenin tamamlandığı zaman damgası |
+
+```json
+{
+  "requestId": "payreq_1731442800000_99",
+  "merchantId": "comp_tech_as",
+  "amount": 120000,
+  "currency": "TRY",
+  "status": "pending",
+  "description": "Kasım Ayı Sunucu Lisans Bedeli"
+}
+```
+
+---
+
+##### 8. `notifications` (Uygulama İçi Canlı Bildirimler)
+* **Döküman ID:** `notificationId` (`notif_{type}_{relatedId}_{userId}`)
+* **Açıklama:** Çapraz platform uyumlu (macOS, iOS, Android, Web) gerçek zamanlı kullanıcı bildirimleri.
+
+| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
+| :--- | :--- | :---: | :--- |
+| `notificationId` | `String` | Evet | Deterministik bildirim kimliği (Mükerrer bildirimi önler) |
+| `userId` | `String` | Evet | Bildirimin muhatabı olan kullanıcının UID'si |
+| `title` | `String` | Evet | Bildirim başlığı (`"Para Transferi Geldi"`) |
+| `body` | `String` | Evet | Bildirim gövde metni (`"Ahmet Yılmaz size 450,00 ₺ gönderdi."`) |
+| `type` | `String` | Evet | Tür: `'transfer_received'`, `'expense_created'`, `'expense_approved'`, `'expense_rejected'`, `'fraud_alert'`, `'general'` |
+| `isRead` | `bool` | Evet | Okundu durumu (Varsayılan: `false`) |
+| `createdAt` | `Timestamp` | Evet | Bildirim oluşturulma zamanı |
+| `relatedId` | `String?` | Hayır | İlgili `txId`, `expenseId` veya `requestId` referansı |
+
+```json
+{
+  "notificationId": "notif_transfer_tx123_usr456",
+  "userId": "usr456",
+  "title": "FAST Transferi Geldi",
+  "body": "Ahmet Yılmaz hesabınıza 450,00 ₺ FAST transferi yaptı.",
+  "type": "transfer_received",
+  "isRead": false,
+  "createdAt": "2026-11-12T18:25:00.000Z",
+  "relatedId": "tx_fast_1731435600000_482"
+}
+```
+
+---
+
+##### 9. `test_users` (Entegrasyon & Smoke Test Dökümanları)
+* **Döküman ID:** `uid` (Test kullanıcısı UID)
+* **Açıklama:** Otomasyon ve birim/entegrasyon testlerinin canlı prod verilerini kirletmeden çalıştığı izole test alanı.
+
+---
+
+#### 🔒 3.3.4. Firestore Güvenlik Kuralları (Security Rules) Özeti
+* **Kişisel Veri İzolasyonu:** `users` dökümanları yalnızca belgenin sahibi olan `auth.uid` tarafından okunabilir. Başka kullanıcıların profil veya FCM token bilgileri sorgulanamaz.
+* **Bakiye Koruma ve Atomiklik:** Cüzdan bakiyeleri hiçbir koşulda negatife düşemez (`balance >= 0`). Para çıkışı yalnızca cüzdan sahibinin bakiyeyi azaltmasıyla; bakiye artışı ise yalnızca atomik transaction eşliğinde `lastTxId` doğrulamasıyla yapılabilir.
+* **Şirket Yetkilendirmesi:** `expenses` onayı ve `payment_requests` oluşturulması yalnızca `companies.adminIds` listesinde kayıtlı yöneticiler tarafından gerçekleştirilebilir. Çalışanlar onaylanmış veya bekleyen masraf tutarını sonradan değiştiremez.
+* **Denetim İzi (Audit Trail):** `transactions` koleksiyonuna sadece ekleme yapılabilir (`allow create`); finansal geçmiş üzerinde güncelleme veya silme işlemi kurallarla tamamen engellenmiştir (`allow update, delete: if false`).
 
 ### 🔗 3.4. GitHub Repository & Sprint Takip Bilgileri
 - **GitHub Repo Linki:** `https://github.com/nokaygu/PayPulse`

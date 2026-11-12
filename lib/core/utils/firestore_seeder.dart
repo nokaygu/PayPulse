@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../constants/firestore_collections.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/transaction_model.dart';
@@ -14,7 +15,7 @@ class FirestoreSeeder {
   final FirebaseFirestore _firestore;
 
   FirestoreSeeder({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // ================= 1. KASIM 2026 MOCK KULLANICI =================
   static const UserModel mockUser = UserModel(
@@ -211,7 +212,8 @@ class FirestoreSeeder {
       companyId: 'comp_techsolutions_01',
       amount: 45000, // 450,00 TL
       vatAmount: 7500, // %20 KDV: 75,00 TL
-      receiptImageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500',
+      receiptImageUrl:
+          'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500',
       status: 'ONAY_BEKLIYOR',
       date: DateTime(2026, 11, 11, 16, 20),
       accountingCode: '770.01 - Ulaşım',
@@ -225,7 +227,8 @@ class FirestoreSeeder {
       companyId: 'comp_techsolutions_01',
       amount: 198050, // 1.980,50 TL
       vatAmount: 18000, // %10 KDV: 180,00 TL
-      receiptImageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500',
+      receiptImageUrl:
+          'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500',
       status: 'ONAY_BEKLIYOR',
       date: DateTime(2026, 11, 10, 20, 15),
       accountingCode: '770.04 - Temsil Ağırlama',
@@ -239,7 +242,8 @@ class FirestoreSeeder {
       companyId: 'comp_techsolutions_01',
       amount: 146000, // 1.460,00 TL
       vatAmount: 24333, // %20 KDV: 243,33 TL
-      receiptImageUrl: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=500',
+      receiptImageUrl:
+          'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=500',
       status: 'ONAY_BEKLIYOR',
       date: DateTime(2026, 11, 09, 14, 00),
       accountingCode: '770.02 - Ofis Giderleri',
@@ -411,4 +415,3 @@ class FirestoreSeeder {
     await batch.commit();
   }
 }
-

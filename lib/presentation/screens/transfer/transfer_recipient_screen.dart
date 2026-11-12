@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
@@ -47,7 +47,9 @@ class TransferRecipientScreen extends StatelessWidget {
                   'Zeynep Kaya',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
-                subtitle: const Text('Garanti BBVA • TR34 0006 2000 •••• 6789 01'),
+                subtitle: const Text(
+                  'Garanti BBVA • TR34 0006 2000 •••• 6789 01',
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.push(AppRoutes.fastTransfer),
               ),
@@ -58,4 +60,3 @@ class TransferRecipientScreen extends StatelessWidget {
     );
   }
 }
-

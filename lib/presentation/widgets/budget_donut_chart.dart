@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_text_styles.dart';
 
 class DonutChartItem {
@@ -99,4 +101,3 @@ class _DonutChartPainter extends CustomPainter {
   bool shouldRepaint(covariant _DonutChartPainter oldDelegate) =>
       oldDelegate.items != items;
 }
-
