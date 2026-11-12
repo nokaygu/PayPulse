@@ -61,6 +61,21 @@ class FirebaseFirestoreDatasource {
         .set(user.toJson());
   }
 
+  // Kullanıcı profilini anlık (Stream) dinler.
+  Stream<UserModel?> userProfileStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return UserModel.fromJson(doc.data()!);
+    });
+  }
+
+  // Kullanıcı bakiyesini günceller.
+  Future<void> updateBalance(String uid, double newBalance) async {
+    await _firestore.collection('users').doc(uid).update({
+      'balance': newBalance,
+    });
+  }
+
   // Kullanıcı profilini Firestore'dan getirir.
   Future<UserModel?> getUserProfile(String uid) async {
     final document = await _firestore
