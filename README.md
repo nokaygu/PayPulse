@@ -100,26 +100,56 @@ Projede derste kapsamlı olarak işlediğimiz kurumsal mobil geliştirme teknolo
 ## 📋 3. Ekip Tarafından Tamamlanacak Çalışma Alanı
 
 > [!NOTE]
-> Bu bölüm projenin teknik şartnamesi doğrultusunda **6 kişilik öğrenci ekibi tarafından** doldurulacak, mimari kararlar, ekran tasarımları, DTO modelleri ve GitHub repo ilerlemeleri burada belgelenecektir.
+> Bu bölüm projenin teknik şartnamesi doğrultusunda **6 kişilik öğrenci ekibi tarafından** doldurulmuş; mimari kararlar, ekran tasarımları, DTO modelleri ve GitHub repo ilerlemeleri burada belgelenmiştir.
 
 ### 👥 3.1. Takım İçi 6 Kişilik Görev Dağılımı ve Sorumluluk Matrisi
-*(Ekip üyeleri mimari katmanlara ve ekranlara göre görev dağılımını buraya işleyecektir)*
 
-- [ berat] **Geliştirici 1 (Team Lead & Core Architecture):** Core katmanı, Base sınıflar, Git branch kuralları, Theme & Dependency Injection.
-- [ shahd ] **Geliştirici 2 (UI / UX & Design System Lead):** Material 3 teması, Renk paleti, Custom Widgets, Splash Screen, App Icon.
-- [ abdullah] **Geliştirici 3 (Network, API & Firebase Lead):** Firebase Auth, Firestore servisleri, Storage bağlantısı, FCM altyapısı.
-- [betül ] **Geliştirici 4 (Data Models & DTO Lead):** Entity ve DTO modelleri (`fromJson`, `toJson`, `copyWith`), Firestore veri şeması.
-- [ eren] **Geliştirici 5 (State Management & Logic Lead):** BLoC / Cubit / Riverpod akışları, Event/State sınıfları, Reaktif dinleyiciler.
-- [hasbiye ] **Geliştirici 6 (Feature Screens & QA / Test Lead):** Form validasyonları, 4 durum yönetimi (Loading, Error, Empty, Success), Unit/Widget testleri.
+- [x] **[Berat Atmaca] Geliştirici 1 (Team Lead & Core Architecture):** Core katmanı, Base sınıflar, Git branch kuralları, GoRouter Role Guards & Shell Navigation.
+- [x] **[Shahd Mohamed Ragab] Geliştirici 2 (UI / UX & Design System Lead):** Material 3 teması, Renk paleti (`#0D1F2D` $\rightarrow$ `#12353C`, `#10B981`), Custom Widgets, Grafikler (`BudgetDonutChart`, `WeeklyBarChart`), Bütçe, Profil ve KDV Raporu ekranları.
+- [x] **[Abdullah Belli] Geliştirici 3 (Network, API & Firebase Lead):** Firebase Auth, Firestore servisleri, Storage bağlantısı, FCM altyapısı ve atomik transfer işlemleri.
+- [x] **[Betül Zağlı] Geliştirici 4 (Data Models & DTO Lead):** 7 temel Entity ve DTO modelleri (`fromJson`, `toJson`, `copyWith`, `Equatable`), `firestore_collections.dart`, `FirestoreSeeder` servisi, İşlem Geçmişi ve E-Fatura & E-Arşiv ekranları.
+- [x] **[Eren Türkmen] Geliştirici 5 (State Management & Logic Lead):** BLoC / Cubit akışları, Event/State sınıfları, Reaktif dinleyiciler.
+- [x] **[Hasbiyenur Çoban] Geliştirici 6 (Feature Screens & QA / Test Lead):** Form validasyonları, 4 durum yönetimi (`FourStateView`), POS, Masraf Onay ve Transfer ekranları.
 
 ### 📱 3.2. Ekran Listesi ve Kullanıcı Akış Şeması
-*(Ekip geliştireceği en az 8-10 kurumsal ekranın listesini ve akış haritasını buraya çıkaracaktır)*
+
+```text
+lib/presentation/
+├── widgets/                                  # Tüm ekibin kullandığı ortak widget'lar
+│   ├── dark_gradient_hero_card.dart
+│   ├── status_badge_widget.dart
+│   ├── budget_donut_chart.dart
+│   ├── weekly_bar_chart.dart
+│   ├── transaction_list_tile_widget.dart
+│   ├── custom_numpad_widget.dart
+│   ├── receipt_summary_card_widget.dart
+│   └── role_switch_app_bar.dart
+├── shell_navigation/                         # 5'li BottomNavBar + B2B->B2C Switch
+│   └── main_shell_wrapper_screen.dart
+└── screens/
+    ├── splash_and_onboarding/ (splash_screen.dart)
+    ├── auth/ (login_screen.dart, register_screen.dart, bloc/)
+    ├── home_wallet_and_safe/ (home_screen.dart — B2C Cüzdan & B2B İşletme Kasası)
+    ├── transfer/ (4 Adımlı FAST: recipient, amount, summary, receipt)
+    ├── qr_and_ocr/ (qr_payment_center, ocr_camera_scanner, ocr_data_verification, e_invoice_gib_list)
+    ├── b2b_operations/ (virtual_pos_terminal, b2b_expense_approval_center, bulk_expense_erp_receipt)
+    ├── analytics_and_reports/ (budget_analytics, tax_and_vat_report, transaction_history)
+    └── profile_and_cards/ (profile_settings, cards_management)
+```
 
 ### 🗄️ 3.3. Cloud Firestore Veri Şeması (Koleksiyon & Döküman Tasarımı)
-*(Koleksiyonlar, alt koleksiyonlar ve belge alanları burada şematize edilecektir)*
+
+- `users`: `{ uid, name, email, role, companyId, customerNo, verificationLevel, iban, monthlyLimit, spentThisMonth, hasB2BAccess }`
+- `wallets`: `{ walletId, ownerId, balances: { TRY, USD, EUR }, updatedAt }`
+- `transactions`: `{ txId, senderId, receiverId, title, category, amount (kuruş), currency, timestamp, type, targetIban, isExpense, dateGroup, status }`
+- `budget_categories`: `{ categoryId, title, spentAmount, allocatedAmount, percentage, colorHex, iconName }`
+- `savings_goals`: `{ id, title, targetAmount, currentAmount, deadline, iconName }`
+- `expenses`: `{ expenseId, employeeId, employeeName, merchantTitle, category, companyId, amount, vatAmount, receiptImageUrl, status, accountingCode, date }`
+- `invoices`: `{ invoiceId, companyId, gibInvoiceNo, counterpartyName, isIncoming, documentType, totalAmount, vatAmount, withholdingRate, badgeText, isPaid, canPayWithFast, issueDate }`
+- `pos_transactions`: `{ posTxId, terminalId, customerName, grossAmount, commissionRate, commissionAmount, netAmount, timestamp, cardMasked, status }`
 
 ### 🔗 3.4. GitHub Repository & Sprint Takip Bilgileri
-- **GitHub Repo Linki:** *[Repo URL buraya eklenecek]*
+- **GitHub Repo Linki:** `https://github.com/nokaygu/PayPulse`
 - **Sprint 1 (09 - 10 Kasım):** Mimari kurulum, modeller, auth ve temel ekran iskeletleri.
 - **Sprint 2 (11 - 12 Kasım):** Çift yönlü rollerin canlı bağlanması, Storage, FCM, 4 durum kalkanı ve testler.
 - **Demo Day (13 Kasım):** Canlı emülatör/cihaz sunumu ve jüri değerlendirmesi.
