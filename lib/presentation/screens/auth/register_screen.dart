@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -45,7 +46,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_kvkkAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Devam etmek için KVKK ve Kullanıcı Sözleşmesini onaylayın.'),
+          content: Text(
+            'Devam etmek için KVKK ve Kullanıcı Sözleşmesini onaylayın.',
+          ),
         ),
       );
       return;
@@ -171,7 +174,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // 3. Eğer B2B Kurumsal Seçildiyse Şirket & Vergi No Alanları
                 if (_isB2BAccount) ...[
-                  Text('Şirket / İşletme Ünvanı', style: AppTextStyles.labelLarge),
+                  Text(
+                    'Şirket / İşletme Ünvanı',
+                    style: AppTextStyles.labelLarge,
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _companyNameController,
@@ -184,7 +190,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         : null,
                   ),
                   const SizedBox(height: 16),
-                  Text('Vergi Kimlik Numarası (VKN)', style: AppTextStyles.labelLarge),
+                  Text(
+                    'Vergi Kimlik Numarası (VKN)',
+                    style: AppTextStyles.labelLarge,
+                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _taxNumberController,
@@ -224,7 +233,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 // 5. Telefon Numarası (FAST Kolay Adres)
-                Text('Telefon Numarası (FAST Kolay Adres)', style: AppTextStyles.labelLarge),
+                Text(
+                  'Telefon Numarası (FAST Kolay Adres)',
+                  style: AppTextStyles.labelLarge,
+                ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _phoneController,

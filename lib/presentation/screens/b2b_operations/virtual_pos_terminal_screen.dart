@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -160,7 +161,9 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: !_isCardTab ? Colors.white : Colors.transparent,
+                          color: !_isCardTab
+                              ? Colors.white
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -940,4 +943,3 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
     );
   }
 }
-

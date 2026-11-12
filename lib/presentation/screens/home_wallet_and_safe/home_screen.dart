@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -71,9 +72,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      context
-                          .read<AuthBloc>()
-                          .add(const AuthRoleChanged('admin'));
+                      context.read<AuthBloc>().add(
+                        const AuthRoleChanged('admin'),
+                      );
                       context.go(AppRoutes.businessOverview);
                     },
                     child: Container(
@@ -307,7 +308,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     statusOrNoteText: 'Tamamlandı',
                     icon: Icons.north_east_rounded,
                     onTap: () => context.push(
-                        '/home/transfer/receipt/PP-FAST-20261111-849201'),
+                      '/home/transfer/receipt/PP-FAST-20261111-849201',
+                    ),
                   ),
                   const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   const TransactionListTileWidget(
@@ -506,9 +508,9 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                      context
-                          .read<AuthBloc>()
-                          .add(const AuthRoleChanged('employee'));
+                      context.read<AuthBloc>().add(
+                        const AuthRoleChanged('employee'),
+                      );
                       context.go(AppRoutes.home);
                     },
                     child: Container(
@@ -1220,10 +1222,14 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isHighlighted ? const Color(0xFFCCFBF1).withOpacity(0.55) : Colors.white,
+          color: isHighlighted
+              ? const Color(0xFFCCFBF1).withOpacity(0.55)
+              : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isHighlighted ? const Color(0xFF5EEAD4) : const Color(0xFFE2E8F0),
+            color: isHighlighted
+                ? const Color(0xFF5EEAD4)
+                : const Color(0xFFE2E8F0),
           ),
         ),
         child: Column(
@@ -1348,7 +1354,9 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
           Text(
             label,
             style: AppTextStyles.labelSmall.copyWith(
-              color: isHighlighted ? AppColors.darkNavy : const Color(0xFF64748B),
+              color: isHighlighted
+                  ? AppColors.darkNavy
+                  : const Color(0xFF64748B),
               fontWeight: isHighlighted ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
@@ -1357,4 +1365,3 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
     );
   }
 }
-

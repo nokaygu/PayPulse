@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import 'budget_analytics_screen.dart';
@@ -9,10 +10,7 @@ class MainNavigationShell extends StatefulWidget {
   /// Başlangıçta B2B kullanıcısı mı? (true ise B2B'den başlar ve B2C'ye tek yönlü geçebilir)
   final bool initialIsB2B;
 
-  const MainNavigationShell({
-    super.key,
-    this.initialIsB2B = true,
-  });
+  const MainNavigationShell({super.key, this.initialIsB2B = true});
 
   @override
   State<MainNavigationShell> createState() => _MainNavigationShellState();
@@ -49,8 +47,14 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
     // B2C Sekme Ekranları (Soldan Sağa)
     final List<Widget> b2cScreens = [
-      _buildPlaceholderPage('B2C Ana Sayfa (Çoklu Cüzdan)', Icons.account_balance_wallet_rounded),
-      _buildPlaceholderPage('7/24 FAST Para Transferi', Icons.swap_horiz_rounded),
+      _buildPlaceholderPage(
+        'B2C Ana Sayfa (Çoklu Cüzdan)',
+        Icons.account_balance_wallet_rounded,
+      ),
+      _buildPlaceholderPage(
+        '7/24 FAST Para Transferi',
+        Icons.swap_horiz_rounded,
+      ),
       _buildPlaceholderPage('QR Kod ile Ödeme', Icons.qr_code_scanner_rounded),
       const BudgetAnalyticsScreen(), // 4. Sekme: Durumum (Senin ekranın)
       const ProfileSettingsScreen(), // 5. Sekme: Menü (Senin ekranın)
@@ -58,9 +62,18 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
     // B2B Sekme Ekranları (Soldan Sağa)
     final List<Widget> b2bScreens = [
-      _buildPlaceholderPage('B2B İşletme Kasası & Ciro', Icons.storefront_rounded),
-      _buildPlaceholderPage('Sanal POS & Tahsilat', Icons.point_of_sale_rounded),
-      _buildPlaceholderPage('OCR ile Fatura Tarama', Icons.document_scanner_rounded),
+      _buildPlaceholderPage(
+        'B2B İşletme Kasası & Ciro',
+        Icons.storefront_rounded,
+      ),
+      _buildPlaceholderPage(
+        'Sanal POS & Tahsilat',
+        Icons.point_of_sale_rounded,
+      ),
+      _buildPlaceholderPage(
+        'OCR ile Fatura Tarama',
+        Icons.document_scanner_rounded,
+      ),
       const TaxAndVatReportScreen(), // 4. Sekme: B2B KDV Raporu (Senin ekranın)
       const ProfileSettingsScreen(), // 5. Sekme: Menü (Senin ekranın)
     ];
@@ -102,7 +115,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppLightColors.primaryFixed,
                   borderRadius: BorderRadius.circular(999),
@@ -130,54 +146,84 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             ? const [
                 NavigationDestination(
                   icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.dashboard_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Ana Sayfa',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.point_of_sale_outlined),
-                  selectedIcon: Icon(Icons.point_of_sale_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.point_of_sale_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Tahsilat',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.document_scanner_outlined),
-                  selectedIcon: Icon(Icons.document_scanner_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.document_scanner_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Fatura Tara',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.analytics_outlined),
-                  selectedIcon: Icon(Icons.analytics_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.analytics_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'KDV & Rapor',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.menu_rounded),
-                  selectedIcon: Icon(Icons.menu_open_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.menu_open_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Menü',
                 ),
               ]
             : const [
                 NavigationDestination(
                   icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.home_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Ana Sayfa',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.swap_horiz_outlined),
-                  selectedIcon: Icon(Icons.swap_horiz_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.swap_horiz_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Transfer',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.qr_code_scanner_rounded),
-                  selectedIcon: Icon(Icons.qr_code_2_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.qr_code_2_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'QR Öde',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.pie_chart_outline_rounded),
-                  selectedIcon: Icon(Icons.pie_chart_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.pie_chart_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Durumum',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.menu_rounded),
-                  selectedIcon: Icon(Icons.menu_open_rounded, color: AppLightColors.primary),
+                  selectedIcon: Icon(
+                    Icons.menu_open_rounded,
+                    color: AppLightColors.primary,
+                  ),
                   label: 'Menü',
                 ),
               ],

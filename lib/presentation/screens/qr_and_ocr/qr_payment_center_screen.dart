@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -38,7 +39,9 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: _isShowQrMode ? Colors.white : Colors.transparent,
+                          color: _isShowQrMode
+                              ? Colors.white
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         alignment: Alignment.center,
@@ -60,7 +63,9 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: !_isShowQrMode ? Colors.white : Colors.transparent,
+                          color: !_isShowQrMode
+                              ? Colors.white
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         alignment: Alignment.center,
@@ -137,4 +142,3 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
     );
   }
 }
-

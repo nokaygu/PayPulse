@@ -123,16 +123,16 @@ class UserModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        uid,
-        name,
-        email,
-        role,
-        companyId,
-        customerNo,
-        verificationLevel,
-        iban,
-        monthlyLimit,
-        spentThisMonth,
-        hasB2BAccess,
-      ];
+    uid,
+    name,
+    email,
+    role,
+    companyId,
+    customerNo,
+    verificationLevel,
+    iban,
+    monthlyLimit,
+    spentThisMonth,
+    hasB2BAccess,
+  ];
 }

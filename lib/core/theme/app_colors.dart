@@ -3,25 +3,22 @@ import 'package:flutter/material.dart';
 class AppColors {
   // PayPulse Marka Renkleri
   static const Color primaryGreen = Color(0xFF10B981); // Emerald / Vurgu Yeşili
-  static const Color primaryTeal = Color(0xFF0D9488);  // Vurgu Turkuazı
-  static const Color darkNavy = Color(0xFF0D1F2D);     // Koyu Lacivert
-  static const Color darkGreen = Color(0xFF12353C);    // Koyu Yeşil Kart Rengi
+  static const Color primaryTeal = Color(0xFF0D9488); // Vurgu Turkuazı
+  static const Color darkNavy = Color(0xFF0D1F2D); // Koyu Lacivert
+  static const Color darkGreen = Color(0xFF12353C); // Koyu Yeşil Kart Rengi
 
   // Ana Kart Gradyanı (#0D1F2D -> #12353C)
   static const LinearGradient heroCardGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF0D1F2D),
-      Color(0xFF12353C),
-    ],
+    colors: [Color(0xFF0D1F2D), Color(0xFF12353C)],
   );
 
   // Finansal Durum Renkleri
-  static const Color incomeGreen = Color(0xFF10B981);  // Gelen (+) Bakiye
-  static const Color expenseRed = Color(0xFFEF4444);   // Giden (-) Bakiye
-  static const Color warningOrange = Color(0xFFF59E0B);// Limit Uyarısı
-  static const Color infoBlue = Color(0xFF3B82F6);     // Bilgi & FAST
+  static const Color incomeGreen = Color(0xFF10B981); // Gelen (+) Bakiye
+  static const Color expenseRed = Color(0xFFEF4444); // Giden (-) Bakiye
+  static const Color warningOrange = Color(0xFFF59E0B); // Limit Uyarısı
+  static const Color infoBlue = Color(0xFF3B82F6); // Bilgi & FAST
 }
 
 class AppLightColors {

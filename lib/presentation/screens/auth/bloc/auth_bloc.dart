@@ -41,10 +41,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _loadUserProfile(firebaseUser);
         return state.copyWith(status: AuthStatus.authenticated);
       },
-      onError: (_, _) => state.copyWith(
-        status: AuthStatus.unauthenticated,
-        clearUser: true,
-      ),
+      onError: (_, _) =>
+          state.copyWith(status: AuthStatus.unauthenticated, clearUser: true),
     );
   }
 
@@ -111,4 +109,3 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 }
-

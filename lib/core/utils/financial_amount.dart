@@ -23,9 +23,7 @@ class FinancialAmount {
 
     if (lira == null) return null;
 
-    final fraction = parts.length == 2
-        ? parts[1].padRight(2, '0')
-        : '00';
+    final fraction = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
 
     final kurus = lira * 100 + int.parse(fraction);
 
@@ -118,11 +116,7 @@ class FinancialAmount {
     }
 
     if (thousands > 0) {
-      groups.add(
-        thousands == 1
-            ? 'Bin'
-            : '${_underThousand(thousands)} Bin',
-      );
+      groups.add(thousands == 1 ? 'Bin' : '${_underThousand(thousands)} Bin');
     }
 
     if (remainder > 0) {

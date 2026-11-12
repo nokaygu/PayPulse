@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/router/app_routes.dart';
 import '../../widgets/receipt_summary_card_widget.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -8,10 +9,7 @@ import '../../widgets/role_switch_app_bar.dart';
 class TransferReceiptScreen extends StatelessWidget {
   final String txId;
 
-  const TransferReceiptScreen({
-    super.key,
-    required this.txId,
-  });
+  const TransferReceiptScreen({super.key, required this.txId});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +40,9 @@ class TransferReceiptScreen extends StatelessWidget {
               },
               onDownloadPdf: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$txId numaralı PDF dekont indirildi.')),
+                  SnackBar(
+                    content: Text('$txId numaralı PDF dekont indirildi.'),
+                  ),
                 );
               },
               onShare: () {},
@@ -58,4 +58,3 @@ class TransferReceiptScreen extends StatelessWidget {
     );
   }
 }
-

@@ -23,6 +23,9 @@ class AuthState {
   /// Toplu masraf onayı ve vergi/KDV raporlarına sadece 'admin' erişebilir.
   bool get isAdmin => role == 'admin';
 
+  /// Masraf onay yetkisi (admin rolü)
+  bool get canApproveExpenses => isAdmin;
+
   bool get isEmployee => role == 'employee';
 
   AuthState copyWith({
@@ -45,4 +48,3 @@ class AuthState {
     );
   }
 }
-

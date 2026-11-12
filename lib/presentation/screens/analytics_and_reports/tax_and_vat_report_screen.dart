@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -516,7 +517,9 @@ class _TaxAndVatReportScreenState extends State<TaxAndVatReportScreen> {
                           const SizedBox(width: 4),
                           Text(
                             'Tahsilat',
-                            style: AppTextStyles.bodySmall.copyWith(fontSize: 11),
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontSize: 11,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Container(
@@ -527,7 +530,9 @@ class _TaxAndVatReportScreenState extends State<TaxAndVatReportScreen> {
                           const SizedBox(width: 4),
                           Text(
                             'İndirim',
-                            style: AppTextStyles.bodySmall.copyWith(fontSize: 11),
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -1007,4 +1012,3 @@ class _TaxAndVatReportScreenState extends State<TaxAndVatReportScreen> {
     );
   }
 }
-

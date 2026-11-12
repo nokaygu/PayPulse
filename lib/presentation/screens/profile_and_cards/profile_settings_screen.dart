@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -241,10 +242,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       InkWell(
                         onTap: () {
                           Clipboard.setData(
-                              const ClipboardData(text: 'PP-849201'));
+                            const ClipboardData(text: 'PP-849201'),
+                          );
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Müşteri No (PP-849201) kopyalandı.'),
+                              content: Text(
+                                'Müşteri No (PP-849201) kopyalandı.',
+                              ),
                             ),
                           );
                         },
@@ -315,7 +319,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           GestureDetector(
                             onTap: () {
                               Clipboard.setData(
-                                  const ClipboardData(text: fastIban));
+                                const ClipboardData(text: fastIban),
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('FAST IBAN panoya kopyalandı.'),
@@ -460,7 +465,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             const SizedBox(height: 8),
             _buildMenuCard([
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -779,4 +787,3 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 }
-

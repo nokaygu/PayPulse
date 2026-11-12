@@ -1,69 +1,40 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:http/http.dart' as http;
-
+import '../../core/constants/firestore_collections.dart';
+import '../../domain/repositories/i_company_repository.dart';
+import '../datasources/remote/firebase_firestore_datasource.dart';
 import '../models/company_model.dart';
 
-import '../../domain/repositories/i_company_repository.dart';
-
 class CompanyRepository implements ICompanyRepository {
-  static const String _baseUrl = 'https://url';
-  static const Duration _timeOut = Duration(seconds: 10);
+  final FirebaseFirestoreDatasource _firestoreDatasource;
+  final FirebaseFirestore _firestore;
 
+  CompanyRepository({
+    FirebaseFirestoreDatasource? firestoreDatasource,
+    FirebaseFirestore? firestore,
+  }) : _firestoreDatasource =
+           firestoreDatasource ?? FirebaseFirestoreDatasource(),
+       _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
-
   Future<List<CompanyModel?>> getAllCompanies() async {
-
     try {
-
-      final uri = Uri.parse('$_baseUrl/companies');
-
-      final response = await http.get(uri).timeout(_timeOut);
-
-      if (response.statusCode == 200) {
-
-        final solvedResponse = utf8.decode(response.bodyBytes);
-        final List<dynamic> jsonList = jsonDecode(solvedResponse) as List<dynamic>;
-
-        return jsonList
-
-            .map((item) => CompanyModel.fromJson(item as Map<String, dynamic>))
-
-            .toList();
-
-      } else {
-
-        throw Exception('Server error: HTTP ${response.statusCode}');
-
-      }
-
-    } catch (error) {
-      print("$error");
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.companies)
+          .get();
+      return snapshot.docs
+          .map((doc) => CompanyModel.fromJson(doc.data()))
+          .toList();
+    } catch (_) {
       rethrow;
-
     }
-
   }
+
   @override
   Future<CompanyModel?> getCompanyById(String companyId) async {
     try {
-
-      final uri = Uri.parse('$_baseUrl/companies/$companyId');
-      final response = await http.get(uri).timeout(_timeOut);
-
-      if (response.statusCode == 200) {
-
-        final solvedResponse = utf8.decode(response.bodyBytes);
-
-        final Map<String, dynamic> jsonMap = jsonDecode(solvedResponse) as Map<String, dynamic>;
-
-        return CompanyModel.fromJson(jsonMap);
-      } else {
-        return null;
-      }
-    } catch (error) {
-      print("$error");
+      return await _firestoreDatasource.getCompany(companyId);
+    } catch (_) {
       return null;
     }
   }

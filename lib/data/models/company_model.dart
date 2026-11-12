@@ -1,4 +1,3 @@
-
 //B2B KOBİ panelinin temel modeli.
 
 class CompanyModel {

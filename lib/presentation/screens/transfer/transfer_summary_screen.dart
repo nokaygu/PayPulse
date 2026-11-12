@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -590,7 +591,9 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
                   ),
                 ),
                 onPressed: () {
-                  context.push('/home/transfer/receipt/PP-FAST-20261111-849201');
+                  context.push(
+                    '/home/transfer/receipt/PP-FAST-20261111-849201',
+                  );
                 },
                 icon: const Icon(Icons.face_unlock_outlined, size: 20),
                 label: const Text(
@@ -661,4 +664,3 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
     );
   }
 }
-

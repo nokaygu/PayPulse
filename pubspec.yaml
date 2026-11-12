@@ -47,6 +47,10 @@ dependencies:
   google_fonts: ^9.0.0
   flutter_local_notifications: ^23.0.1
   material: ^1.0.1
+  intl: ^0.20.3
+  image_picker: ^1.2.4
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.5.0
 
 dev_dependencies:
   flutter_test:

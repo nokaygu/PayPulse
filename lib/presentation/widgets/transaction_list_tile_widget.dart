@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -113,7 +114,9 @@ class TransactionListTileWidget extends StatelessWidget {
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
-                    color: isIncome ? AppColors.incomeGreen : AppColors.darkNavy,
+                    color: isIncome
+                        ? AppColors.incomeGreen
+                        : AppColors.darkNavy,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -133,4 +136,3 @@ class TransactionListTileWidget extends StatelessWidget {
     );
   }
 }
-

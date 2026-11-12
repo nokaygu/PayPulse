@@ -73,8 +73,7 @@ TextEditingValue _formatGrouped(
       .allMatches(newValue.text.substring(0, selectionEnd))
       .length;
 
-  final previousDigits =
-      oldValue.text.replaceAll(nonDigitPattern, '');
+  final previousDigits = oldValue.text.replaceAll(nonDigitPattern, '');
 
   // Sadece ayırıcı silindiyse, geri silmenin takılmaması için
   // önceki rakamı da kaldır.
@@ -90,8 +89,7 @@ TextEditingValue _formatGrouped(
 
   if (digits.length > maxDigits) return oldValue;
 
-  digitsBeforeCursor =
-      digitsBeforeCursor.clamp(0, digits.length).toInt();
+  digitsBeforeCursor = digitsBeforeCursor.clamp(0, digits.length).toInt();
 
   final buffer = StringBuffer();
   var cursor = 0;

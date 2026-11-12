@@ -27,4 +27,3 @@ class AppRoutes {
   // Deep Link Özel Rotaları (Ödeme Linki / QR Tahsilat Talebi)
   static const String paymentRequestDeepLink = '/pay/:requestId';
 }
-

@@ -12,7 +12,8 @@ class TransactionEntity extends Equatable {
   final DateTime timestamp;
   final String type; // 'fast', 'pos_payment', 'wallet_deposit', 'salary', 'subscription', 'bill'
   final String? targetIban;
-  final String title; // örn: 'Zeynep Kaya', 'Espresso Lab', 'TechSolutions Maaş'
+  final String
+  title; // örn: 'Zeynep Kaya', 'Espresso Lab', 'TechSolutions Maaş'
   final String category; // örn: 'FAST Transfer', 'Kahve & İçecek', 'Maaş', 'Market', 'Fatura'
   final bool isExpense; // true: Giden (-), false: Gelen (+)
   final String dateGroup; // 'BUGÜN, 11 KASIM', 'DÜN, 10 KASIM', 'GEÇEN HAFTA'
@@ -85,18 +86,18 @@ class TransactionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        txId,
-        senderId,
-        receiverId,
-        amount,
-        currency,
-        timestamp,
-        type,
-        targetIban,
-        title,
-        category,
-        isExpense,
-        dateGroup,
-        status,
-      ];
+    txId,
+    senderId,
+    receiverId,
+    amount,
+    currency,
+    timestamp,
+    type,
+    targetIban,
+    title,
+    category,
+    isExpense,
+    dateGroup,
+    status,
+  ];
 }

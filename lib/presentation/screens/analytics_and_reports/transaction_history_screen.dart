@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -270,7 +271,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           size: 20,
                         ),
                         fillColor: Colors.transparent,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -313,18 +316,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
             // 4. Vurgulu Son FAST Gönderimi Kartı (Zeynep Kaya -₺1.500,00)
             InkWell(
-              onTap: () =>
-                  context.push('/home/transfer/receipt/PP-FAST-20261111-849201'),
+              onTap: () => context.push(
+                '/home/transfer/receipt/PP-FAST-20261111-849201',
+              ),
               borderRadius: BorderRadius.circular(16),
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.primaryGreen,
-                    width: 1.4,
-                  ),
+                  border: Border.all(color: AppColors.primaryGreen, width: 1.4),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primaryGreen.withOpacity(0.08),
@@ -429,7 +430,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             const SizedBox(height: 18),
 
             // ================= GRUP 1: BUGÜN, 11 KASIM =================
-            if (_shouldShowGroup(hasIncome: false, hasExpense: true, hasQr: true)) ...[
+            if (_shouldShowGroup(
+              hasIncome: false,
+              hasExpense: true,
+              hasQr: true,
+            )) ...[
               _buildGroupHeader('BUGÜN, 11 KASIM', '-₺1.685,00'),
               const SizedBox(height: 8),
               Container(
@@ -440,7 +445,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
                 child: Column(
                   children: [
-                    if (_matchesFilter(isIncome: false, isQr: false, title: 'Zeynep Kaya'))
+                    if (_matchesFilter(
+                      isIncome: false,
+                      isQr: false,
+                      title: 'Zeynep Kaya',
+                    ))
                       TransactionListTileWidget(
                         title: 'Zeynep Kaya',
                         badgeText: 'FAST',
@@ -452,10 +461,15 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         statusOrNoteText: 'Tamamlandı',
                         icon: Icons.north_east_rounded,
                         onTap: () => context.push(
-                            '/home/transfer/receipt/PP-FAST-20261111-849201'),
+                          '/home/transfer/receipt/PP-FAST-20261111-849201',
+                        ),
                       ),
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    if (_matchesFilter(isIncome: false, isQr: true, title: 'Espresso Lab'))
+                    if (_matchesFilter(
+                      isIncome: false,
+                      isQr: true,
+                      title: 'Espresso Lab',
+                    ))
                       TransactionListTileWidget(
                         title: 'Espresso Lab',
                         badgeText: 'QR Ödeme',
@@ -475,7 +489,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             ],
 
             // ================= GRUP 2: DÜN, 10 KASIM =================
-            if (_shouldShowGroup(hasIncome: true, hasExpense: true, hasQr: false)) ...[
+            if (_shouldShowGroup(
+              hasIncome: true,
+              hasExpense: true,
+              hasQr: false,
+            )) ...[
               _buildGroupHeader('DÜN, 10 KASIM', '+₺369,50'),
               const SizedBox(height: 8),
               Container(
@@ -486,7 +504,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
                 child: Column(
                   children: [
-                    if (_matchesFilter(isIncome: true, isQr: false, title: 'Mert Can'))
+                    if (_matchesFilter(
+                      isIncome: true,
+                      isQr: false,
+                      title: 'Mert Can',
+                    ))
                       TransactionListTileWidget(
                         title: 'Mert Can',
                         badgeText: 'FAST',
@@ -501,7 +523,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         iconColor: AppColors.primaryTeal,
                       ),
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    if (_matchesFilter(isIncome: false, isQr: false, title: 'Getir Perakende'))
+                    if (_matchesFilter(
+                      isIncome: false,
+                      isQr: false,
+                      title: 'Getir Perakende',
+                    ))
                       TransactionListTileWidget(
                         title: 'Getir Perakende',
                         badgeText: 'Sanal Kart',
@@ -520,7 +546,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             ],
 
             // ================= GRUP 3: GEÇEN HAFTA =================
-            if (_shouldShowGroup(hasIncome: true, hasExpense: true, hasQr: false)) ...[
+            if (_shouldShowGroup(
+              hasIncome: true,
+              hasExpense: true,
+              hasQr: false,
+            )) ...[
               _buildGroupHeader('GEÇEN HAFTA', '+₺31.330,01'),
               const SizedBox(height: 8),
               Container(
@@ -531,7 +561,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
                 child: Column(
                   children: [
-                    if (_matchesFilter(isIncome: true, isQr: false, title: 'TechSolutions A.Ş.'))
+                    if (_matchesFilter(
+                      isIncome: true,
+                      isQr: false,
+                      title: 'TechSolutions A.Ş.',
+                    ))
                       TransactionListTileWidget(
                         title: 'TechSolutions A.Ş.',
                         badgeText: 'Maaş / EFT',
@@ -546,7 +580,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         iconColor: AppColors.primaryTeal,
                       ),
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    if (_matchesFilter(isIncome: false, isQr: false, title: 'Enerjisa İstanbul'))
+                    if (_matchesFilter(
+                      isIncome: false,
+                      isQr: false,
+                      title: 'Enerjisa İstanbul',
+                    ))
                       TransactionListTileWidget(
                         title: 'Enerjisa İstanbul',
                         badgeText: 'Otomatik',
@@ -559,7 +597,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         icon: Icons.bolt_outlined,
                       ),
                     const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    if (_matchesFilter(isIncome: false, isQr: false, title: 'Netflix.com'))
+                    if (_matchesFilter(
+                      isIncome: false,
+                      isQr: false,
+                      title: 'Netflix.com',
+                    ))
                       TransactionListTileWidget(
                         title: 'Netflix.com',
                         badgeText: 'Abonelik',
@@ -688,4 +730,3 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     );
   }
 }
-

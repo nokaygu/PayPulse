@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/role_switch_app_bar.dart';
@@ -283,7 +284,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Yeni E-Fatura oluşturma ekranı açıldı.'),
+                                content: Text(
+                                  'Yeni E-Fatura oluşturma ekranı açıldı.',
+                                ),
                               ),
                             );
                           },
@@ -304,14 +307,19 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
                             backgroundColor: Colors.white.withOpacity(0.08),
-                            side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.15),
+                            ),
                             minimumSize: const Size(0, 42),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           onPressed: () {},
-                          icon: const Icon(Icons.download_for_offline_outlined, size: 16),
+                          icon: const Icon(
+                            Icons.download_for_offline_outlined,
+                            size: 16,
+                          ),
                           label: const Text(
                             'Toplu XML',
                             style: TextStyle(
@@ -343,7 +351,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: _isIncomingTab ? Colors.white : Colors.transparent,
+                          color: _isIncomingTab
+                              ? Colors.white
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -375,7 +385,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: !_isIncomingTab ? Colors.white : Colors.transparent,
+                          color: !_isIncomingTab
+                              ? Colors.white
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -428,7 +440,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                           color: Color(0xFF64748B),
                         ),
                         fillColor: Colors.transparent,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -660,7 +674,10 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                     icon: const Icon(Icons.send_rounded, size: 14),
                     label: const Text(
                       'Paylaş',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -684,7 +701,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('GİB Portal senkronizasyonu başarıyla tamamlandı.'),
+                      content: Text(
+                        'GİB Portal senkronizasyonu başarıyla tamamlandı.',
+                      ),
                     ),
                   );
                 },
@@ -726,7 +745,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
           style: AppTextStyles.labelSmall.copyWith(
             color: isSelected
                 ? Colors.white
-                : (isWarning ? const Color(0xFFB45309) : const Color(0xFF475569)),
+                : (isWarning
+                      ? const Color(0xFFB45309)
+                      : const Color(0xFF475569)),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -979,7 +1000,10 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                   icon: const Icon(Icons.bolt_rounded, size: 15),
                   label: const Text(
                     'Anında Öde (FAST)',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 )
               else if (rightLabel != null)
@@ -1037,4 +1061,3 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
 }
 
 typedef EInvoiceArchiveScreen = EInvoiceGibListScreen;
-

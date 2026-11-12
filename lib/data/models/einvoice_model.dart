@@ -41,7 +41,8 @@ class EInvoiceModel extends Equatable {
   factory EInvoiceModel.fromJson(Map<String, dynamic> json) {
     DateTime parsedIssue;
     if (json['issueDate'] is String) {
-      parsedIssue = DateTime.tryParse(json['issueDate'] as String) ?? DateTime.now();
+      parsedIssue =
+          DateTime.tryParse(json['issueDate'] as String) ?? DateTime.now();
     } else {
       parsedIssue = DateTime.now();
     }
@@ -162,20 +163,19 @@ class EInvoiceModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        invoiceId,
-        companyId,
-        gibInvoiceNo,
-        counterpartyName,
-        isIncoming,
-        documentType,
-        totalAmount,
-        vatAmount,
-        withholdingRate,
-        badgeText,
-        isPaid,
-        canPayWithFast,
-        issueDate,
-        dueDate,
-      ];
+    invoiceId,
+    companyId,
+    gibInvoiceNo,
+    counterpartyName,
+    isIncoming,
+    documentType,
+    totalAmount,
+    vatAmount,
+    withholdingRate,
+    badgeText,
+    isPaid,
+    canPayWithFast,
+    issueDate,
+    dueDate,
+  ];
 }
-

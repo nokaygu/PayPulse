@@ -25,22 +25,28 @@ class PosTransactionModel extends Equatable {
     DateTime? timestamp,
     this.cardMasked = '5401 **** **** 8421',
     this.status = 'Başarılı',
-  })  : commissionAmount = commissionAmount ?? (grossAmount * (commissionRate / 100)),
-        netAmount = netAmount ?? (grossAmount - (grossAmount * (commissionRate / 100))),
-        timestamp = timestamp ?? DateTime.now();
+  }) : commissionAmount =
+           commissionAmount ?? (grossAmount * (commissionRate / 100)),
+       netAmount =
+           netAmount ?? (grossAmount - (grossAmount * (commissionRate / 100))),
+       timestamp = timestamp ?? DateTime.now();
 
   factory PosTransactionModel.fromJson(Map<String, dynamic> json) {
     DateTime parsedTime;
     if (json['timestamp'] is String) {
-      parsedTime = DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now();
+      parsedTime =
+          DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now();
     } else {
       parsedTime = DateTime.now();
     }
 
     final double gross = (json['grossAmount'] as num?)?.toDouble() ?? 0.0;
     final double rate = (json['commissionRate'] as num?)?.toDouble() ?? 1.39;
-    final double comm = (json['commissionAmount'] as num?)?.toDouble() ?? (gross * (rate / 100));
-    final double net = (json['netAmount'] as num?)?.toDouble() ?? (gross - comm);
+    final double comm =
+        (json['commissionAmount'] as num?)?.toDouble() ??
+        (gross * (rate / 100));
+    final double net =
+        (json['netAmount'] as num?)?.toDouble() ?? (gross - comm);
 
     return PosTransactionModel(
       posTxId: json['posTxId'] as String? ?? '',
@@ -129,16 +135,15 @@ class PosTransactionModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        posTxId,
-        terminalId,
-        customerName,
-        grossAmount,
-        commissionRate,
-        commissionAmount,
-        netAmount,
-        timestamp,
-        cardMasked,
-        status,
-      ];
+    posTxId,
+    terminalId,
+    customerName,
+    grossAmount,
+    commissionRate,
+    commissionAmount,
+    netAmount,
+    timestamp,
+    cardMasked,
+    status,
+  ];
 }
-

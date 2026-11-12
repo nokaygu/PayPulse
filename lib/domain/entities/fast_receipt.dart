@@ -1,9 +1,4 @@
-enum ReceiptShareAction {
-  pdf,
-  image,
-  whatsapp,
-  sms,
-}
+enum ReceiptShareAction { pdf, image, whatsapp, sms }
 
 class FastReceipt {
   const FastReceipt({

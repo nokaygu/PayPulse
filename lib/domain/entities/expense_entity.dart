@@ -87,20 +87,20 @@ class ExpenseEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        expenseId,
-        employeeId,
-        employeeName,
-        merchantTitle,
-        category,
-        companyId,
-        amount,
-        vatAmount,
-        receiptImageUrl,
-        status,
-        rejectReason,
-        date,
-        accountingCode,
-      ];
+    expenseId,
+    employeeId,
+    employeeName,
+    merchantTitle,
+    category,
+    companyId,
+    amount,
+    vatAmount,
+    receiptImageUrl,
+    status,
+    rejectReason,
+    date,
+    accountingCode,
+  ];
 }
 
 class _ConstDateTime implements DateTime {
