@@ -26,7 +26,7 @@ class UserModel extends Equatable {
     this.iban = 'TR42 0006 2000 8492 0100 0000 01',
     this.monthlyLimit = 25000.0,
     this.spentThisMonth = 18420.0,
-    this.hasB2BAccess = true,
+    this.hasB2BAccess = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -41,7 +41,7 @@ class UserModel extends Equatable {
       iban: json['iban'] as String? ?? 'TR42 0006 2000 8492 0100 0000 01',
       monthlyLimit: (json['monthlyLimit'] as num?)?.toDouble() ?? 25000.0,
       spentThisMonth: (json['spentThisMonth'] as num?)?.toDouble() ?? 18420.0,
-      hasB2BAccess: json['hasB2BAccess'] as bool? ?? true,
+      hasB2BAccess: json['hasB2BAccess'] as bool? ?? false,
     );
   }
 

@@ -19,6 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
            firestoreDatasource ?? FirebaseFirestoreDatasource(),
        super(const AuthState()) {
     on<AuthSubscriptionRequested>(_onSubscriptionRequested);
+    on<AuthUserProfileLoaded>(_onUserProfileLoaded);
     on<AuthPanelModeToggled>(_onPanelModeToggled);
     on<AuthRoleChanged>(_onRoleChanged);
     on<AuthLogoutRequested>(_onLogoutRequested);
@@ -52,11 +53,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         firebaseUser.uid,
       );
       if (profile != null && !isClosed) {
-        add(AuthRoleChanged(profile.role));
+        add(AuthUserProfileLoaded(profile));
+      } else if (!isClosed) {
+        add(
+          AuthUserProfileLoaded(
+            UserModel(
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName ??
+                  firebaseUser.email?.split('@').first ??
+                  'Kullanıcı',
+              email: firebaseUser.email ?? '',
+              role: 'b2c',
+            ),
+          ),
+        );
       }
     } catch (_) {
       // Firestore profili henüz yoksa mevcut rol korunur.
     }
+  }
+
+  void _onUserProfileLoaded(
+    AuthUserProfileLoaded event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        user: event.user,
+        role: event.user.role,
+        isBusinessMode: event.user.role == 'b2c' ? false : state.isBusinessMode,
+      ),
+    );
   }
 
   void _onPanelModeToggled(
@@ -74,17 +101,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onRoleChanged(AuthRoleChanged event, Emitter<AuthState> emit) {
     final currentUser = state.user;
-    final updatedUser = currentUser != null
-        ? UserModel(
-            uid: currentUser.uid,
-            name: currentUser.name,
-            email: currentUser.email,
-            role: event.role,
-            companyId: event.role == 'b2c'
-                ? null
-                : (currentUser.companyId ?? 'company_001'),
-          )
-        : null;
+    if (currentUser == null) {
+      // Oturum açılmamışsa rol değişikliği ile Firebase Auth güvenliği bypass edilemez.
+      emit(state.copyWith(role: event.role, isBusinessMode: false));
+      return;
+    }
+
+    final updatedUser = UserModel(
+      uid: currentUser.uid,
+      name: currentUser.name,
+      email: currentUser.email,
+      role: event.role,
+      companyId: event.role == 'b2c' ? null : currentUser.companyId,
+      hasB2BAccess: event.role != 'b2c' && currentUser.companyId != null,
+    );
 
     emit(
       state.copyWith(

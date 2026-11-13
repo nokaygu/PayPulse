@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/models/transaction_model.dart';
+import '../auth/bloc/auth_bloc.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
 /// Görsel 6: Sanal POS Terminali Ekranı
@@ -17,6 +23,159 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
   bool _isCardTab = true;
   double _amount = 3750.00;
   int _selectedInstallment = 1; // 1: Tek Çekim, 3: 3 Taksit, 6: 6 Taksit
+  bool _isProcessing = false;
+
+  void _showSlipDialog(TransactionModel tx) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.primaryGreen,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'POS Satış Slipi (Eğitim Amaçlı POS Simülasyonu)',
+              style: AppTextStyles.labelLarge.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.darkNavy,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'TAHSİLAT TUTARI',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                    style: AppTextStyles.numericBalance.copyWith(
+                      color: AppColors.darkNavy,
+                      fontSize: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildSlipRow('Terminal No:', 'POS-NOVA-8821'),
+            _buildSlipRow('İşlem No:', tx.txId),
+            _buildSlipRow('Kart Sahibi:', 'Mehmet Can Özkan'),
+            _buildSlipRow('Kart No:', '•••• •••• •••• 9012'),
+            _buildSlipRow(
+              'Taksit:',
+              _selectedInstallment == 1
+                  ? 'Tek Çekim'
+                  : '$_selectedInstallment Taksit',
+            ),
+            _buildSlipRow(
+              'Tarih & Saat:',
+              '${tx.timestamp.day}.${tx.timestamp.month}.${tx.timestamp.year} ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
+            ),
+            _buildSlipRow(
+              'Onay Kodu:',
+              'AUTH-${tx.txId.hashCode.abs().toString().padLeft(6, '0').substring(0, 6)}',
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.darkNavy,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlipRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF64748B),
+              fontSize: 11,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.darkNavy,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleCompletePayment() async {
+    if (_isProcessing) return;
+
+    final companyId = context.read<AuthBloc>().state.user?.companyId;
+    if (companyId == null || companyId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('POS işlemi için yetkili bir şirket kaydı bulunamadı.'),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final tx = await FirebaseFirestoreDatasource().executeCardPosPayment(
+        companyId: companyId,
+        maskedCardNumber: '•••• •••• •••• 9012',
+        amountKurus: (_amount * 100).toInt(),
+      );
+
+      if (!mounted) return;
+      _showSlipDialog(tx);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('POS Tahsilat Hatası: $e'),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -784,19 +943,21 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: AppColors.primaryGreen,
-                      content: Text(
-                        'Mehmet Can Özkan (₺3.750,00) POS tahsilatı başarıyla onaylandı! Slip üretildi.',
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                onPressed: _isProcessing ? null : _handleCompletePayment,
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.lock_outline_rounded, size: 18),
                 label: Text(
-                  'Tahsilatı Tamamla (₺${_amount.toStringAsFixed(2).replaceAll('.', ',')})  →',
+                  _isProcessing
+                      ? 'POS Tahsilatı Yapılıyor...'
+                      : 'Tahsilatı Tamamla (₺${_amount.toStringAsFixed(2).replaceAll('.', ',')})  →',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -816,7 +977,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () => context.push(AppRoutes.qr),
                 icon: const Icon(
                   Icons.qr_code_scanner_rounded,
                   size: 18,

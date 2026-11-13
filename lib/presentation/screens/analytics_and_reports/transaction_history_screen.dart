@@ -1,10 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/models/transaction_model.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/transaction_list_tile_widget.dart';
+import '../auth/bloc/auth_bloc.dart';
 
 /// Görsel 3: İşlem Geçmişi Ekranı
 class TransactionHistoryScreen extends StatefulWidget {
@@ -28,6 +33,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authUser = context.watch<AuthBloc>().state.user;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final String currentUserId =
+        authUser?.uid ?? firebaseUser?.uid ?? 'user_b2c_001';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: const RoleSwitchAppBar(isBusinessMode: false),
@@ -429,6 +439,64 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             ),
             const SizedBox(height: 18),
 
+            // Canlı Firestore İşlem Geçmişi
+            StreamBuilder<List<TransactionModel>>(
+              stream: FirebaseFirestoreDatasource()
+                  .watchUserTransactions(currentUserId),
+              builder: (context, snapshot) {
+                final liveTxs = snapshot.data ?? [];
+                if (liveTxs.isEmpty) return const SizedBox.shrink();
+
+                final filtered = liveTxs.where((tx) {
+                  if (_selectedFilter == '↓ Gelen (+)') return !tx.isExpense;
+                  if (_selectedFilter == '↑ Giden (-)') return tx.isExpense;
+                  if (_selectedFilter == 'QR Ödemeleri') {
+                    return tx.type.toLowerCase().contains('qr');
+                  }
+                  return true;
+                }).where((tx) {
+                  if (_searchQuery.isEmpty) return true;
+                  final q = _searchQuery.toLowerCase();
+                  return tx.title.toLowerCase().contains(q) ||
+                      (tx.targetIban?.toLowerCase().contains(q) ?? false) ||
+                      tx.category.toLowerCase().contains(q);
+                }).toList();
+
+                if (filtered.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildGroupHeader(
+                      'CANLI FİRESTORE İŞLEMLERİ',
+                      '${filtered.length} İşlem',
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < filtered.length; i++) ...[
+                            if (i > 0)
+                              const Divider(
+                                height: 1,
+                                color: Color(0xFFF1F5F9),
+                              ),
+                            _buildLiveTile(filtered[i]),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
+                );
+              },
+            ),
+
             // ================= GRUP 1: BUGÜN, 11 KASIM =================
             if (_shouldShowGroup(
               hasIncome: false,
@@ -727,6 +795,33 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLiveTile(TransactionModel tx) {
+    final bool isIncome = !tx.isExpense;
+    final String amountFormatted = isIncome
+        ? '+₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}'
+        : '-₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}';
+
+    return TransactionListTileWidget(
+      title:
+          tx.title.isNotEmpty ? tx.title : (tx.targetIban ?? 'FAST Transferi'),
+      badgeText: tx.type.toUpperCase(),
+      badgeBgColor:
+          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFE0F2FE),
+      badgeTextColor:
+          isIncome ? const Color(0xFF065F46) : const Color(0xFF0369A1),
+      subtitle:
+          '${tx.category} • ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
+      amountText: amountFormatted,
+      isIncome: isIncome,
+      statusOrNoteText: tx.status,
+      icon: isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
+      iconBgColor:
+          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9),
+      iconColor: isIncome ? AppColors.primaryGreen : AppColors.darkNavy,
+      onTap: () => context.push('/home/transfer/receipt/${tx.txId}'),
     );
   }
 }

@@ -1,9 +1,18 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/errors/auth_error_messages.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import 'register_screen.dart';
+import '../../../data/datasources/remote/firebase_auth_datasource.dart';
+import 'bloc/auth_bloc.dart';
+import 'bloc/auth_event.dart';
 
+/// PayPulse Kullanıcı Giriş Ekranı (Login Screen)
+/// Bireysel (B2C) ve Kurumsal (B2B) kullanıcıların sisteme giriş yapmasını sağlar.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -31,15 +40,20 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  /// Firebase Authentication ile gerçek kullanıcı girişi yapar.
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
 
+      // Firebase Authentication ile giriş
+      await FirebaseAuthDatasource().login(email, password);
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -47,9 +61,38 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? 'B2B Kurumsal Yönetici Paneline giriş başarılı!'
                 : 'B2C Bireysel Cüzdana giriş başarılı!',
           ),
+          backgroundColor: AppColors.incomeGreen,
         ),
       );
-    });
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final msg = AuthErrorMessages.fromCode(e.code);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Giriş başarısız: $e'),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Jüri sunumu ve hızlı demo için tek tıkla test girişi sağlar.
+  void _handleDemoLogin() {
+    final targetRole = _isB2BSelected ? 'admin' : 'b2c';
+    context.read<AuthBloc>().add(AuthRoleChanged(targetRole));
+    context.go(
+      targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
+    );
   }
 
   @override
@@ -57,6 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -66,20 +110,29 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
-                // 1. Üst Logo & Başlık
+                // 1. Üst Logo & Marka Başlığı
                 Row(
                   children: [
                     Container(
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppLightColors.primary,
                         borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                AppColors.primaryGreen.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: Colors.white,
-                        size: 26,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.asset(
+                          'assets/images/paypulse_logo.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -97,23 +150,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
-                Text('Tekrar Hoş Geldiniz', style: AppTextStyles.headlineLarge),
+                // 2. Karşılama Başlığı
+                Text(
+                  'Tekrar Hoş Geldiniz',
+                  style: AppTextStyles.displaySmallMobile,
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  'Hesabınıza giriş yapmak için rolünüzü ve bilgilerinizi girin.',
+                  'Hesabınıza giriş yaparak işlemlerinizi yönetin.',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // 2. B2C / B2B Giriş Modu Seçici
+                // 3. Segmented Role Switch (B2C vs B2B)
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppLightColors.surfaceContainerHigh,
+                    color: const Color(0xFFE2E8F0),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -121,21 +178,36 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () => setState(() => _isB2BSelected = false),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
                               color: !_isB2BSelected
-                                  ? AppLightColors.primary
+                                  ? Colors.white
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
+                              boxShadow: !_isB2BSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
                             ),
                             child: Center(
                               child: Text(
                                 'Bireysel (B2C)',
                                 style: AppTextStyles.labelLarge.copyWith(
                                   color: !_isB2BSelected
-                                      ? Colors.white
-                                      : AppLightColors.onSurfaceVariant,
+                                      ? AppColors.darkNavy
+                                      : colorScheme.onSurfaceVariant,
+                                  fontWeight: !_isB2BSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -145,21 +217,36 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () => setState(() => _isB2BSelected = true),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
                               color: _isB2BSelected
-                                  ? AppLightColors.primary
+                                  ? Colors.white
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
+                              boxShadow: _isB2BSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
                             ),
                             child: Center(
                               child: Text(
                                 'Kurumsal (B2B)',
                                 style: AppTextStyles.labelLarge.copyWith(
                                   color: _isB2BSelected
-                                      ? Colors.white
-                                      : AppLightColors.onSurfaceVariant,
+                                      ? AppColors.darkNavy
+                                      : colorScheme.onSurfaceVariant,
+                                  fontWeight: _isB2BSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -171,7 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 3. E-Posta Alanı
+                // 4. Form Alanları
                 Text('E-Posta Adresi', style: AppTextStyles.labelLarge),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -179,21 +266,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     hintText: 'ornek@paypulse.com',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon: Icon(Icons.mail_outline_rounded),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Lütfen e-posta adresinizi girin';
+                      return 'Lütfen e-posta adresinizi girin.';
                     }
                     if (!_emailRegex.hasMatch(value.trim())) {
-                      return 'Geçerli bir e-posta adresi girin';
+                      return 'Geçerli bir e-posta adresi girin.';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
 
-                // 4. Şifre Alanı
                 Text('Şifre', style: AppTextStyles.labelLarge),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -203,80 +289,88 @@ class _LoginScreenState extends State<LoginScreen> {
                     hintText: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
                       ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Lütfen şifrenizi girin';
+                      return 'Lütfen şifrenizi girin.';
                     }
                     if (value.length < 6) {
-                      return 'Şifre en az 6 karakter olmalıdır';
+                      return 'Şifre en az 6 karakter olmalıdır.';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 24),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      'Şifremi Unuttum?',
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: AppLightColors.primary,
+                // 5. Giriş Yap Butonu
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isB2BSelected
+                                ? 'Kurumsal Panele Giriş Yap'
+                                : 'Cüzdana Giriş Yap',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 12),
 
-                // 5. Giriş Yap Butonu
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          _isB2BSelected
-                              ? 'Kurumsal Panele Giriş Yap'
-                              : 'Cüzdana Giriş Yap',
-                          style: AppTextStyles.labelLarge.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-                const SizedBox(height: 16),
-
-                // 6. Google ile Giriş
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 52),
-                    side: const BorderSide(
-                      color: AppLightColors.outlineVariant,
+                // 6. Hızlı Jüri / Demo Girişi Butonu
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    onPressed: _handleDemoLogin,
+                    icon: const Icon(
+                      Icons.play_circle_outline_rounded,
+                      color: AppColors.primaryTeal,
+                      size: 20,
                     ),
-                  ),
-                  onPressed: () {},
-                  icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                  label: Text(
-                    'Google ile Devam Et',
-                    style: AppTextStyles.labelLarge,
+                    label: Text(
+                      _isB2BSelected
+                          ? 'Hızlı Demo: Yönetici Olarak Gir (Admin)'
+                          : 'Hızlı Demo: Deniz Aksoy Olarak Gir (B2C)',
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: AppColors.darkNavy,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -291,17 +385,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
-                          ),
-                        );
+                        context.push(AppRoutes.register);
                       },
                       child: Text(
                         'Hemen Kayıt Olun',
                         style: AppTextStyles.labelLarge.copyWith(
-                          color: AppLightColors.primary,
+                          color: AppColors.primaryGreen,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

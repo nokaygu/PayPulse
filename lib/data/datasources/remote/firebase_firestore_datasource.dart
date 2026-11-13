@@ -189,7 +189,14 @@ class FirebaseFirestoreDatasource {
       throw ArgumentError('Kendinize para transferi yapamazsınız.');
     }
 
-    final normalizedCurrency = currency.toUpperCase();
+    var normalizedCurrency = currency.toUpperCase();
+    if (normalizedCurrency == 'TL') {
+      normalizedCurrency = 'TRY';
+    }
+    if (!['TRY', 'USD', 'EUR'].contains(normalizedCurrency)) {
+      throw ArgumentError('Desteklenmeyen para birimi: $currency');
+    }
+
     final senderWalletRef = _firestore
         .collection(FirestoreCollections.wallets)
         .doc('wallet_$senderUserId');
@@ -206,38 +213,28 @@ class FirebaseFirestoreDatasource {
     final transactionRecord = await _firestore.runTransaction<TransactionModel>((
       transaction,
     ) async {
-      // Okumalar önce yapılmalıdır (Firestore kuralları gereği)
+      // Okuma SADECE gönderici cüzdanı için yapılır (Alıcı bakiyesi gizlilik gereği okunmaz)
       final senderSnapshot = await transaction.get(senderWalletRef);
-      final receiverSnapshot = await transaction.get(receiverWalletRef);
 
       if (!senderSnapshot.exists || senderSnapshot.data() == null) {
         throw Exception('Gönderici cüzdanı bulunamadı.');
       }
 
-      if (!receiverSnapshot.exists || receiverSnapshot.data() == null) {
-        throw Exception('Alıcı cüzdanı bulunamadı.');
-      }
-
       final senderData = senderSnapshot.data()!;
-      final receiverData = receiverSnapshot.data()!;
 
       // Para birimine göre bakiye alanı seçimi
       final String balanceField;
       final int senderBalance;
-      final int receiverBalance;
 
-      if (normalizedCurrency == 'TRY' || normalizedCurrency == 'TL') {
+      if (normalizedCurrency == 'TRY') {
         balanceField = 'balanceTl';
         senderBalance = senderData['balanceTl'] as int? ?? 0;
-        receiverBalance = receiverData['balanceTl'] as int? ?? 0;
       } else if (normalizedCurrency == 'USD') {
         balanceField = 'balanceUsd';
         senderBalance = senderData['balanceUsd'] as int? ?? 0;
-        receiverBalance = receiverData['balanceUsd'] as int? ?? 0;
       } else if (normalizedCurrency == 'EUR') {
         balanceField = 'balanceEur';
         senderBalance = senderData['balanceEur'] as int? ?? 0;
-        receiverBalance = receiverData['balanceEur'] as int? ?? 0;
       } else {
         throw ArgumentError('Desteklenmeyen para birimi: $currency');
       }
@@ -250,9 +247,8 @@ class FirebaseFirestoreDatasource {
         );
       }
 
-      // Yeni bakiyelerin hesaplanması
+      // Yeni gönderici bakiyesinin hesaplanması
       final updatedSenderBalance = senderBalance - amountKurus;
-      final updatedReceiverBalance = receiverBalance + amountKurus;
 
       final txRecord = TransactionModel(
         txId: txId,
@@ -263,16 +259,19 @@ class FirebaseFirestoreDatasource {
         timestamp: DateTime.now(),
         type: 'fast',
         targetIban: targetIban,
+        status: 'Başarılı',
       );
 
-      // Atomik yazma işlemleri (aynı anda commit edilir)
+      // Atomik yazma işlemleri: Göndericiden düşülür, alıcıya atomic increment yapılır
       transaction.update(senderWalletRef, {
         balanceField: updatedSenderBalance,
         'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.update(receiverWalletRef, {
-        balanceField: updatedReceiverBalance,
+        balanceField: FieldValue.increment(amountKurus),
         'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.set(txRef, txRecord.toJson());
 
@@ -282,29 +281,27 @@ class FirebaseFirestoreDatasource {
     // ================= BİLDİRİM & ANALYTICS TETİKLEME =================
     // Finansal işlem başarıyla tamamlandıktan sonra bildirim üretilir (mükerrerliği önlemek için deterministik ID kullanılır)
     try {
-      // 1. Alıcıya para transferi bildirimi
+      // 1. Alıcıya para transferi bildirimi (Firestore Rules ile tam uyumlu sabit metinler)
       await createNotification(
         NotificationModel(
           notificationId: 'notif_tx_$txId',
           userId: receiverUserId,
           title: 'Para Transferi Alındı',
-          body:
-              '${(amountKurus / 100).toStringAsFixed(2)} $normalizedCurrency tutarında FAST transferi cüzdanınıza ulaştı.',
+          body: 'Yeni FAST transferiniz var. İşlem geçmişini kontrol edin.',
           type: 'transfer_received',
           createdAt: DateTime.now(),
           relatedId: txId,
         ),
       );
 
-      // 2. Şüpheli / Yüksek Tutarlı İşlem Güvenlik Bildirimi (> 50.000 TL = 5.000.000 kuruş)
-      if (amountKurus >= 5000000) {
+      // 2. Şüpheli / Yüksek Tutarlı İşlem Güvenlik Bildirimi (Yalnızca TRY ve >= 50.000 TL = 5.000.000 kuruş)
+      if (normalizedCurrency == 'TRY' && amountKurus >= 5000000) {
         await createNotification(
           NotificationModel(
             notificationId: 'notif_fraud_$txId',
             userId: senderUserId,
             title: 'Yüksek Tutarlı Transfer Onayı',
-            body:
-                '${(amountKurus / 100).toStringAsFixed(2)} $normalizedCurrency tutarındaki yüksek FAST transferiniz başarıyla tamamlandı.',
+            body: 'Yüksek tutarlı FAST işleminizi kontrol edin.',
             type: 'fraud_alert',
             createdAt: DateTime.now(),
             relatedId: txId,
@@ -529,8 +526,7 @@ class FirebaseFirestoreDatasource {
               notificationId: 'notif_exp_created_${expense.expenseId}_$adminId',
               userId: adminId,
               title: 'Yeni Masraf Onay Talebi',
-              body:
-                  'Çalışan tarafından ${(expense.amount / 100).toStringAsFixed(2)} TL tutarında yeni masraf fişi onaya sunuldu.',
+              body: 'Yeni bir masraf talebi var. Masraf ekranını kontrol edin.',
               type: 'expense_created',
               createdAt: DateTime.now(),
               relatedId: expense.expenseId,
@@ -654,7 +650,6 @@ class FirebaseFirestoreDatasource {
           .doc('wallet_$employeeId');
 
       final companyWalletSnapshot = await transaction.get(companyWalletRef);
-      final employeeWalletSnapshot = await transaction.get(employeeWalletRef);
 
       if (!companyWalletSnapshot.exists ||
           companyWalletSnapshot.data() == null) {
@@ -663,15 +658,8 @@ class FirebaseFirestoreDatasource {
         );
       }
 
-      if (!employeeWalletSnapshot.exists ||
-          employeeWalletSnapshot.data() == null) {
-        throw Exception('Çalışanın cüzdan kaydı bulunamadı.');
-      }
-
       final companyBalanceTl =
           companyWalletSnapshot.data()!['balanceTl'] as int? ?? 0;
-      final employeeBalanceTl =
-          employeeWalletSnapshot.data()!['balanceTl'] as int? ?? 0;
 
       // 4. Şirket Bakiyesi Yeterlilik Kontrolü
       if (companyBalanceTl < amount) {
@@ -681,9 +669,8 @@ class FirebaseFirestoreDatasource {
         );
       }
 
-      // 5. Yeni Bakiyeler
+      // 5. Yeni Şirket Bakiyesi
       final updatedCompanyBalance = companyBalanceTl - amount;
-      final updatedEmployeeBalance = employeeBalanceTl + amount;
 
       final txId =
           'tx_exp_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
@@ -699,24 +686,31 @@ class FirebaseFirestoreDatasource {
         currency: 'TRY',
         timestamp: DateTime.now(),
         type: 'expense_reimbursement',
+        relatedId: expenseId,
+        status: 'Başarılı',
       );
 
       final updateData = <String, dynamic>{
         'status': 'approved',
         'approvedAt': FieldValue.serverTimestamp(),
         'approvedBy': currentUser.uid,
+        'txId': txId,
       };
       if (accountingCode != null) {
         updateData['accountingCode'] = accountingCode;
       }
 
-      // Atomik Yazmalar:
+      // Atomik Yazmalar: Şirket kasasından düşülür, personel cüzdanına FieldValue.increment yapılır
       transaction.update(expenseRef, updateData);
       transaction.update(companyWalletRef, {
         'balanceTl': updatedCompanyBalance,
+        'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.update(employeeWalletRef, {
-        'balanceTl': updatedEmployeeBalance,
+        'balanceTl': FieldValue.increment(amount),
+        'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.set(txRef, transactionRecord.toJson());
     });
@@ -728,8 +722,7 @@ class FirebaseFirestoreDatasource {
           notificationId: 'notif_exp_app_$expenseId',
           userId: resolvedEmployeeId,
           title: 'Masrafınız Onaylandı',
-          body:
-              '${(resolvedAmount / 100).toStringAsFixed(2)} TL tutarındaki masraf talebiniz onaylandı ve cüzdan bakiyenize iade edildi.',
+          body: 'Masraf talebiniz onaylandı. Masraf ekranını kontrol edin.',
           type: 'expense_approved',
           createdAt: DateTime.now(),
           relatedId: expenseId,
@@ -813,7 +806,7 @@ class FirebaseFirestoreDatasource {
           notificationId: 'notif_exp_rej_$expenseId',
           userId: resolvedEmployeeId,
           title: 'Masraf Talebiniz Reddedildi',
-          body: 'Masraf talebiniz onaylanmadı. Gerekçe: $trimmedReason',
+          body: 'Masraf talebiniz reddedildi. Masraf ekranını kontrol edin.',
           type: 'expense_rejected',
           createdAt: DateTime.now(),
           relatedId: expenseId,
@@ -859,7 +852,7 @@ class FirebaseFirestoreDatasource {
   }
 
   /// POS Tahsilatı (1): QR Kod ile Cüzdandan Ödeme
-  /// Müşteri cüzdanından tutar düşülür, şirket kasasına eklenir. Atomik transaction ile işlenir.
+  /// Müşteri cüzdanından tutar düşülür, şirket kasasına atomic increment ile eklenir.
   Future<TransactionModel> executeQrWalletPayment({
     required String companyId,
     required String payerUserId,
@@ -877,7 +870,15 @@ class FirebaseFirestoreDatasource {
       throw ArgumentError('Tahsilat tutarı sıfırdan büyük olmalıdır.');
     }
 
-    final balanceField = getBalanceField(currency);
+    var normalizedCurrency = currency.toUpperCase();
+    if (normalizedCurrency == 'TL') {
+      normalizedCurrency = 'TRY';
+    }
+    if (!['TRY', 'USD', 'EUR'].contains(normalizedCurrency)) {
+      throw ArgumentError('Desteklenmeyen para birimi: $currency');
+    }
+
+    final balanceField = getBalanceField(normalizedCurrency);
     final payerWalletRef = _firestore
         .collection(FirestoreCollections.wallets)
         .doc('wallet_$payerUserId');
@@ -894,19 +895,14 @@ class FirebaseFirestoreDatasource {
     final txRecord = await _firestore.runTransaction<TransactionModel>((
       transaction,
     ) async {
+      // Okuma SADECE müşteri cüzdanı için yapılır (Şirket cüzdanı gizlilik ve kural gereği okunmaz)
       final payerWalletSnap = await transaction.get(payerWalletRef);
-      final companyWalletSnap = await transaction.get(companyWalletRef);
 
       if (!payerWalletSnap.exists || payerWalletSnap.data() == null) {
         throw Exception('Müşteri cüzdanı bulunamadı.');
       }
-      if (!companyWalletSnap.exists || companyWalletSnap.data() == null) {
-        throw Exception('Şirket cüzdanı bulunamadı.');
-      }
 
       final payerBalance = payerWalletSnap.data()![balanceField] as int? ?? 0;
-      final companyBalance =
-          companyWalletSnap.data()![balanceField] as int? ?? 0;
 
       if (payerBalance < amountKurus) {
         throw Exception(
@@ -919,16 +915,21 @@ class FirebaseFirestoreDatasource {
         senderId: payerUserId,
         receiverId: companyId,
         amount: amountKurus,
-        currency: currency.toUpperCase(),
+        currency: normalizedCurrency,
         timestamp: DateTime.now(),
         type: 'qr_pos_payment',
+        status: 'Başarılı',
       );
 
       transaction.update(payerWalletRef, {
         balanceField: payerBalance - amountKurus,
+        'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.update(companyWalletRef, {
-        balanceField: companyBalance + amountKurus,
+        balanceField: FieldValue.increment(amountKurus),
+        'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.set(txRef, record.toJson());
 
@@ -937,14 +938,14 @@ class FirebaseFirestoreDatasource {
 
     await AppAnalyticsService.logPosPayment(
       type: 'qr_wallet',
-      currency: currency,
+      currency: normalizedCurrency,
     );
     return txRecord;
   }
 
   /// POS Tahsilatı (2): Kart ile Ödeme (Eğitim Amaçlı POS Simülasyonu)
-  /// Dış banka/kredi kartı simülasyonudur; müşteri PayPulse cüzdanından bağımsızdır.
-  /// Şirket kasasına doğru para biriminde tahsilat ekler ve slip logu oluşturur.
+  /// Firestore güvenlik kuralları istemciden karşılıksız bakiye üretilmesini engeller.
+  /// Bu işlem güvenli backend (Webhook / Cloud Functions) gerektirir; istemcide yerel slip simülasyonu olarak çalışır.
   Future<TransactionModel> executeCardPosPayment({
     required String companyId,
     required String maskedCardNumber,
@@ -955,58 +956,36 @@ class FirebaseFirestoreDatasource {
       throw ArgumentError('Tahsilat tutarı sıfırdan büyük olmalıdır.');
     }
 
-    final balanceField = getBalanceField(currency);
-    final companyWalletRef = _firestore
-        .collection(FirestoreCollections.wallets)
-        .doc('wallet_$companyId');
+    var normalizedCurrency = currency.toUpperCase();
+    if (normalizedCurrency == 'TL') {
+      normalizedCurrency = 'TRY';
+    }
+    if (!['TRY', 'USD', 'EUR'].contains(normalizedCurrency)) {
+      throw ArgumentError('Desteklenmeyen para birimi: $currency');
+    }
 
     final txId =
         'tx_pos_card_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
-    final txRef = _firestore
-        .collection(FirestoreCollections.transactions)
-        .doc(txId);
 
-    final txRecord = await _firestore.runTransaction<TransactionModel>((
-      transaction,
-    ) async {
-      final walletSnapshot = await transaction.get(companyWalletRef);
-      final currentBalance = walletSnapshot.exists
-          ? (walletSnapshot.data()?[balanceField] as int? ?? 0)
-          : 0;
-
-      final newBalance = currentBalance + amountKurus;
-
-      final record = TransactionModel(
-        txId: txId,
-        senderId: 'CARD:$maskedCardNumber',
-        receiverId: companyId,
-        amount: amountKurus,
-        currency: currency.toUpperCase(),
-        timestamp: DateTime.now(),
-        type: 'card_pos_payment',
-      );
-
-      if (walletSnapshot.exists) {
-        transaction.update(companyWalletRef, {balanceField: newBalance});
-      } else {
-        transaction.set(companyWalletRef, {
-          'walletId': 'wallet_$companyId',
-          'ownerId': companyId,
-          'balanceTl': balanceField == 'balanceTl' ? newBalance : 0,
-          'balanceUsd': balanceField == 'balanceUsd' ? newBalance : 0,
-          'balanceEur': balanceField == 'balanceEur' ? newBalance : 0,
-        });
-      }
-
-      transaction.set(txRef, record.toJson());
-      return record;
-    });
+    final record = TransactionModel(
+      txId: txId,
+      senderId: 'CARD:$maskedCardNumber',
+      receiverId: companyId,
+      amount: amountKurus,
+      currency: normalizedCurrency,
+      timestamp: DateTime.now(),
+      type: 'card_pos_payment',
+      title: 'Sanal POS Kart Tahsilatı (Simülasyon)',
+      category: 'POS Tahsilat',
+      isExpense: false,
+      status: 'Başarılı',
+    );
 
     await AppAnalyticsService.logPosPayment(
       type: 'card_pos',
-      currency: currency,
+      currency: normalizedCurrency,
     );
-    return txRecord;
+    return record;
   }
 
   Future<void> createPaymentRequest(PaymentRequestModel request) async {
@@ -1062,10 +1041,27 @@ class FirebaseFirestoreDatasource {
         );
       }
 
+      final assignedPayerId = requestData['payerId'] as String?;
+      if (assignedPayerId != null &&
+          assignedPayerId.isNotEmpty &&
+          assignedPayerId != payerUserId) {
+        throw StateError(
+          'Bu ödeme talebi yalnızca belirlenen kullanıcı tarafından ödenebilir.',
+        );
+      }
+
       final amount = requestData['amount'] as int;
-      final currency = requestData['currency'] as String? ?? 'TRY';
+      final rawCurrency = requestData['currency'] as String? ?? 'TRY';
+      var normalizedCurrency = rawCurrency.toUpperCase();
+      if (normalizedCurrency == 'TL') {
+        normalizedCurrency = 'TRY';
+      }
+      if (!['TRY', 'USD', 'EUR'].contains(normalizedCurrency)) {
+        throw ArgumentError('Desteklenmeyen para birimi: $rawCurrency');
+      }
+
+      final balanceField = getBalanceField(normalizedCurrency);
       final merchantId = requestData['merchantId'] as String;
-      final balanceField = getBalanceField(currency);
 
       final payerWalletRef = _firestore
           .collection(FirestoreCollections.wallets)
@@ -1075,18 +1071,12 @@ class FirebaseFirestoreDatasource {
           .doc('wallet_$merchantId');
 
       final payerWalletSnap = await transaction.get(payerWalletRef);
-      final merchantWalletSnap = await transaction.get(merchantWalletRef);
 
       if (!payerWalletSnap.exists || payerWalletSnap.data() == null) {
         throw Exception('Müşteri cüzdanı bulunamadı.');
       }
-      if (!merchantWalletSnap.exists || merchantWalletSnap.data() == null) {
-        throw Exception('İşletme cüzdanı bulunamadı.');
-      }
 
       final payerBalance = payerWalletSnap.data()![balanceField] as int? ?? 0;
-      final merchantBalance =
-          merchantWalletSnap.data()![balanceField] as int? ?? 0;
 
       if (payerBalance < amount) {
         throw Exception('Yetersiz bakiye. Ödeme talebi gerçekleştirilemedi.');
@@ -1103,19 +1093,28 @@ class FirebaseFirestoreDatasource {
         senderId: payerUserId,
         receiverId: merchantId,
         amount: amount,
-        currency: currency.toUpperCase(),
+        currency: normalizedCurrency,
         timestamp: DateTime.now(),
         type: 'payment_link',
+        relatedId: requestId,
+        status: 'Başarılı',
       );
 
       transaction.update(requestRef, {
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
         'payerId': payerUserId,
+        'txId': txId,
       });
-      transaction.update(payerWalletRef, {balanceField: payerBalance - amount});
+      transaction.update(payerWalletRef, {
+        balanceField: payerBalance - amount,
+        'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
       transaction.update(merchantWalletRef, {
-        balanceField: merchantBalance + amount,
+        balanceField: FieldValue.increment(amount),
+        'lastTxId': txId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
       transaction.set(txRef, record.toJson());
 

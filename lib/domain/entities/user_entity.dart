@@ -25,15 +25,15 @@ class UserEntity extends Equatable {
     this.iban = 'TR42 0006 2000 8492 0100 0000 01',
     this.monthlyLimit = 25000.0,
     this.spentThisMonth = 18420.0,
-    this.hasB2BAccess = true,
+    this.hasB2BAccess = false,
   });
 
   bool get isB2C => role == 'b2c';
   bool get isEmployee => role == 'employee';
   bool get isAdmin => role == 'admin';
 
-  /// İşletme paneline sadece 'admin' ve 'employee' rolleri veya B2B yetkisi olanlar erişebilir.
-  bool get canAccessBusinessPanel => isAdmin || isEmployee || hasB2BAccess;
+  /// İşletme paneline sadece 'admin' ve 'employee' rolleri veya B2B yetkisi ve şirketi olanlar erişebilir.
+  bool get canAccessBusinessPanel => isAdmin || isEmployee || (hasB2BAccess && hasCompany);
 
   /// Masraf onaylama ve KDV/matrah raporlarını görüntüleme yetkisi.
   bool get canApproveExpenses => isAdmin;

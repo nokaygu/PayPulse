@@ -5,6 +5,8 @@ import '../../domain/repositories/i_transaction_repository.dart';
 import '../datasources/remote/firebase_firestore_datasource.dart';
 import '../models/transaction_model.dart';
 
+/// Clean Architecture Data Katmanı: Finansal İşlemler Deposu (TransactionRepository)
+/// FAST, POS ve Cüzdan hareketlerinin sorgulanmasını ve raporlanmasını yönetir.
 class TransactionRepository implements ITransActionRepository {
   final FirebaseFirestoreDatasource _firestoreDatasource;
   final FirebaseFirestore _firestore;
@@ -12,10 +14,11 @@ class TransactionRepository implements ITransActionRepository {
   TransactionRepository({
     FirebaseFirestoreDatasource? firestoreDatasource,
     FirebaseFirestore? firestore,
-  }) : _firestoreDatasource =
-           firestoreDatasource ?? FirebaseFirestoreDatasource(),
-       _firestore = firestore ?? FirebaseFirestore.instance;
+  })  : _firestoreDatasource =
+            firestoreDatasource ?? FirebaseFirestoreDatasource(),
+        _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Değiştirilemez finansal hareket defterindeki (ledger) tüm kayıtları getirir
   @override
   Future<List<TransactionModel?>> getAllTransactions() async {
     try {
@@ -30,6 +33,7 @@ class TransactionRepository implements ITransActionRepository {
     }
   }
 
+  /// Benzersiz işlem referans numarasına (txId) göre işlem detayını getirir
   @override
   Future<TransactionModel?> getTransactionById(String txId) async {
     try {

@@ -1,3 +1,5 @@
+import '../../../../data/models/user_model.dart';
+
 sealed class AuthEvent {
   const AuthEvent();
 }
@@ -5,6 +7,13 @@ sealed class AuthEvent {
 /// Firebase oturum ve Firestore kullanıcı rolü dinlemesini başlatır.
 final class AuthSubscriptionRequested extends AuthEvent {
   const AuthSubscriptionRequested();
+}
+
+/// Firestore'dan yüklenen gerçek kullanıcı profilini duruma kaydeder.
+final class AuthUserProfileLoaded extends AuthEvent {
+  final UserModel user;
+
+  const AuthUserProfileLoaded(this.user);
 }
 
 /// Bireysel Cüzdan <-> İşletme Paneli görünüm modunu değiştirir.

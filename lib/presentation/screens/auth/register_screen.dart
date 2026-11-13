@@ -1,8 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/errors/auth_error_messages.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/firebase_auth_datasource.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isB2BAccount = false;
   bool _obscurePassword = true;
   bool _kvkkAccepted = false;
+  bool _isLoading = false;
 
   static final RegExp _emailRegex = RegExp(
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
@@ -40,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _handleRegister() {
+  Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_kvkkAccepted) {
@@ -54,16 +58,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isB2BAccount
-              ? 'B2B Kurumsal hesabınız başarıyla oluşturuldu!'
-              : 'B2C Bireysel Cüzdan hesabınız başarıyla oluşturuldu!',
+    setState(() => _isLoading = true);
+
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      final name = _fullNameController.text.trim();
+      final companyName = _companyNameController.text.trim();
+
+      // Firebase Authentication ve Firestore kullanıcı profili + 0 bakiyeli cüzdan oluşturur
+      await FirebaseAuthDatasource().register(
+        email,
+        password,
+        name: name.isNotEmpty ? name : 'PayPulse Kullanıcısı',
+        role: _isB2BAccount ? 'admin' : 'b2c',
+        companyId: _isB2BAccount
+            ? (companyName.isNotEmpty
+                ? 'comp_${companyName.toLowerCase().replaceAll(' ', '_')}'
+                : 'comp_${DateTime.now().millisecondsSinceEpoch}')
+            : null,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isB2BAccount
+                ? 'B2B Kurumsal hesabınız başarıyla oluşturuldu!'
+                : 'B2C Bireysel Cüzdan hesabınız başarıyla oluşturuldu!',
+          ),
+          backgroundColor: AppColors.incomeGreen,
         ),
-      ),
-    );
-    Navigator.pop(context);
+      );
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final msg = AuthErrorMessages.fromCode(e.code);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Kayıt başarısız: $e'),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -297,15 +344,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // 8. Kayıt Ol Butonu
                 ElevatedButton(
-                  onPressed: _handleRegister,
-                  child: Text(
-                    _isB2BAccount
-                        ? 'Kurumsal Hesabı Oluştur'
-                        : 'Bireysel Cüzdanı Oluştur',
-                    style: AppTextStyles.labelLarge.copyWith(
-                      color: Colors.white,
-                    ),
-                  ),
+                  onPressed: _isLoading ? null : _handleRegister,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _isB2BAccount
+                              ? 'Kurumsal Hesabı Oluştur'
+                              : 'Bireysel Cüzdanı Oluştur',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ],
             ),
