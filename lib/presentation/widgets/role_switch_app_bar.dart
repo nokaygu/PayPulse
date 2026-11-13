@@ -201,67 +201,63 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
               )
             else
               Expanded(
-                child: InkWell(
-                  onTap: () => _showRoleSwitchSheet(context),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Row(
-                    children: [
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(9),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                AppColors.primaryGreen.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(9),
+                        child: Image.asset(
+                          'assets/images/paypulse_logo.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'PayPulse',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkNavy,
+                      ),
+                    ),
+                    if (AppMode.isDemoMode) ...[
+                      const SizedBox(width: 8),
                       Container(
-                        width: 36,
-                        height: 36,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(9),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  AppColors.primaryGreen.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: const Color(0xFFE0F2FE),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFBAE6FD),
+                          ),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(9),
-                          child: Image.asset(
-                            'assets/images/paypulse_logo.png',
-                            fit: BoxFit.cover,
+                        child: Text(
+                          'Demo',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.primaryTeal,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'PayPulse',
-                        style: AppTextStyles.headlineSmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.darkNavy,
-                        ),
-                      ),
-                      if (AppMode.isDemoMode) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2FE),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: const Color(0xFFBAE6FD),
-                            ),
-                          ),
-                          child: Text(
-                            'Demo',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.primaryTeal,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
 
@@ -337,121 +333,349 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _showRoleSwitchSheet(BuildContext context) {
+    final currentRole = context.read<AuthBloc>().state.role;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Mod ve Rol Değiştir (Dual-Role)',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Bireysel Cüzdan (B2C) ile İşletme Paneli (B2B) arasında anında geçiş yapın.',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFD1FAE5),
-                  child: Icon(
-                    Icons.account_balance_wallet,
-                    color: AppColors.primaryGreen,
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Sürüklenebilir Tutamaç (Handle Bar)
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
-                title: const Text('Deniz Aksoy — Bireysel Cüzdan (B2C)'),
-                subtitle: const Text('Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(
-                    const AuthRoleChanged('b2c'),
-                  );
-                  context.go(AppRoutes.home);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFEF3C7),
-                  child: Icon(Icons.badge_outlined, color: Color(0xFFD97706)),
-                ),
-                title: const Text('Ahmet Yılmaz — Şirket Çalışanı (Employee)'),
-                subtitle: const Text('PayPulse Teknoloji • Bakiye: ₺5.000,00 • Masraf Bildirimi'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(
-                    const AuthRoleChanged('employee'),
-                  );
-                  context.go(AppRoutes.home);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFE0F2FE),
-                  child: Icon(Icons.business_center, color: AppColors.darkNavy),
-                ),
-                title: const Text('Ali Yılmaz — Şirket Yöneticisi (Admin)'),
-                subtitle: const Text(
-                  'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Masraf Onay',
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
-                  context.go(AppRoutes.businessOverview);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFEE2E2),
-                  child: Icon(Icons.logout_rounded, color: Color(0xFFB91C1C)),
-                ),
-                title: const Text(
-                  'Güvenli Çıkış Yap',
-                  style: TextStyle(
-                    color: Color(0xFFB91C1C),
-                    fontWeight: FontWeight.bold,
+
+                  // Başlık Satırı
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mod ve Rol Değiştir (Dual-Role)',
+                              style: AppTextStyles.headlineSmall.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Bireysel Cüzdan ile İşletme Paneli arasında anında geçiş yapın.',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: const Color(0xFF64748B),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
-                ),
-                subtitle: const Text('Oturumu sonlandırıp giriş ekranına dön'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(const AuthLogoutRequested());
-                  context.go(AppRoutes.login);
-                },
+                  const SizedBox(height: 16),
+
+                  // 1. Deniz Aksoy — B2C
+                  _buildRoleCard(
+                    context: context,
+                    ctx: ctx,
+                    role: 'b2c',
+                    isActive: currentRole == 'b2c',
+                    icon: Icons.account_balance_wallet_rounded,
+                    iconBg: const Color(0xFFD1FAE5),
+                    iconColor: AppColors.primaryGreen,
+                    title: 'Deniz Aksoy',
+                    roleBadge: 'Bireysel (B2C)',
+                    badgeBg: const Color(0xFFD1FAE5),
+                    badgeColor: const Color(0xFF065F46),
+                    subtitle: 'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
+                    targetRoute: AppRoutes.home,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 2. Ahmet Yılmaz — Employee
+                  _buildRoleCard(
+                    context: context,
+                    ctx: ctx,
+                    role: 'employee',
+                    isActive: currentRole == 'employee',
+                    icon: Icons.badge_outlined,
+                    iconBg: const Color(0xFFFEF3C7),
+                    iconColor: const Color(0xFFD97706),
+                    title: 'Ahmet Yılmaz',
+                    roleBadge: 'Şirket Çalışanı',
+                    badgeBg: const Color(0xFFFEF3C7),
+                    badgeColor: const Color(0xFF92400E),
+                    subtitle: 'PayPulse Teknoloji • ₺5.000,00 • Masraf Bildirimi',
+                    targetRoute: AppRoutes.home,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 3. Ali Yılmaz — Admin
+                  _buildRoleCard(
+                    context: context,
+                    ctx: ctx,
+                    role: 'admin',
+                    isActive: currentRole == 'admin',
+                    icon: Icons.business_center_rounded,
+                    iconBg: const Color(0xFFE0F2FE),
+                    iconColor: AppColors.darkNavy,
+                    title: 'Ali Yılmaz',
+                    roleBadge: 'Şirket Yöneticisi',
+                    badgeBg: const Color(0xFFE0F2FE),
+                    badgeColor: const Color(0xFF0369A1),
+                    subtitle: 'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Onay',
+                    targetRoute: AppRoutes.businessOverview,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4. Güvenli Çıkış Butonu
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      context.read<AuthBloc>().add(const AuthLogoutRequested());
+                      context.go(AppRoutes.login);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2).withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFEE2E2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.logout_rounded,
+                              size: 18,
+                              color: Color(0xFFB91C1C),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Güvenli Çıkış Yap',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: const Color(0xFFB91C1C),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  'Oturumu sonlandırıp giriş ekranına dön',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: const Color(0xFF991B1B),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: Color(0xFFB91C1C),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
+  Widget _buildRoleCard({
+    required BuildContext context,
+    required BuildContext ctx,
+    required String role,
+    required bool isActive,
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String roleBadge,
+    required Color badgeBg,
+    required Color badgeColor,
+    required String subtitle,
+    required String targetRoute,
+  }) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(ctx);
+        context.read<AuthBloc>().add(AuthRoleChanged(role));
+        context.go(targetRoute);
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isActive ? AppColors.primaryGreen : const Color(0xFFE2E8F0),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.darkNavy,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          roleBadge,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: const Color(0xFF64748B),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isActive)
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Aktif',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: Color(0xFF94A3B8),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showNotificationsSheet(BuildContext context, String userId) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         final datasource = FirebaseFirestoreDatasource();
         return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           padding: const EdgeInsets.all(16),
-          constraints: const BoxConstraints(maxHeight: 450),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

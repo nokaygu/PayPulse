@@ -10,15 +10,16 @@ import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final FirebaseAuthDatasource _authDatasource;
-  final FirebaseFirestoreDatasource _firestoreDatasource;
+  final FirebaseAuthDatasource? _authDatasource;
+  final FirebaseFirestoreDatasource? _firestoreDatasource;
 
   AuthBloc({
     FirebaseAuthDatasource? authDatasource,
     FirebaseFirestoreDatasource? firestoreDatasource,
-  }) : _authDatasource = authDatasource ?? FirebaseAuthDatasource(),
-       _firestoreDatasource =
-           firestoreDatasource ?? FirebaseFirestoreDatasource(),
+  }) : _authDatasource = authDatasource ??
+           (AppMode.isLiveFirebase ? FirebaseAuthDatasource() : null),
+       _firestoreDatasource = firestoreDatasource ??
+           (AppMode.isLiveFirebase ? FirebaseFirestoreDatasource() : null),
        super(const AuthState()) {
     on<AuthSubscriptionRequested>(_onSubscriptionRequested);
     on<AuthUserProfileLoaded>(_onUserProfileLoaded);
@@ -32,13 +33,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSubscriptionRequested event,
     Emitter<AuthState> emit,
   ) async {
-    if (AppMode.isDemoMode) {
+    if (AppMode.isDemoMode || _authDatasource == null) {
       // macOS Demo Modu: Firebase Auth Keychain erişimi atlanır.
       return;
     }
 
     await emit.forEach<User?>(
-      _authDatasource.authStateChanges(),
+      _authDatasource!.authStateChanges(),
       onData: (firebaseUser) {
         if (firebaseUser == null) {
           if (state.user?.uid.startsWith('demo_') == true ||
@@ -80,7 +81,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _loadUserProfile(User firebaseUser) async {
     try {
-      final profile = await _firestoreDatasource.getUserProfile(
+      final profile = await _firestoreDatasource?.getUserProfile(
         firebaseUser.uid,
       );
       if (profile != null && !isClosed) {
@@ -227,9 +228,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    if (!AppMode.isDemoMode) {
+    if (!AppMode.isDemoMode && _authDatasource != null) {
       try {
-        await _authDatasource.logout();
+        await _authDatasource!.logout();
       } catch (_) {}
     }
     emit(
