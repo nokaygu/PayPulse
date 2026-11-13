@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/analytics_and_crashlytics/app_analytics_service.dart';
+import '../../../core/config/app_mode.dart';
 import '../../../core/constants/firestore_collections.dart';
 import '../../models/company_model.dart';
 import '../../models/expense_model.dart';
@@ -15,16 +16,21 @@ import '../../models/safe_recipient_model.dart';
 import '../../models/transaction_model.dart';
 import '../../models/user_model.dart';
 import '../../models/wallet_model.dart';
+import 'local_demo_data_service.dart';
 
 class FirebaseFirestoreDatasource {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final FirebaseFirestore? _customFirestore;
+  final FirebaseAuth? _customAuth;
+
+  FirebaseFirestore get _firestore =>
+      _customFirestore ?? FirebaseFirestore.instance;
+  FirebaseAuth get _auth => _customAuth ?? FirebaseAuth.instance;
 
   FirebaseFirestoreDatasource({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance,
-       _auth = auth ?? FirebaseAuth.instance;
+  }) : _customFirestore = firestore,
+       _customAuth = auth;
 
   // =========================================================================
   // 1. GERİYE DÖNÜK TEST METOTLARI (home.dart vb. testlerin bozulmaması için)
@@ -65,6 +71,10 @@ class FirebaseFirestoreDatasource {
   }
 
   Future<UserModel?> getUserProfile(String uid) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getUserProfile(uid);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.users)
         .doc(uid)
@@ -126,6 +136,10 @@ class FirebaseFirestoreDatasource {
   }
 
   Future<WalletModel?> getWallet(String walletId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getWallet(walletId);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.wallets)
         .doc(walletId)
@@ -140,6 +154,10 @@ class FirebaseFirestoreDatasource {
 
   /// Kullanıcının kendi cüzdanını canlı dinleyen Stream metodu.
   Stream<WalletModel?> watchWallet(String walletId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchWallet(walletId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.wallets)
         .doc(walletId)
@@ -154,6 +172,10 @@ class FirebaseFirestoreDatasource {
 
   /// Kullanıcı ID'si üzerinden cüzdanı canlı dinler.
   Stream<WalletModel?> watchUserWallet(String userId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchUserWallet(userId);
+    }
+
     return watchWallet('wallet_$userId');
   }
 
@@ -327,6 +349,15 @@ class FirebaseFirestoreDatasource {
     required int amountKurus,
     String currency = 'TRY',
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.executeFastTransferByIban(
+        senderUserId: senderUserId,
+        targetIban: targetIban,
+        amountKurus: amountKurus,
+        currency: currency,
+      );
+    }
+
     final recipient = await findRecipientByIban(targetIban);
     if (recipient == null) {
       throw Exception(
@@ -371,6 +402,10 @@ class FirebaseFirestoreDatasource {
   /// Güvenli IBAN araması: Başka kullanıcıların users veya wallets belgelerine
   /// dokunmadan, SADECE 'recipients' dizininden teyit amaçlı maskeli isim çeker.
   Future<SafeRecipientModel?> findRecipientByIban(String rawIban) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.findRecipientByIban(rawIban);
+    }
+
     final normalizedIban = rawIban.replaceAll(RegExp(r'\s'), '').toUpperCase();
 
     final docSnapshot = await _firestore
@@ -409,6 +444,10 @@ class FirebaseFirestoreDatasource {
   // =========================================================================
 
   Future<TransactionModel?> getTransaction(String txId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getTransaction(txId);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.transactions)
         .doc(txId)
@@ -434,6 +473,10 @@ class FirebaseFirestoreDatasource {
 
   /// Kullanıcının taraf olduğu (hem gelen hem giden) tüm işlemleri canlı dinler.
   Stream<List<TransactionModel>> watchUserTransactions(String userId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchUserTransactions(userId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.transactions)
         .where(
@@ -454,6 +497,10 @@ class FirebaseFirestoreDatasource {
 
   /// Yalnızca gönderilen işlemleri canlı dinler.
   Stream<List<TransactionModel>> watchSentTransactions(String userId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchSentTransactions(userId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.transactions)
         .where('senderId', isEqualTo: userId)
@@ -469,6 +516,10 @@ class FirebaseFirestoreDatasource {
 
   /// Yalnızca gelen işlemleri canlı dinler.
   Stream<List<TransactionModel>> watchReceivedTransactions(String userId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchReceivedTransactions(userId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.transactions)
         .where('receiverId', isEqualTo: userId)
@@ -487,6 +538,10 @@ class FirebaseFirestoreDatasource {
   // =========================================================================
 
   Future<void> createExpense(ExpenseModel expense) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.createExpense(expense);
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.uid != expense.employeeId) {
       throw StateError(
@@ -542,6 +597,10 @@ class FirebaseFirestoreDatasource {
   }
 
   Future<ExpenseModel?> getExpense(String expenseId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getExpense(expenseId);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.expenses)
         .doc(expenseId)
@@ -556,6 +615,10 @@ class FirebaseFirestoreDatasource {
 
   /// Çalışanın kendi masraflarını anlık dinler.
   Stream<List<ExpenseModel>> watchEmployeeExpenses(String employeeId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchEmployeeExpenses(employeeId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.expenses)
         .where('employeeId', isEqualTo: employeeId)
@@ -569,6 +632,10 @@ class FirebaseFirestoreDatasource {
 
   /// Şirket yöneticisinin şirketine ait tüm masrafları anlık dinlemesi.
   Stream<List<ExpenseModel>> watchCompanyExpenses(String companyId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchCompanyExpenses(companyId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.expenses)
         .where('companyId', isEqualTo: companyId)
@@ -587,6 +654,13 @@ class FirebaseFirestoreDatasource {
     required String expenseId,
     String? accountingCode,
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.approveExpense(
+        expenseId: expenseId,
+        accountingCode: accountingCode,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       throw StateError('İşlem için oturum açılması gereklidir.');
@@ -597,7 +671,6 @@ class FirebaseFirestoreDatasource {
         .doc(expenseId);
 
     late String resolvedEmployeeId;
-    late int resolvedAmount;
 
     await _firestore.runTransaction((transaction) async {
       final expenseSnapshot = await transaction.get(expenseRef);
@@ -620,7 +693,6 @@ class FirebaseFirestoreDatasource {
       final employeeId = expenseData['employeeId'] as String;
       final amount = expenseData['amount'] as int;
       resolvedEmployeeId = employeeId;
-      resolvedAmount = amount;
 
       // 2. Şirket Yöneticisi Yetki Doğrulaması
       final companyRef = _firestore
@@ -740,6 +812,13 @@ class FirebaseFirestoreDatasource {
     required String expenseId,
     required String reason,
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.rejectExpense(
+        expenseId: expenseId,
+        rejectReason: reason,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       throw StateError('İşlem için oturum açılması gereklidir.');
@@ -831,6 +910,10 @@ class FirebaseFirestoreDatasource {
   }
 
   Future<CompanyModel?> getCompany(String companyId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getCompany(companyId);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.companies)
         .doc(companyId)
@@ -952,6 +1035,15 @@ class FirebaseFirestoreDatasource {
     required int amountKurus,
     String currency = 'TRY',
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.executeCardPosPayment(
+        companyId: companyId,
+        maskedCardNumber: maskedCardNumber,
+        amountKurus: amountKurus,
+        currency: currency,
+      );
+    }
+
     if (amountKurus <= 0) {
       throw ArgumentError('Tahsilat tutarı sıfırdan büyük olmalıdır.');
     }
@@ -1142,6 +1234,10 @@ class FirebaseFirestoreDatasource {
 
   /// Kullanıcının bildirimlerini gerçek zamanlı dinler (En yeniden en eskiye).
   Stream<List<NotificationModel>> watchUserNotifications(String userId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchUserNotifications(userId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.notifications)
         .where('userId', isEqualTo: userId)
@@ -1157,6 +1253,12 @@ class FirebaseFirestoreDatasource {
 
   /// Bildirimi okundu olarak işaretler (isRead: true).
   Future<void> markNotificationAsRead(String notificationId) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.markNotificationAsRead(
+        notificationId,
+      );
+    }
+
     await _firestore
         .collection(FirestoreCollections.notifications)
         .doc(notificationId)
@@ -1165,6 +1267,10 @@ class FirebaseFirestoreDatasource {
 
   /// Kullanıcının okunmamış bildirim sayısını anlık dinler.
   Stream<int> watchUnreadNotificationCount(String userId) {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.watchUnreadNotificationCount(userId);
+    }
+
     return _firestore
         .collection(FirestoreCollections.notifications)
         .where('userId', isEqualTo: userId)

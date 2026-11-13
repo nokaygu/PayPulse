@@ -8,6 +8,7 @@ import '../../data/models/savings_goal_model.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/models/einvoice_model.dart';
 import '../../data/models/pos_transaction_model.dart';
+import '../../data/models/wallet_model.dart';
 
 /// Jüri sunumu ve uygulama başlangıcı için Kasım 2026 test/mock verilerini
 /// Firestore'a basan ve çevrimdışı fallback sağlayan tohumlama (Seed) servisi.
@@ -17,7 +18,7 @@ class FirestoreSeeder {
   FirestoreSeeder({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // ================= 1. KASIM 2026 MOCK KULLANICI =================
+  // ================= 1. KASIM 2026 MOCK KULLANICI & CÜZDAN =================
   static const UserModel mockUser = UserModel(
     uid: 'user_deniz_aksoy',
     name: 'Deniz Aksoy',
@@ -30,6 +31,15 @@ class FirestoreSeeder {
     monthlyLimit: 25000.0,
     spentThisMonth: 18420.0,
     hasB2BAccess: true,
+  );
+
+  static const WalletModel mockWallet = WalletModel(
+    walletId: 'wallet_user_deniz_aksoy',
+    ownerId: 'user_deniz_aksoy',
+    balanceTl: 2335000, // +₺23.350,00
+    balanceUsd: 125000, // $1.250,00
+    balanceEur: 85000, // €850,00
+    iban: 'TR42 0006 2000 8492 0100 0000 01',
   );
 
   // ================= 2. KASIM 2026 MOCK FİNANSAL İŞLEMLER =================
@@ -360,11 +370,16 @@ class FirestoreSeeder {
   Future<void> seedAll() async {
     final batch = _firestore.batch();
 
-    // 1. Kullanıcı
+    // 1. Kullanıcı ve Cüzdan
     final userRef = _firestore
         .collection(FirestoreCollections.users)
         .doc(mockUser.uid);
     batch.set(userRef, mockUser.toJson());
+
+    final walletRef = _firestore
+        .collection(FirestoreCollections.wallets)
+        .doc(mockWallet.walletId);
+    batch.set(walletRef, mockWallet.toJson());
 
     // 2. İşlemler
     for (final tx in mockTransactions) {

@@ -80,24 +80,32 @@ class FirebaseAuthDatasource {
 
     final user = userCredential.user;
     if (user != null) {
-      final walletId = 'wallet_${user.uid}';
-      final existingWallet = await _firestoreService.getWallet(walletId);
-      if (existingWallet == null) {
-        final generatedIban = IbanGenerator.generateForUser(user.uid);
-        final newWallet = WalletModel(
-          walletId: walletId,
-          ownerId: user.uid,
-          balanceTl: 0,
-          balanceUsd: 0,
-          balanceEur: 0,
-          iban: generatedIban,
-        );
-        await _firestoreService.createWallet(newWallet);
-        await _firestoreService.registerRecipient(
-          iban: generatedIban,
-          userId: user.uid,
-          fullName: user.displayName ?? 'PayPulse Kullanıcısı',
-        );
+      try {
+        final walletId = 'wallet_${user.uid}';
+        final existingWallet = await _firestoreService.getWallet(walletId);
+        if (existingWallet == null) {
+          final generatedIban = IbanGenerator.generateForUser(user.uid);
+          final newWallet = WalletModel(
+            walletId: walletId,
+            ownerId: user.uid,
+            balanceTl: 0,
+            balanceUsd: 0,
+            balanceEur: 0,
+            iban: generatedIban,
+          );
+          await _firestoreService.createWallet(newWallet);
+          try {
+            await _firestoreService.registerRecipient(
+              iban: generatedIban,
+              userId: user.uid,
+              fullName: user.displayName ?? 'PayPulse Kullanıcısı',
+            );
+          } catch (_) {
+            // Rehber kaydı kural kısıtlaması nedeniyle atlanabilir.
+          }
+        }
+      } catch (e) {
+        // Oturum açma başarılıdır; Firestore profil/cüzdan senkronizasyon hatası girişi engellememelidir.
       }
     }
 

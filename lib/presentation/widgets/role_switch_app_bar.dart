@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_mode.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -34,9 +35,10 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final authUser = context.watch<AuthBloc>().state.user;
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseUser =
+        AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
     final String currentUserId =
-        authUser?.uid ?? firebaseUser?.uid ?? 'user_b2c_001';
+        authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
 
     return SafeArea(
       bottom: false,
@@ -234,6 +236,30 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                           color: AppColors.darkNavy,
                         ),
                       ),
+                      if (AppMode.isDemoMode) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0F2FE),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFBAE6FD),
+                            ),
+                          ),
+                          child: Text(
+                            'Demo',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: AppColors.primaryTeal,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -347,7 +373,23 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
                 title: const Text('Deniz Aksoy — Bireysel Cüzdan (B2C)'),
-                subtitle: const Text('Müşteri No: PP-849201 • Kişisel Hesap'),
+                subtitle: const Text('Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.read<AuthBloc>().add(
+                    const AuthRoleChanged('b2c'),
+                  );
+                  context.go(AppRoutes.home);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFEF3C7),
+                  child: Icon(Icons.badge_outlined, color: Color(0xFFD97706)),
+                ),
+                title: const Text('Ahmet Yılmaz — Şirket Çalışanı (Employee)'),
+                subtitle: const Text('PayPulse Teknoloji • Bakiye: ₺5.000,00 • Masraf Bildirimi'),
                 onTap: () {
                   Navigator.pop(ctx);
                   context.read<AuthBloc>().add(
@@ -362,14 +404,34 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   backgroundColor: Color(0xFFE0F2FE),
                   child: Icon(Icons.business_center, color: AppColors.darkNavy),
                 ),
-                title: const Text('Nova Tasarım Ltd. — İşletme Paneli (B2B)'),
+                title: const Text('Ali Yılmaz — Şirket Yöneticisi (Admin)'),
                 subtitle: const Text(
-                  'Finans Yöneticisi (Admin) • POS, Masraf, KDV',
+                  'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Masraf Onay',
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
                   context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
                   context.go(AppRoutes.businessOverview);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFEE2E2),
+                  child: Icon(Icons.logout_rounded, color: Color(0xFFB91C1C)),
+                ),
+                title: const Text(
+                  'Güvenli Çıkış Yap',
+                  style: TextStyle(
+                    color: Color(0xFFB91C1C),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text('Oturumu sonlandırıp giriş ekranına dön'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.read<AuthBloc>().add(const AuthLogoutRequested());
+                  context.go(AppRoutes.login);
                 },
               ),
             ],

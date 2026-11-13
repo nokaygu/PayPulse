@@ -778,25 +778,33 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
     VoidCallback? fastActionCallback,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border(
-          left: BorderSide(
-            color: hasLeftAmberAccent
-                ? const Color(0xFFF59E0B)
-                : const Color(0xFFE2E8F0),
-            width: hasLeftAmberAccent ? 4 : 1,
-          ),
-          top: const BorderSide(color: Color(0xFFE2E8F0)),
-          right: const BorderSide(color: Color(0xFFE2E8F0)),
-          bottom: const BorderSide(color: Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: hasLeftAmberAccent
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+              : const Color(0xFFE2E8F0),
+          width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: hasLeftAmberAccent
+                    ? const Color(0xFFF59E0B)
+                    : Colors.transparent,
+                width: hasLeftAmberAccent ? 4 : 0,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1018,7 +1026,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   void _showFastPaymentDialog(BuildContext context) {

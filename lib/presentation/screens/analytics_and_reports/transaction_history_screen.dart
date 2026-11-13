@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_mode.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
@@ -34,9 +35,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final authUser = context.watch<AuthBloc>().state.user;
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseUser =
+        AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
     final String currentUserId =
-        authUser?.uid ?? firebaseUser?.uid ?? 'user_b2c_001';
+        authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
