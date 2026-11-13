@@ -157,16 +157,16 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                                     style: AppTextStyles.bodyLarge.copyWith(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 15,
-                                      color: AppColors.darkNavy,
+                                      color: primaryTextColor,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                const Icon(
+                                Icon(
                                   Icons.keyboard_arrow_down_rounded,
                                   size: 18,
-                                  color: AppColors.darkNavy,
+                                  color: primaryTextColor,
                                 ),
                               ],
                             ),
@@ -209,67 +209,63 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
               )
             else
               Expanded(
-                child: InkWell(
-                  onTap: () => _showRoleSwitchSheet(context),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Row(
-                    children: [
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(9),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                AppColors.primaryGreen.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(9),
+                        child: Image.asset(
+                          'assets/images/paypulse_logo.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'PayPulse',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    if (AppMode.isDemoMode) ...[
+                      const SizedBox(width: 8),
                       Container(
-                        width: 36,
-                        height: 36,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(9),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  AppColors.primaryGreen.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: const Color(0xFFE0F2FE),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFBAE6FD),
+                          ),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(9),
-                          child: Image.asset(
-                            'assets/images/paypulse_logo.png',
-                            fit: BoxFit.cover,
+                        child: Text(
+                          'Demo',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.primaryTeal,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'PayPulse',
-                        style: AppTextStyles.headlineSmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.darkNavy,
-                        ),
-                      ),
-                      if (AppMode.isDemoMode) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2FE),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: const Color(0xFFBAE6FD),
-                            ),
-                          ),
-                          child: Text(
-                            'Demo',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.primaryTeal,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
 
@@ -286,9 +282,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                     IconButton(
                       onPressed: () =>
                           _showNotificationsSheet(context, currentUserId),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.notifications_none_rounded,
-                        color: AppColors.darkNavy,
+                        color: primaryTextColor,
                       ),
                     ),
                     if (unreadCount > 0)
@@ -330,7 +326,8 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
               onTap: () => _showRoleSwitchSheet(context),
               child: CircleAvatar(
                 radius: 17,
-                backgroundColor: AppColors.darkNavy,
+                backgroundColor:
+                    isDark ? const Color(0xFF334155) : AppColors.darkNavy,
                 child: Icon(
                   isBusinessMode ? Icons.person_outline_rounded : Icons.person,
                   size: 18,
@@ -346,179 +343,222 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   void _showRoleSwitchSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentRole = context.read<AuthBloc>().state.role;
+    final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final handleColor =
+        isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+    final titleColor = isDark ? Colors.white : AppColors.darkNavy;
+    final subtitleColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final logoutBg = isDark
+        ? const Color(0xFF450A0A).withValues(alpha: 0.55)
+        : const Color(0xFFFEE2E2).withValues(alpha: 0.5);
+    final logoutBorder =
+        isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA);
+    final logoutIconBg =
+        isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2);
+    final logoutAccent =
+        isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
+    final logoutSubColor =
+        isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF475569)
-                          : const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(2),
+        return Container(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Sürüklenebilir Tutamaç (Handle Bar)
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: handleColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                Text(
-                  'Mod ve Rol Değiştir (Dual-Role)',
-                  style: AppTextStyles.headlineSmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : AppColors.darkNavy,
+
+                  // Başlık Satırı
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mod ve Rol Değiştir (Dual-Role)',
+                              style: AppTextStyles.headlineSmall.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                                color: titleColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Bireysel Cüzdan ile İşletme Paneli arasında anında geçiş yapın.',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: subtitleColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.close_rounded,
+                          size: 20,
+                          color: subtitleColor,
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Bireysel Cüzdan (B2C) ile İşletme Paneli (B2B) arasında anında geçiş yapın.',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: isDark
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF64748B),
+                  const SizedBox(height: 16),
+
+                  // 1. Deniz Aksoy — B2C
+                  _buildRoleCard(
+                    context: context,
+                    ctx: ctx,
+                    isDark: isDark,
+                    role: 'b2c',
+                    isActive: currentRole == 'b2c',
+                    icon: Icons.account_balance_wallet_rounded,
+                    iconBg: const Color(0xFFD1FAE5),
+                    iconColor: AppColors.primaryGreen,
+                    title: 'Deniz Aksoy',
+                    roleBadge: 'Bireysel (B2C)',
+                    badgeBg: const Color(0xFFD1FAE5),
+                    badgeColor: const Color(0xFF065F46),
+                    subtitle: 'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
+                    targetRoute: AppRoutes.home,
                   ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFD1FAE5),
-                    child: Icon(
-                      Icons.account_balance_wallet,
-                      color: AppColors.primaryGreen,
+                  const SizedBox(height: 10),
+
+                  // 2. Ahmet Yılmaz — Employee
+                  _buildRoleCard(
+                    context: context,
+                    ctx: ctx,
+                    isDark: isDark,
+                    role: 'employee',
+                    isActive: currentRole == 'employee',
+                    icon: Icons.badge_outlined,
+                    iconBg: const Color(0xFFFEF3C7),
+                    iconColor: const Color(0xFFD97706),
+                    title: 'Ahmet Yılmaz',
+                    roleBadge: 'Şirket Çalışanı',
+                    badgeBg: const Color(0xFFFEF3C7),
+                    badgeColor: const Color(0xFF92400E),
+                    subtitle: 'PayPulse Teknoloji • ₺5.000,00 • Masraf Bildirimi',
+                    targetRoute: AppRoutes.home,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 3. Ali Yılmaz — Admin
+                  _buildRoleCard(
+                    context: context,
+                    ctx: ctx,
+                    isDark: isDark,
+                    role: 'admin',
+                    isActive: currentRole == 'admin',
+                    icon: Icons.business_center_rounded,
+                    iconBg: const Color(0xFFE0F2FE),
+                    iconColor: AppColors.darkNavy,
+                    title: 'Ali Yılmaz',
+                    roleBadge: 'Şirket Yöneticisi',
+                    badgeBg: const Color(0xFFE0F2FE),
+                    badgeColor: const Color(0xFF0369A1),
+                    subtitle: 'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Onay',
+                    targetRoute: AppRoutes.businessOverview,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4. Güvenli Çıkış Butonu
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      context.read<AuthBloc>().add(const AuthLogoutRequested());
+                      context.go(AppRoutes.login);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: logoutBg,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: logoutBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: logoutIconBg,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.logout_rounded,
+                              size: 18,
+                              color: logoutAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Güvenli Çıkış Yap',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: logoutAccent,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  'Oturumu sonlandırıp giriş ekranına dön',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: logoutSubColor,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: logoutAccent,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  title: Text(
-                    'Deniz Aksoy — Bireysel Cüzdan (B2C)',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.darkNavy,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
-                    style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.read<AuthBloc>().add(
-                      const AuthRoleChanged('b2c'),
-                    );
-                    context.go(AppRoutes.home);
-                  },
-                ),
-                Divider(
-                  color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFF1F5F9),
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFFEF3C7),
-                    child: Icon(Icons.badge_outlined, color: Color(0xFFD97706)),
-                  ),
-                  title: Text(
-                    'Ahmet Yılmaz — Şirket Çalışanı (Employee)',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.darkNavy,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'PayPulse Teknoloji • Bakiye: ₺5.000,00 • Masraf Bildirimi',
-                    style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.read<AuthBloc>().add(
-                      const AuthRoleChanged('employee'),
-                    );
-                    context.go(AppRoutes.home);
-                  },
-                ),
-                Divider(
-                  color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFF1F5F9),
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFE0F2FE),
-                    child:
-                        Icon(Icons.business_center, color: AppColors.darkNavy),
-                  ),
-                  title: Text(
-                    'Ali Yılmaz — Şirket Yöneticisi (Admin)',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.darkNavy,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Masraf Onay',
-                    style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
-                    context.go(AppRoutes.businessOverview);
-                  },
-                ),
-                Divider(
-                  color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFF1F5F9),
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFFEE2E2),
-                    child: Icon(Icons.logout_rounded, color: Color(0xFFB91C1C)),
-                  ),
-                  title: const Text(
-                    'Güvenli Çıkış Yap',
-                    style: TextStyle(
-                      color: Color(0xFFB91C1C),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Oturumu sonlandırıp giriş ekranına dön',
-                    style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.read<AuthBloc>().add(const AuthLogoutRequested());
-                    context.go(AppRoutes.login);
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -526,17 +566,181 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  Widget _buildRoleCard({
+    required BuildContext context,
+    required BuildContext ctx,
+    required bool isDark,
+    required String role,
+    required bool isActive,
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String roleBadge,
+    required Color badgeBg,
+    required Color badgeColor,
+    required String subtitle,
+    required String targetRoute,
+  }) {
+    final cardBg = isActive
+        ? (isDark
+            ? AppColors.primaryGreen.withValues(alpha: 0.16)
+            : const Color(0xFFF0FDF4))
+        : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC));
+    final cardBorder = isActive
+        ? AppColors.primaryGreen
+        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
+    final primaryText = isDark ? Colors.white : AppColors.darkNavy;
+    final secondaryText =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final trailingArrowColor =
+        isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+
+    return InkWell(
+      onTap: () {
+        Navigator.pop(ctx);
+        context.read<AuthBloc>().add(AuthRoleChanged(role));
+        context.go(targetRoute);
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: cardBorder,
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: primaryText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          roleBadge,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: secondaryText,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isActive)
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Aktif',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: trailingArrowColor,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showNotificationsSheet(BuildContext context, String userId) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final titleColor = isDark ? Colors.white : AppColors.darkNavy;
+    final secondaryColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final dividerColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final emptyIconColor =
+        isDark ? const Color(0xFF475569) : Colors.grey.shade400;
+    final readAvatarBg =
+        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final unreadAvatarBg = isDark
+        ? AppColors.primaryTeal.withValues(alpha: 0.22)
+        : const Color(0xFFE0F2FE);
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         final datasource = FirebaseFirestoreDatasource();
         return Container(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           padding: const EdgeInsets.all(16),
-          constraints: const BoxConstraints(maxHeight: 450),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -546,17 +750,17 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   Text(
                     'Bildirimler',
                     style: AppTextStyles.headlineSmall.copyWith(
-                      color: AppColors.darkNavy,
+                      color: titleColor,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded, color: secondaryColor),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
                 ],
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: dividerColor),
               Expanded(
                 child: StreamBuilder<List<NotificationModel>>(
                   stream: datasource.watchUserNotifications(userId),
@@ -578,13 +782,13 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                             Icon(
                               Icons.notifications_off_outlined,
                               size: 40,
-                              color: Colors.grey.shade400,
+                              color: emptyIconColor,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Yeni bildirim bulunmuyor.',
                               style: AppTextStyles.bodySmall.copyWith(
-                                color: const Color(0xFF64748B),
+                                color: secondaryColor,
                               ),
                             ),
                           ],
@@ -595,7 +799,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                     return ListView.separated(
                       itemCount: notifications.length,
                       separatorBuilder: (context, index) =>
-                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          Divider(height: 1, color: dividerColor),
                       itemBuilder: (context, i) {
                         final n = notifications[i];
                         return ListTile(
@@ -604,14 +808,13 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                             vertical: 2,
                           ),
                           leading: CircleAvatar(
-                            backgroundColor: n.isRead
-                                ? const Color(0xFFF1F5F9)
-                                : const Color(0xFFE0F2FE),
+                            backgroundColor:
+                                n.isRead ? readAvatarBg : unreadAvatarBg,
                             child: Icon(
                               Icons.notifications_active_outlined,
                               size: 20,
                               color: n.isRead
-                                  ? const Color(0xFF64748B)
+                                  ? secondaryColor
                                   : AppColors.primaryTeal,
                             ),
                           ),
@@ -621,13 +824,13 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                               fontWeight: n.isRead
                                   ? FontWeight.w600
                                   : FontWeight.w800,
-                              color: AppColors.darkNavy,
+                              color: titleColor,
                             ),
                           ),
                           subtitle: Text(
                             n.body,
                             style: AppTextStyles.bodySmall.copyWith(
-                              color: const Color(0xFF64748B),
+                              color: secondaryColor,
                               fontSize: 11,
                             ),
                           ),

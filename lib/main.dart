@@ -12,9 +12,9 @@ import 'presentation/screens/auth/bloc/auth_event.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Canlı Firebase ve FCM yalnızca Android üzerinde başlatılır.
-  // macOS üzerinde ise Apple Developer hesabı ve Keychain erişim hatalarını önlemek için
-  // yerel eğitim/sunum demo modu devrededir.
+  // Canlı Firebase ve FCM yalnızca Android (Live) üzerinde başlatılır.
+  // macOS üzerinde ise Apple Developer hesabı ve Keychain erişim hatalarını (OSStatus error 13)
+  // önlemek için Firebase initialization tamamen atlanır ve yerel demo modu çalışır.
   if (AppMode.isLiveFirebase) {
     try {
       await FirebaseConfigure.initialize();
@@ -22,13 +22,6 @@ Future<void> main() async {
       await notificationService.initialize();
     } catch (e) {
       debugPrint('Firebase başlatma hatası: $e');
-    }
-  } else {
-    // macOS Demo Modu: Firebase konfigürasyonunu güvenle dener; hata olursa sessizce atlar
-    try {
-      await FirebaseConfigure.initialize();
-    } catch (e) {
-      debugPrint('Demo Modu: Firebase başlatımı atlandı: $e');
     }
   }
 

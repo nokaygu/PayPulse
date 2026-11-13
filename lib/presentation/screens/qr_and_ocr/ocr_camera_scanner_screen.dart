@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/local_demo_data_service.dart';
+import '../../../data/models/expense_model.dart';
+import '../auth/bloc/auth_bloc.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
 /// Görsel 7: Fatura & Fiş Tarama (AI-OCR) Ekranı
@@ -16,6 +20,711 @@ class OcrCameraScannerScreen extends StatefulWidget {
 class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
   int _selectedDocMode =
       1; // 0: Fatura (A4), 1: Gider Fişi, 2: E-Arşiv, 3: Sözleşme
+
+  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF64748B),
+              fontSize: 11.5,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.darkNavy,
+              fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+              fontSize: 11.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReceiptInspectAndSaveSheet({
+    required String title,
+    required double amount,
+    required double vat,
+    required String category,
+    required String dateStr,
+    required double confidence,
+    String? receiptImage,
+  }) {
+    final noteController = TextEditingController(text: '$title fiş harcaması');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1FAE5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_rounded,
+                        color: Color(0xFF065F46),
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI-OCR Fiş Doğrulama',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.darkNavy,
+                          ),
+                        ),
+                        Text(
+                          'Yapay zeka verileri çıkardı',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: const Color(0xFF64748B),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5EEAD4).withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '✓ %${(confidence * 100).toInt()} Güven',
+                    style: const TextStyle(
+                      color: Color(0xFF0F766E),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  _buildDetailRow('Tedarikçi / İşyeri:', title, isBold: true),
+                  _buildDetailRow('Tarih & Saat:', dateStr),
+                  _buildDetailRow('Kategori:', category),
+                  _buildDetailRow('KDV Tutarı:', '₺${vat.toStringAsFixed(2).replaceAll('.', ',')} (%20)'),
+                  const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'TOPLAM TUTAR:',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.darkNavy,
+                        ),
+                      ),
+                      Text(
+                        '₺${amount.toStringAsFixed(2).replaceAll('.', ',')}',
+                        style: AppTextStyles.headlineSmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryTeal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Açıklama / Not',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: noteController,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryTeal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final nav = Navigator.of(ctx);
+                      final authState = context.read<AuthBloc>().state;
+                      final employeeId = authState.user?.uid ?? 'user_employee_ahmet';
+                      final employeeName = authState.user?.name ?? 'Ahmet Yılmaz';
+                      final companyId = authState.user?.companyId ?? 'comp_techsolutions_01';
+
+                      final expense = ExpenseModel(
+                        expenseId: 'exp_${DateTime.now().millisecondsSinceEpoch}',
+                        employeeId: employeeId,
+                        employeeName: employeeName,
+                        merchantTitle: title,
+                        category: category,
+                        companyId: companyId,
+                        amount: (amount * 100).toInt(),
+                        vatAmount: (vat * 100).toInt(),
+                        receiptImageUrl: receiptImage ?? 'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
+                        status: 'pending',
+                        date: DateTime.now(),
+                        accountingCode: '770.01',
+                      );
+
+                      await LocalDemoDataService.instance.createExpense(expense);
+
+                      if (!mounted) return;
+                      nav.pop();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.primaryTeal,
+                          content: Text(
+                            '$title (₺${amount.toStringAsFixed(2).replaceAll('.', ',')}) masrafı başarıyla onaya iletildi!',
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.check_circle_rounded, size: 18),
+                    label: const Text(
+                      'Masrafı Onaya Gönder',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showGalleryPickerSheet(BuildContext context) {
+    final sampleReceipts = [
+      {
+        'title': 'BiTaksi Fişi (Levent-Havalimanı)',
+        'amount': 650.00,
+        'vat': 108.33,
+        'category': 'Ulaşım / Taksi',
+        'dateStr': '12.11.2026 • 09:15',
+        'icon': Icons.local_taxi_rounded,
+        'iconColor': const Color(0xFFF59E0B),
+      },
+      {
+        'title': 'Nusr-Et / Midpoint İş Yemeği',
+        'amount': 2850.00,
+        'vat': 285.00,
+        'category': 'Yemek & Temsil',
+        'dateStr': '10.11.2026 • 20:30',
+        'icon': Icons.restaurant_rounded,
+        'iconColor': const Color(0xFFEF4444),
+      },
+      {
+        'title': 'D&R Ofis Kırtasiye & Sarf',
+        'amount': 480.00,
+        'vat': 80.00,
+        'category': 'Ofis & Sarf',
+        'dateStr': '09.11.2026 • 11:20',
+        'icon': Icons.menu_book_rounded,
+        'iconColor': const Color(0xFF3B82F6),
+      },
+      {
+        'title': 'Petrol Ofisi Mazot Fişi',
+        'amount': 1420.50,
+        'vat': 236.75,
+        'category': 'Akaryakıt & Ulaşım',
+        'dateStr': '11.11.2026 • 14:32',
+        'icon': Icons.local_gas_station_rounded,
+        'iconColor': const Color(0xFF10B981),
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  Icons.photo_library_rounded,
+                  color: AppColors.darkNavy,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Galeriden Fiş / Fatura Seçin',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkNavy,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Cihazınızdaki fotoğraflardan bir fiş seçin, AI otomatik ayrıştırsın.',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: const Color(0xFF64748B),
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...sampleReceipts.map((rec) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showReceiptInspectAndSaveSheet(
+                        title: rec['title'] as String,
+                        amount: rec['amount'] as double,
+                        vat: rec['vat'] as double,
+                        category: rec['category'] as String,
+                        dateStr: rec['dateStr'] as String,
+                        confidence: 0.98,
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              rec['icon'] as IconData,
+                              color: rec['iconColor'] as Color,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  rec['title'] as String,
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.darkNavy,
+                                  ),
+                                ),
+                                Text(
+                                  '${rec['category']} • ${rec['dateStr']}',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: const Color(0xFF64748B),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '₺${(rec['amount'] as double).toStringAsFixed(2).replaceAll('.', ',')}',
+                            style: AppTextStyles.labelMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.darkNavy,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showManualExpenseEntrySheet(BuildContext context) {
+    final titleController = TextEditingController(text: 'Starbucks Coffee');
+    final amountController = TextEditingController(text: '245.00');
+    final descController = TextEditingController(text: 'Müşteri toplantısı kahve harcaması');
+    String selectedCat = 'Yemek & Temsil';
+    int selectedVatRate = 20;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.edit_note_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Manuel Masraf Girişi',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkNavy,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tedarikçi / İşyeri Adı',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  hintText: 'Örn: Petrol Ofisi, Migros',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Toplam Tutar (₺)',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: amountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            hintText: '0,00',
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'KDV',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: const Color(0xFF64748B),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<int>(
+                          initialValue: selectedVatRate,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 1, child: Text('%1')),
+                            DropdownMenuItem(value: 10, child: Text('%10')),
+                            DropdownMenuItem(value: 20, child: Text('%20')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setModalState(() => selectedVatRate = val);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Kategori',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: selectedCat,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Yemek & Temsil', child: Text('Yemek & Temsil')),
+                  DropdownMenuItem(value: 'Ulaşım / Taksi', child: Text('Ulaşım / Taksi')),
+                  DropdownMenuItem(value: 'Akaryakıt & Ulaşım', child: Text('Akaryakıt & Ulaşım')),
+                  DropdownMenuItem(value: 'Ofis & Sarf', child: Text('Ofis & Sarf')),
+                  DropdownMenuItem(value: 'Konaklama & Seyahat', child: Text('Konaklama & Seyahat')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setModalState(() => selectedCat = val);
+                },
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Açıklama',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: descController,
+                decoration: InputDecoration(
+                  hintText: 'Harcama gerekçesi...',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkNavy,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final title = titleController.text.trim();
+                    final parsed = double.tryParse(amountController.text.replaceAll(',', '.'));
+                    if (title.isEmpty || parsed == null || parsed <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Lütfen geçerli bir işyeri ve tutar girin.'),
+                          backgroundColor: AppColors.expenseRed,
+                        ),
+                      );
+                      return;
+                    }
+
+                    final vat = parsed * (selectedVatRate / 100.0);
+                    final messenger = ScaffoldMessenger.of(context);
+                    final nav = Navigator.of(ctx);
+                    final authState = context.read<AuthBloc>().state;
+                    final employeeId = authState.user?.uid ?? 'user_employee_ahmet';
+                    final employeeName = authState.user?.name ?? 'Ahmet Yılmaz';
+                    final companyId = authState.user?.companyId ?? 'comp_techsolutions_01';
+
+                    final expense = ExpenseModel(
+                      expenseId: 'exp_${DateTime.now().millisecondsSinceEpoch}',
+                      employeeId: employeeId,
+                      employeeName: employeeName,
+                      merchantTitle: title,
+                      category: selectedCat,
+                      companyId: companyId,
+                      amount: (parsed * 100).toInt(),
+                      vatAmount: (vat * 100).toInt(),
+                      receiptImageUrl: 'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
+                      status: 'pending',
+                      date: DateTime.now(),
+                      accountingCode: '770.01',
+                    );
+
+                    await LocalDemoDataService.instance.createExpense(expense);
+
+                    if (!mounted) return;
+                    nav.pop();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.primaryTeal,
+                        content: Text(
+                          '$title (₺${parsed.toStringAsFixed(2).replaceAll('.', ',')}) masrafı kaydedildi ve onaya iletildi!',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.check_circle_rounded, size: 18),
+                  label: const Text('Masrafı Kaydet & Onaya Gönder', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -466,41 +1175,42 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Column(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0).withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.photo_library_outlined,
-                        color: AppColors.darkNavy,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Galeriden Seç',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
                 GestureDetector(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        backgroundColor: AppColors.primaryTeal,
-                        content: Text(
-                          'Petrol Ofisi A.Ş. (₺1.420,50) fişi AI-OCR ile tarandı ve muhasebeleştirildi!',
+                  onTap: () => _showGalleryPickerSheet(context),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0).withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.photo_library_outlined,
+                          color: AppColors.darkNavy,
                         ),
                       ),
-                    );
-                  },
+                      const SizedBox(height: 6),
+                      Text(
+                        'Galeriden Seç',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: const Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => _showReceiptInspectAndSaveSheet(
+                    title: 'Petrol Ofisi A.Ş.',
+                    amount: 1420.50,
+                    vat: 236.75,
+                    category: 'Akaryakıt & Ulaşım',
+                    dateStr: '11.11.2026 • 14:32',
+                    confidence: 0.99,
+                  ),
                   child: Container(
                     width: 74,
                     height: 74,
@@ -527,29 +1237,32 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                     ),
                   ),
                 ),
-                Column(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0).withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(14),
+                GestureDetector(
+                  onTap: () => _showManualExpenseEntrySheet(context),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0).withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.edit_note_rounded,
+                          color: AppColors.darkNavy,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.edit_note_rounded,
-                        color: AppColors.darkNavy,
+                      const SizedBox(height: 6),
+                      Text(
+                        'Manuel Giriş',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: const Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Manuel Giriş',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -31,7 +31,7 @@ void main() {
 
       final compWallet = service.getWallet('wallet_comp_paypulse_tech');
       expect(compWallet, isNotNull);
-      expect(compWallet?.balanceTl, 5000000); // ₺50.000,00 Şirket Kasası
+      expect(compWallet?.balanceTl, 24580000); // ₺245.800,00 Şirket Kasası
     });
 
     test('2. FAST Para Transferi ve Bakiye Güncellemesi', () async {

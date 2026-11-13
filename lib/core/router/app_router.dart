@@ -187,10 +187,8 @@ class AppRouter {
       return AppRoutes.home;
     }
 
-    // 4. KALKAN: Sadece 'admin' rolüne açık olan kritik finansal rotalar:
-    final isAdminOnlyRoute =
-        location == AppRoutes.businessReports ||
-        location == AppRoutes.businessBatchApproval;
+    // 4. KALKAN: Sadece 'admin' rolüne açık olan toplu masraf onay rotası:
+    final isAdminOnlyRoute = location == AppRoutes.businessBatchApproval;
 
     if (isAdminOnlyRoute && !authState.canApproveExpenses) {
       return AppRoutes.businessOverview;
