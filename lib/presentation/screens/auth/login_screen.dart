@@ -178,51 +178,54 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('PayPulse', style: AppTextStyles.headlineMedium),
-                        Text(
-                          'Yeni Nesil Dijital Cüzdan & POS',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (AppMode.isDemoMode)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('PayPulse', style: AppTextStyles.headlineMedium),
+                          Text(
+                            'Yeni Nesil Dijital Cüzdan & POS',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: colorScheme.onSurfaceVariant,
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE0F2FE),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: const Color(0xFFBAE6FD),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (AppMode.isDemoMode)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE0F2FE),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFBAE6FD),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 13,
+                                    color: AppColors.primaryTeal,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Demo Modu (macOS)',
+                                    style: AppTextStyles.labelSmall.copyWith(
+                                      color: AppColors.primaryTeal,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.bolt_rounded,
-                                  size: 13,
-                                  color: AppColors.primaryTeal,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Demo Modu (macOS)',
-                                  style: AppTextStyles.labelSmall.copyWith(
-                                    color: AppColors.primaryTeal,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -438,40 +441,52 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: AppColors.primaryTeal,
                       size: 20,
                     ),
-                    label: Text(
-                      _isB2BSelected
-                          ? 'Hızlı Demo: Yönetici Olarak Gir (Admin)'
-                          : 'Hızlı Demo: Deniz Aksoy Olarak Gir (B2C)',
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: AppColors.darkNavy,
-                        fontWeight: FontWeight.w600,
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _isB2BSelected
+                            ? 'Hızlı Demo: Yönetici Olarak Gir (Admin)'
+                            : 'Hızlı Demo: Deniz Aksoy Olarak Gir (B2C)',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: AppColors.darkNavy,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // 7. Kayıt Ekranına Yönlendirme
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Henüz hesabınız yok mu?',
-                      style: AppTextStyles.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        context.push(AppRoutes.register);
-                      },
-                      child: Text(
-                        'Hemen Kayıt Olun',
-                        style: AppTextStyles.labelLarge.copyWith(
-                          color: AppColors.primaryGreen,
-                          fontWeight: FontWeight.w700,
+                // 7. Kayıt Ekranına Yönlendirme (Taşmayı önleyen Wrap yerleşimi)
+                Center(
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'Henüz hesabınız yok mu?',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () {
+                          context.push(AppRoutes.register);
+                        },
+                        child: Text(
+                          'Hemen Kayıt Olun',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: AppColors.primaryGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
