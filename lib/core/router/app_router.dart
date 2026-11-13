@@ -12,13 +12,18 @@ import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/b2b_operations/b2b_expense_approval_center_screen.dart';
 import '../../presentation/screens/b2b_operations/bulk_expense_erp_receipt_screen.dart';
 import '../../presentation/screens/b2b_operations/virtual_pos_terminal_screen.dart';
+import '../../presentation/screens/home_wallet_and_safe/home.dart';
 import '../../presentation/screens/home_wallet_and_safe/home_screen.dart';
+import '../../presentation/screens/profile_and_cards/cards_management_screen.dart';
 import '../../presentation/screens/profile_and_cards/profile_settings_screen.dart';
 import '../../presentation/screens/splash_and_onboarding/splash_screen.dart';
 import '../../presentation/screens/qr_and_ocr/e_invoice_gib_list_screen.dart';
 import '../../presentation/screens/qr_and_ocr/ocr_camera_scanner_screen.dart';
+import '../../presentation/screens/qr_and_ocr/ocr_data_verification_screen.dart';
 import '../../presentation/screens/qr_and_ocr/qr_payment_center_screen.dart';
+import '../../presentation/screens/transfer/transfer_amount_screen.dart';
 import '../../presentation/screens/transfer/transfer_receipt_screen.dart';
+import '../../presentation/screens/transfer/transfer_recipient_screen.dart';
 import '../../presentation/screens/transfer/transfer_summary_screen.dart';
 import '../../presentation/shell_navigation/main_shell_wrapper_screen.dart';
 import 'app_routes.dart';
@@ -60,6 +65,10 @@ class AppRouter {
           path: AppRoutes.register,
           builder: (context, state) => const RegisterScreen(),
         ),
+        GoRoute(
+          path: AppRoutes.developerConsole,
+          builder: (context, state) => const HomeAndWalletEkrani(),
+        ),
         ShellRoute(
           builder: (context, state, child) {
             return MainShellWrapperScreen(child: child);
@@ -72,8 +81,33 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: 'transfer',
-                  builder: (context, state) => const TransferSummaryScreen(),
+                  builder: (context, state) {
+                    final extra = state.extra;
+                    if (extra is Map<String, dynamic>) {
+                      return TransferSummaryScreen(
+                        recipientIban:
+                            extra['recipientIban'] as String? ??
+                            'TR34 0006 2000 0001 2345 6789 01',
+                        recipientName:
+                            extra['recipientName'] as String? ?? 'Zeynep Kaya',
+                        amountInKurus: extra['amountInKurus'] as int? ?? 150000,
+                        description:
+                            extra['description'] as String? ??
+                            'Hafta sonu kahvaltı payı 🥐',
+                      );
+                    }
+                    return const TransferSummaryScreen();
+                  },
                   routes: [
+                    GoRoute(
+                      path: 'recipients',
+                      builder: (context, state) =>
+                          const TransferRecipientScreen(),
+                    ),
+                    GoRoute(
+                      path: 'amount',
+                      builder: (context, state) => const TransferAmountScreen(),
+                    ),
                     GoRoute(
                       path: 'receipt/:txId',
                       builder: (context, state) {
@@ -102,6 +136,12 @@ class AppRouter {
             GoRoute(
               path: AppRoutes.profile,
               builder: (context, state) => const ProfileSettingsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'cards',
+                  builder: (context, state) => const CardsManagementScreen(),
+                ),
+              ],
             ),
 
             // ================= İŞLETME PANELİ (B2B) SEKMELERİ =================
@@ -112,6 +152,11 @@ class AppRouter {
                 GoRoute(
                   path: 'ocr-scan',
                   builder: (context, state) => const OcrCameraScannerScreen(),
+                ),
+                GoRoute(
+                  path: 'ocr-verify',
+                  builder: (context, state) =>
+                      const OcrDataVerificationScreen(),
                 ),
               ],
             ),

@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/bloc/auth_event.dart';
-import 'cards_management_screen.dart';
 
 /// Profil ve Ayarlar Ekranı (Tüm Butonlar, Hesap/Kart Geçişi ve Koyu Tema Aktif)
 class ProfileSettingsScreen extends StatefulWidget {
@@ -560,13 +559,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 subtitle: 'Hesaplar ve Kartlar Arasında Geçiş Yap',
                 trailingBadge: 'Geçiş Yap',
                 badgeIsSuccess: true,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CardsManagementScreen(),
-                    ),
-                  );
-                },
+                onTap: () => context.push(AppRoutes.cards),
                 isDark: isDark,
               ),
               _buildSettingTile(

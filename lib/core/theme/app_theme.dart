@@ -105,6 +105,15 @@ class AppTheme {
           );
         }),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+      ),
     );
   }
 
@@ -198,6 +207,15 @@ class AppTheme {
                 : const Color(0xFF94A3B8),
           );
         }),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppDarkColors.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppDarkColors.outlineVariant),
+        ),
       ),
     );
   }

@@ -17,7 +17,6 @@ import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/transaction_list_tile_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/bloc/auth_event.dart';
-import 'home.dart';
 
 /// B2C Ana Cüzdan Ekranı
 class HomeScreen extends StatefulWidget {
@@ -522,13 +521,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 6),
                         IconButton(
                           tooltip: 'Firebase Test Konsolu',
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const HomeAndWalletEkrani(),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              context.push(AppRoutes.developerConsole),
                           icon: const Icon(
                             Icons.developer_mode_rounded,
                             size: 20,
