@@ -579,11 +579,658 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 /// Görsel 9: B2B İşletme Paneli • Genel Bakış Ekranı (Nova Tasarım Ltd. - ₺245.800,00)
-class BusinessSafeOverviewScreen extends StatelessWidget {
+class BusinessSafeOverviewScreen extends StatefulWidget {
   const BusinessSafeOverviewScreen({super.key});
 
   @override
+  State<BusinessSafeOverviewScreen> createState() =>
+      _BusinessSafeOverviewScreenState();
+}
+
+class _BusinessSafeOverviewScreenState
+    extends State<BusinessSafeOverviewScreen> {
+  double _companyBalance = 245800.00;
+  int _periodIndex = 1; // 0: Günlük, 1: Haftalık, 2: Aylık
+  int _selectedBarIndex = 2; // 0: 1. Hf, 1: 2. Hf, 2: 3. Hf, 3: 4. Hf
+  bool _isAhmetExpenseApproved = false;
+
+  void _showTransferToAccountSheet(BuildContext context) {
+    double transferAmount = 15000.00;
+    const selectedIban = 'TR89 0006 2000 0001 9845 2819 01';
+    final amountController = TextEditingController(text: '15000');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Hesaba Aktar (Para Çıkışı)',
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkNavy,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Şirket kullanılabilir bakiyesinden ticari banka hesabınıza anında FAST/EFT yapın.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Aktarılacak Tutar (₺)',
+                style: AppTextStyles.labelMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  prefixText: '₺ ',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                ),
+                onChanged: (val) {
+                  final parsed = double.tryParse(val) ?? 0;
+                  setModalState(() => transferAmount = parsed);
+                },
+              ),
+              const SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [5000, 10000, 25000, 50000].map((amt) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        label: Text('₺$amt'),
+                        onPressed: () {
+                          setModalState(() {
+                            transferAmount = amt.toDouble();
+                            amountController.text = amt.toString();
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Hedef Ticari Banka Hesabı',
+                style: AppTextStyles.labelMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.account_balance_rounded,
+                      color: AppColors.primaryTeal,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Garanti BBVA — Ana Ticari Hesap',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                              color: AppColors.darkNavy,
+                            ),
+                          ),
+                          Text(
+                            selectedIban,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkNavy,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    if (transferAmount <= 0) return;
+                    if (transferAmount > _companyBalance) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Yetersiz şirket bakiyesi!'),
+                          backgroundColor: AppColors.expenseRed,
+                        ),
+                      );
+                      return;
+                    }
+                    setState(() {
+                      _companyBalance -= transferAmount;
+                    });
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.primaryGreen,
+                        content: Text(
+                          '₺${transferAmount.toStringAsFixed(2)} Garanti BBVA hesabına başarıyla aktarıldı!',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: Text(
+                    'Transferi Onayla (₺${transferAmount.toStringAsFixed(2)})',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showTopUpBalanceSheet(BuildContext context) {
+    double topUpAmount = 50000.00;
+    String selectedMethod = 'Banka Havalesi / FAST';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Şirket Kasasına Bakiye Yükle',
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkNavy,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Şirket hesabına anında bakiye yükleyerek personel harcamalarını finanse edin.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Yüklenecek Tutar Seçin',
+                style: AppTextStyles.labelMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [10000, 25000, 50000, 100000].map((amt) {
+                  final isSelected = topUpAmount == amt.toDouble();
+                  return ChoiceChip(
+                    label: Text('₺$amt'),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFF5EEAD4),
+                    onSelected: (val) {
+                      setModalState(() => topUpAmount = amt.toDouble());
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Ödeme Yöntemi',
+                style: AppTextStyles.labelMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: selectedMethod.startsWith('Banka')
+                        ? AppColors.primaryTeal
+                        : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                tileColor: selectedMethod.startsWith('Banka')
+                    ? const Color(0xFFE0F2FE).withOpacity(0.4)
+                    : const Color(0xFFF8FAFC),
+                leading: const Icon(
+                  Icons.account_balance,
+                  color: AppColors.primaryTeal,
+                ),
+                title: const Text('Banka Havalesi / FAST (Anında Geçiş)'),
+                subtitle: const Text('Nova Tasarım Ticari IBAN'),
+                trailing: selectedMethod.startsWith('Banka')
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: AppColors.primaryTeal,
+                      )
+                    : null,
+                onTap: () => setModalState(
+                  () => selectedMethod = 'Banka Havalesi / FAST',
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: selectedMethod.startsWith('Kurumsal')
+                        ? AppColors.primaryTeal
+                        : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                tileColor: selectedMethod.startsWith('Kurumsal')
+                    ? const Color(0xFFE0F2FE).withOpacity(0.4)
+                    : const Color(0xFFF8FAFC),
+                leading: const Icon(
+                  Icons.credit_card,
+                  color: AppColors.primaryTeal,
+                ),
+                title: const Text('Kurumsal Şirket Kredi Kartı'),
+                subtitle: const Text('Mastercard •••• 4120'),
+                trailing: selectedMethod.startsWith('Kurumsal')
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: AppColors.primaryTeal,
+                      )
+                    : null,
+                onTap: () => setModalState(
+                  () => selectedMethod = 'Kurumsal Şirket Kredi Kartı',
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F766E),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _companyBalance += topUpAmount;
+                    });
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.primaryGreen,
+                        content: Text(
+                          '₺${topUpAmount.toStringAsFixed(2)} başarıyla şirket kasasına yüklendi!',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                  label: Text(
+                    'Bakiye Yükle (₺${topUpAmount.toStringAsFixed(2)})',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showReceiptInspectDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        actionsPadding: const EdgeInsets.all(16),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.primaryTeal,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Fiş & Masraf İnceleme',
+                      style: AppTextStyles.labelLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkNavy,
+                      ),
+                    ),
+                    Text(
+                      'BiTaksi E-Fiş #BT-889104',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: const Color(0xFF64748B),
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () => Navigator.pop(ctx),
+              icon: const Icon(Icons.close_rounded, size: 20),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Çalışan:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          'Ahmet Yılmaz (Frontend Lead)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.darkNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Harcama Kalemi:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          'Taksi / Şehir İçi Ulaşım',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.darkNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tutar / KDV:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          '₺450,00 (KDV %20: ₺75,00)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryTeal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ödeme Kartı:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          'Nova Business Kart •••• 4120',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.darkNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1FAE5).withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.verified_rounded,
+                      size: 16,
+                      color: Color(0xFF065F46),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'AI-OCR %98 Doğrulandı • Şirket politikasına uygun',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Açıklama: "Müşteri Toplantısı (Akbank Genel Müdürlük / Levent)"',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontStyle: FontStyle.italic,
+                  color: Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Kapat'),
+          ),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.expenseRed,
+              side: const BorderSide(color: AppColors.expenseRed),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Masraf fişi reddedildi.'),
+                  backgroundColor: AppColors.expenseRed,
+                ),
+              );
+            },
+            child: const Text('Reddet'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F766E),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              setState(() => _isAhmetExpenseApproved = true);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ahmet Yılmaz fişi (₺450,00) onaylandı!'),
+                  backgroundColor: AppColors.primaryGreen,
+                ),
+              );
+            },
+            child: const Text('✓ Onayla'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleSeedBas() async {
+    try {
+      await FirestoreSeeder().seedAll();
+      setState(() {
+        _companyBalance = 245800.00;
+        _isAhmetExpenseApproved = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.primaryGreen,
+            content: Text(
+              'Kasım 2026 Seed verileri Cloud Firestore & Yerel Sisteme başarıyla basıldı!',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Seed hatası: $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final balanceFormatted =
+        '₺${_companyBalance.toStringAsFixed(2).replaceAll('.', ',')}';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: const RoleSwitchAppBar(isBusinessMode: true),
@@ -665,7 +1312,7 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // 1. Kullanılabilir İşletme Bakiyesi Hero Kartı (₺245.800,00 TRY)
+            // 1. Kullanılabilir İşletme Bakiyesi Hero Kartı
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -737,7 +1384,7 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '₺245.800,00',
+                        balanceFormatted,
                         style: AppTextStyles.numericBalance.copyWith(
                           color: Colors.white,
                           fontSize: 32,
@@ -786,20 +1433,34 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '📋 Kopyala',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: Colors.white,
-                              fontSize: 10,
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(
+                              const ClipboardData(
+                                text: 'TR890006200000019845281901',
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Ticari IBAN kopyalandı.'),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '📋 Kopyala',
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
                             ),
                           ),
                         ),
@@ -819,7 +1480,8 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () =>
+                              _showTransferToAccountSheet(context),
                           icon: const Icon(Icons.output_rounded, size: 16),
                           label: const Text(
                             'Hesaba Aktar',
@@ -844,7 +1506,7 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () => _showTopUpBalanceSheet(context),
                           icon: const Icon(Icons.add_circle_outline, size: 16),
                           label: const Text(
                             'Bakiye Yükle',
@@ -1025,7 +1687,11 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Kasım 2026 Dönemi',
+                            _periodIndex == 0
+                                ? 'Canlı Günlük Akış'
+                                : (_periodIndex == 1
+                                    ? 'Kasım 2026 Haftalık'
+                                    : '2026 Yıllık Trend'),
                             style: AppTextStyles.bodySmall.copyWith(
                               color: const Color(0xFF64748B),
                               fontSize: 11,
@@ -1041,9 +1707,30 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            _buildSmallToggle('Günlük', false),
-                            _buildSmallToggle('Haftalık', false),
-                            _buildSmallToggle('Aylık', true),
+                            _buildSmallToggle(
+                              'Günlük',
+                              _periodIndex == 0,
+                              () => setState(() {
+                                _periodIndex = 0;
+                                _selectedBarIndex = 2;
+                              }),
+                            ),
+                            _buildSmallToggle(
+                              'Haftalık',
+                              _periodIndex == 1,
+                              () => setState(() {
+                                _periodIndex = 1;
+                                _selectedBarIndex = 2;
+                              }),
+                            ),
+                            _buildSmallToggle(
+                              'Aylık',
+                              _periodIndex == 2,
+                              () => setState(() {
+                                _periodIndex = 2;
+                                _selectedBarIndex = 2;
+                              }),
+                            ),
                           ],
                         ),
                       ),
@@ -1052,18 +1739,7 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                   const SizedBox(height: 18),
                   SizedBox(
                     height: 130,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _buildCiroBar('1. Hf', 0.65, false),
-                        const SizedBox(width: 12),
-                        _buildCiroBar('2. Hf', 0.72, false),
-                        const SizedBox(width: 12),
-                        _buildCiroBar('3. Hf', 0.85, true, topTag: '₺340k'),
-                        const SizedBox(width: 12),
-                        _buildCiroBar('4. Hf', 0.75, false),
-                      ],
-                    ),
+                    child: _buildChartBars(),
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -1077,7 +1753,7 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '↗ En yüksek tahsilat: 3. Hafta (Kurumsal Proje Ödemeleri)',
+                            _getChartSummaryText(),
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.darkNavy,
                               fontSize: 11,
@@ -1172,17 +1848,27 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                     icon: Icons.link_rounded,
                   ),
                   const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                  const TransactionListTileWidget(
+                  TransactionListTileWidget(
                     title: 'Ahmet Yılmaz',
-                    badgeText: 'Onay Bekliyor',
-                    badgeBgColor: Color(0xFFE0F2FE),
-                    badgeTextColor: AppColors.darkNavy,
+                    badgeText: _isAhmetExpenseApproved
+                        ? 'Onaylandı'
+                        : 'Onay Bekliyor',
+                    badgeBgColor: _isAhmetExpenseApproved
+                        ? const Color(0xFFD1FAE5)
+                        : const Color(0xFFE0F2FE),
+                    badgeTextColor: _isAhmetExpenseApproved
+                        ? const Color(0xFF065F46)
+                        : AppColors.darkNavy,
                     subtitle: 'Masraf: Taksi / Ulaşım • 08:40',
                     amountText: '₺450,00',
                     isIncome: false,
-                    statusOrNoteText: 'Fiş No: 881',
+                    statusOrNoteText: _isAhmetExpenseApproved
+                        ? 'Onaylandı (✓)'
+                        : 'Fiş No: 881',
                     icon: Icons.receipt_long_outlined,
-                    iconBgColor: AppColors.darkNavy,
+                    iconBgColor: _isAhmetExpenseApproved
+                        ? const Color(0xFF0F766E)
+                        : AppColors.darkNavy,
                     iconColor: Colors.white,
                   ),
                   Padding(
@@ -1193,10 +1879,12 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(0, 36),
-                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              side: const BorderSide(
+                                color: Color(0xFFE2E8F0),
+                              ),
                             ),
                             onPressed: () =>
-                                context.go(AppRoutes.businessExpenses),
+                                _showReceiptInspectDialog(context),
                             child: const Text(
                               '👁️ Fişi İncele',
                               style: TextStyle(fontSize: 11.5),
@@ -1207,15 +1895,33 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0F766E),
+                              backgroundColor: _isAhmetExpenseApproved
+                                  ? const Color(0xFF64748B)
+                                  : const Color(0xFF0F766E),
                               foregroundColor: Colors.white,
                               minimumSize: const Size(0, 36),
                             ),
-                            onPressed: () =>
-                                context.go(AppRoutes.businessExpenses),
-                            child: const Text(
-                              '✓ Onayla',
-                              style: TextStyle(fontSize: 11.5),
+                            onPressed: _isAhmetExpenseApproved
+                                ? null
+                                : () {
+                                    setState(
+                                      () => _isAhmetExpenseApproved = true,
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        backgroundColor:
+                                            AppColors.primaryGreen,
+                                        content: Text(
+                                          'Ahmet Yılmaz masrafı (₺450,00) onaylandı!',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                            child: Text(
+                              _isAhmetExpenseApproved
+                                  ? '✓ Onaylandı'
+                                  : '✓ Onayla',
+                              style: const TextStyle(fontSize: 11.5),
                             ),
                           ),
                         ),
@@ -1239,11 +1945,171 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // 6. Firestore & Yerel Seed Bas Paneli
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.cloud_upload_outlined,
+                    color: AppColors.primaryTeal,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Kasım 2026 Verilerini Yeniden Tohumla',
+                          style: AppTextStyles.labelMedium.copyWith(
+                            color: AppColors.darkNavy,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'İşletme kasasını, masrafları ve işlemleri başlangıç test durumuna döndür.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: const Color(0xFF64748B),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.darkNavy,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    onPressed: _handleSeedBas,
+                    child: const Text(
+                      'Seed Bas',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildChartBars() {
+    if (_periodIndex == 0) {
+      // Günlük
+      final days = [
+        {'label': 'Pzt', 'factor': 0.50, 'tag': '₺18k'},
+        {'label': 'Sal', 'factor': 0.65, 'tag': '₺24k'},
+        {'label': 'Çar', 'factor': 0.85, 'tag': '₺38k'},
+        {'label': 'Per', 'factor': 0.70, 'tag': '₺26k'},
+        {'label': 'Cum', 'factor': 0.90, 'tag': '₺45k'},
+      ];
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (int i = 0; i < days.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            _buildCiroBar(
+              days[i]['label'] as String,
+              days[i]['factor'] as double,
+              _selectedBarIndex == i,
+              () => setState(() => _selectedBarIndex = i),
+              topTag: _selectedBarIndex == i
+                  ? (days[i]['tag'] as String)
+                  : null,
+            ),
+          ],
+        ],
+      );
+    } else if (_periodIndex == 1) {
+      // Haftalık
+      final weeks = [
+        {'label': '1. Hf', 'factor': 0.65, 'tag': '₺260k'},
+        {'label': '2. Hf', 'factor': 0.72, 'tag': '₺288k'},
+        {'label': '3. Hf', 'factor': 0.88, 'tag': '₺340k'},
+        {'label': '4. Hf', 'factor': 0.75, 'tag': '₺300k'},
+      ];
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (int i = 0; i < weeks.length; i++) ...[
+            if (i > 0) const SizedBox(width: 12),
+            _buildCiroBar(
+              weeks[i]['label'] as String,
+              weeks[i]['factor'] as double,
+              _selectedBarIndex == i,
+              () => setState(() => _selectedBarIndex = i),
+              topTag: _selectedBarIndex == i
+                  ? (weeks[i]['tag'] as String)
+                  : null,
+            ),
+          ],
+        ],
+      );
+    } else {
+      // Aylık
+      final months = [
+        {'label': 'Eyl', 'factor': 0.70, 'tag': '₺980k'},
+        {'label': 'Eki', 'factor': 0.85, 'tag': '₺1.12M'},
+        {'label': 'Kas', 'factor': 0.95, 'tag': '₺1.24M'},
+        {'label': 'Ara', 'factor': 0.60, 'tag': '₺850k'},
+      ];
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (int i = 0; i < months.length; i++) ...[
+            if (i > 0) const SizedBox(width: 12),
+            _buildCiroBar(
+              months[i]['label'] as String,
+              months[i]['factor'] as double,
+              _selectedBarIndex == i,
+              () => setState(() => _selectedBarIndex = i),
+              topTag: _selectedBarIndex == i
+                  ? (months[i]['tag'] as String)
+                  : null,
+            ),
+          ],
+        ],
+      );
+    }
+  }
+
+  String _getChartSummaryText() {
+    if (_periodIndex == 0) {
+      final dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+      final idx = _selectedBarIndex.clamp(0, dayNames.length - 1);
+      return '↗ Seçili Gün: ${dayNames[idx]} (Haftalık trend yükselişte)';
+    } else if (_periodIndex == 1) {
+      final weekNotes = [
+        '₺260.000 — E-Ticaret & POS Satışları',
+        '₺288.000 — B2B Müşteri Ödemeleri',
+        '₺340.000 — Kurumsal Proje Ödemeleri (Zirve)',
+        '₺300.000 — Rutin B2B Tahsilatları',
+      ];
+      final idx = _selectedBarIndex.clamp(0, weekNotes.length - 1);
+      return '↗ ${idx + 1}. Hafta: ${weekNotes[idx]}';
+    } else {
+      final monthNotes = [
+        'Eylül: ₺980.000 Net Hasılat',
+        'Ekim: ₺1.120.000 Kurumsal Büyüme',
+        'Kasım: ₺1.240.500 (Rekor Aylık Ciro)',
+        'Aralık Hedef: ₺1.500.000',
+      ];
+      final idx = _selectedBarIndex.clamp(0, monthNotes.length - 1);
+      return '↗ ${monthNotes[idx]}';
+    }
   }
 
   Widget _buildMetricCard({
@@ -1411,18 +2277,22 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSmallToggle(String text, bool active) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: active ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: AppTextStyles.labelSmall.copyWith(
-          color: active ? AppColors.darkNavy : const Color(0xFF64748B),
-          fontSize: 9.5,
+  Widget _buildSmallToggle(String text, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          text,
+          style: AppTextStyles.labelSmall.copyWith(
+            color: active ? AppColors.darkNavy : const Color(0xFF64748B),
+            fontSize: 9.5,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -1431,53 +2301,57 @@ class BusinessSafeOverviewScreen extends StatelessWidget {
   Widget _buildCiroBar(
     String label,
     double factor,
-    bool isHighlighted, {
+    bool isHighlighted,
+    VoidCallback onTap, {
     String? topTag,
   }) {
     return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (topTag != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                topTag,
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: const Color(0xFF0F766E),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 10,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (topTag != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  topTag,
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: const Color(0xFF0F766E),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 10,
+                  ),
                 ),
               ),
-            ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: FractionallySizedBox(
-                heightFactor: factor,
-                widthFactor: 1.0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isHighlighted
-                        ? const Color(0xFF0F766E)
-                        : const Color(0xFFDBEAFE),
-                    borderRadius: BorderRadius.circular(10),
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: factor,
+                  widthFactor: 1.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isHighlighted
+                          ? const Color(0xFF0F766E)
+                          : const Color(0xFFDBEAFE),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: AppTextStyles.labelSmall.copyWith(
-              color: isHighlighted
-                  ? AppColors.darkNavy
-                  : const Color(0xFF64748B),
-              fontWeight: isHighlighted ? FontWeight.w800 : FontWeight.w500,
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: AppTextStyles.labelSmall.copyWith(
+                color: isHighlighted
+                    ? AppColors.darkNavy
+                    : const Color(0xFF64748B),
+                fontWeight: isHighlighted ? FontWeight.w800 : FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

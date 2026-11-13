@@ -22,9 +22,117 @@ class B2bExpenseApprovalCenterScreen extends StatefulWidget {
 class _B2bExpenseApprovalCenterScreenState
     extends State<B2bExpenseApprovalCenterScreen> {
   int _selectedTab =
-      0; // 0: Bekleyenler 3, 1: Onaylananlar (18), 2: Reddedilenler
+      0; // 0: Bekleyenler, 1: Onaylananlar, 2: Reddedilenler
   final FirebaseFirestoreDatasource _firestoreDatasource =
       FirebaseFirestoreDatasource();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedCategoryFilter = 'Tümü';
+  String _selectedSort = 'Tarih (En Yeni)';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _showFilterDialog(BuildContext context) {
+    final categories = [
+      'Tümü',
+      'Ulaşım',
+      'Yemek & Temsil',
+      'Donanım & Ofis',
+      'Yazılım & SaaS',
+    ];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Kategori Filtresi',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _selectedCategoryFilter = 'Tümü');
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Temizle'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: categories.map((cat) {
+                final isSelected = _selectedCategoryFilter == cat;
+                return ChoiceChip(
+                  label: Text(cat),
+                  selected: isSelected,
+                  selectedColor: const Color(0xFF5EEAD4),
+                  onSelected: (val) {
+                    setState(() => _selectedCategoryFilter = cat);
+                    Navigator.pop(ctx);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSortDialog(BuildContext context) {
+    final sorts = [
+      'Tarih (En Yeni)',
+      'Tarih (En Eski)',
+      'Tutar (En Yüksek)',
+      'Tutar (En Düşük)',
+    ];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sıralama Seçeneği',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            for (final sort in sorts)
+              ListTile(
+                title: Text(sort),
+                trailing: _selectedSort == sort
+                    ? const Icon(Icons.check, color: AppColors.primaryTeal)
+                    : null,
+                onTap: () {
+                  setState(() => _selectedSort = sort);
+                  Navigator.pop(ctx);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showRejectDialog(
     BuildContext context,
@@ -202,9 +310,9 @@ class _B2bExpenseApprovalCenterScreenState
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildTabPill('Bekleyenler  3', 0),
+                  _buildTabPill('Bekleyenler', 0),
                   const SizedBox(width: 8),
-                  _buildTabPill('Onaylananlar (18)', 1),
+                  _buildTabPill('Onaylananlar', 1),
                   const SizedBox(width: 8),
                   _buildTabPill('Reddedilenler', 2),
                 ],
@@ -223,6 +331,10 @@ class _B2bExpenseApprovalCenterScreenState
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) => setState(() {
+                        _searchQuery = val.trim().toLowerCase();
+                      }),
                       decoration: InputDecoration(
                         hintText: 'Çalışan, kategori veya tutar ara...',
                         hintStyle: AppTextStyles.bodySmall.copyWith(
@@ -233,6 +345,15 @@ class _B2bExpenseApprovalCenterScreenState
                           size: 20,
                           color: Color(0xFF64748B),
                         ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
                         fillColor: Colors.transparent,
                         contentPadding: const EdgeInsets.symmetric(
                           vertical: 12,
@@ -242,18 +363,29 @@ class _B2bExpenseApprovalCenterScreenState
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Icon(
-                    Icons.tune_rounded,
-                    size: 20,
-                    color: AppColors.darkNavy,
+                GestureDetector(
+                  onTap: () => _showFilterDialog(context),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: _selectedCategoryFilter != 'Tümü'
+                          ? const Color(0xFF5EEAD4)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _selectedCategoryFilter != 'Tümü'
+                            ? const Color(0xFF0F766E)
+                            : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      size: 20,
+                      color: _selectedCategoryFilter != 'Tümü'
+                          ? const Color(0xFF0F766E)
+                          : AppColors.darkNavy,
+                    ),
                   ),
                 ),
               ],
@@ -446,22 +578,37 @@ class _B2bExpenseApprovalCenterScreenState
             ),
             const SizedBox(height: 16),
 
-            // İnceleme Bekleyen Harcamalar Başlığı
+            // İnceleme Harcamalar Başlığı & Sıralama
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'İnceleme Bekleyen Harcamalar (3)',
+                  _selectedTab == 0
+                      ? 'Bekleyen Harcamalar'
+                      : (_selectedTab == 1
+                          ? 'Onaylanan Harcamalar'
+                          : 'Reddedilen Harcamalar'),
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppColors.darkNavy,
                   ),
                 ),
-                Text(
-                  'Sırala: Tarih ⌄',
-                  style: AppTextStyles.labelSmall.copyWith(
-                    color: AppColors.primaryTeal,
-                    fontWeight: FontWeight.w700,
+                GestureDetector(
+                  onTap: () => _showSortDialog(context),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$_selectedSort ⌄',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primaryTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -513,192 +660,246 @@ class _B2bExpenseApprovalCenterScreenState
                   );
                 }
 
+                final authState = context.watch<AuthBloc>().state;
+                final canApprove = authState.canApproveExpenses;
+
                 return StreamBuilder<List<ExpenseModel>>(
-                  stream: _firestoreDatasource.watchCompanyExpenses(activeCompanyId),
+                  stream:
+                      _firestoreDatasource.watchCompanyExpenses(activeCompanyId),
                   builder: (context, snapshot) {
-                final allExpenses = snapshot.data ?? [];
-                final filteredExpenses = allExpenses.where((e) {
-                  if (_selectedTab == 0) {
-                    return e.status == 'pending' || e.status == 'ONAY_BEKLIYOR';
-                  } else if (_selectedTab == 1) {
-                    return e.status == 'approved' || e.status == 'ONAYLANDI';
-                  } else {
-                    return e.status == 'rejected' || e.status == 'REDDEDILDI';
-                  }
-                }).toList();
-
-                if (filteredExpenses.isNotEmpty) {
-                  return Column(
-                    children: [
-                      for (final exp in filteredExpenses) ...[
-                        _buildExpenseReviewCard(
-                          context: context,
-                          initials: exp.employeeName.isNotEmpty
-                              ? exp.employeeName
-                                  .split(' ')
-                                  .map((n) => n.isNotEmpty ? n[0] : '')
-                                  .take(2)
-                                  .join()
-                              : 'PR',
-                          employeeName: exp.employeeName.isNotEmpty
-                              ? exp.employeeName
-                              : 'Şirket Çalışanı',
-                          roleDept:
-                              '${exp.category} • ${exp.accountingCode}',
-                          amount:
-                              '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
-                          vatText:
-                              'KDV (₺${(exp.vatAmount / 100.0).toStringAsFixed(2).replaceAll('.', ',')})',
-                          categoryLine:
-                              '${exp.merchantTitle} • ${exp.date.day}.${exp.date.month}.${exp.date.year}',
-                          descLine:
-                              'Masraf Kaydı #${exp.expenseId.substring(0, exp.expenseId.length > 8 ? 8 : exp.expenseId.length)}',
-                          cardAndReceiptNo: exp.receiptImageUrl.isNotEmpty
-                              ? 'Belge: ${exp.receiptImageUrl}'
-                              : 'Yerel fiş belgesi eklenmiş',
-                          ocrTitle: '⚡ AI-OCR Doğrulandı',
-                          ocrSubtitle: exp.merchantTitle,
-                          ocrActionText: 'İncele 🔍',
-                          policyText: exp.status == 'approved'
-                              ? '✓ Yönetici Tarafından Onaylandı'
-                              : (exp.status == 'rejected'
-                                  ? '✕ Reddedildi (${exp.rejectReason ?? 'Gerekçeli'})'
-                                  : '● İnceleme Bekliyor'),
-                          isPolicyWarning: exp.status == 'rejected',
-                          onApprove: exp.status == 'pending' ||
-                                  exp.status == 'ONAY_BEKLIYOR'
-                              ? () => _handleApprove(
-                                    context,
-                                    exp.expenseId,
-                                    exp.employeeName,
-                                    '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
-                                  )
-                              : null,
-                          onReject: exp.status == 'pending' ||
-                                  exp.status == 'ONAY_BEKLIYOR'
-                              ? () => _showRejectDialog(
-                                    context,
-                                    exp.expenseId,
-                                    exp.employeeName,
-                                  )
-                              : null,
+                    var listToFilter = snapshot.data ?? [];
+                    if (listToFilter.isEmpty) {
+                      listToFilter = [
+                        ExpenseModel(
+                          expenseId: 'exp_001',
+                          employeeId: 'user_employee_ahmet',
+                          employeeName: 'Ahmet Yılmaz',
+                          merchantTitle: 'BiTaksi E-Fiş Entegrasyonu',
+                          category: 'Ulaşım',
+                          companyId: activeCompanyId,
+                          amount: 45000,
+                          vatAmount: 7500,
+                          receiptImageUrl:
+                              'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
+                          status: 'pending',
+                          date: DateTime.now(),
+                          accountingCode: '770.01',
                         ),
-                        const SizedBox(height: 14),
+                        ExpenseModel(
+                          expenseId: 'exp_002',
+                          employeeId: 'user_employee_elif',
+                          employeeName: 'Elif Demir',
+                          merchantTitle: 'Midpoint Levent',
+                          category: 'Yemek & Temsil',
+                          companyId: activeCompanyId,
+                          amount: 198050,
+                          vatAmount: 18005,
+                          receiptImageUrl: '',
+                          status: 'pending',
+                          date: DateTime.now().subtract(const Duration(days: 1)),
+                          accountingCode: '770.02',
+                        ),
+                        ExpenseModel(
+                          expenseId: 'exp_003',
+                          employeeId: 'user_employee_caner',
+                          employeeName: 'Caner Kılıç',
+                          merchantTitle: 'IKEA Maslak',
+                          category: 'Donanım & Ofis',
+                          companyId: activeCompanyId,
+                          amount: 146000,
+                          vatAmount: 24333,
+                          receiptImageUrl: '',
+                          status: 'approved',
+                          date: DateTime.now().subtract(const Duration(days: 2)),
+                          accountingCode: '770.03',
+                        ),
+                        ExpenseModel(
+                          expenseId: 'exp_004',
+                          employeeId: 'user_employee_ahmet',
+                          employeeName: 'Ahmet Yılmaz',
+                          merchantTitle: 'Yazılım Lisansı & Eklenti',
+                          category: 'Yazılım & SaaS',
+                          companyId: activeCompanyId,
+                          amount: 145000,
+                          vatAmount: 24167,
+                          receiptImageUrl: '',
+                          status: 'rejected',
+                          rejectReason:
+                              'Şirket ön onayı bulunmayan yazılım aboneliği.',
+                          date: DateTime.now().subtract(const Duration(days: 3)),
+                          accountingCode: '770.04',
+                        ),
+                      ];
+                    }
+
+                    final filteredExpenses = listToFilter.where((e) {
+                      // 1. Sekme / Durum Filtresi
+                      final statusMatch = (_selectedTab == 0 &&
+                              (e.status == 'pending' ||
+                                  e.status == 'ONAY_BEKLIYOR')) ||
+                          (_selectedTab == 1 &&
+                              (e.status == 'approved' ||
+                                  e.status == 'ONAYLANDI')) ||
+                          (_selectedTab == 2 &&
+                              (e.status == 'rejected' ||
+                                  e.status == 'REDDEDILDI'));
+                      if (!statusMatch) return false;
+
+                      // 2. Kategori Filtresi
+                      if (_selectedCategoryFilter != 'Tümü' &&
+                          e.category != _selectedCategoryFilter) {
+                        return false;
+                      }
+
+                      // 3. Arama Metni Filtresi
+                      if (_searchQuery.isNotEmpty) {
+                        final query = _searchQuery.toLowerCase();
+                        final nameMatch =
+                            e.employeeName.toLowerCase().contains(query);
+                        final titleMatch =
+                            e.merchantTitle.toLowerCase().contains(query);
+                        final catMatch =
+                            e.category.toLowerCase().contains(query);
+                        final codeMatch =
+                            e.accountingCode.toLowerCase().contains(query);
+                        final amtMatch =
+                            (e.amount / 100).toString().contains(query);
+                        if (!nameMatch &&
+                            !titleMatch &&
+                            !catMatch &&
+                            !codeMatch &&
+                            !amtMatch) {
+                          return false;
+                        }
+                      }
+
+                      return true;
+                    }).toList();
+
+                    // Sıralama
+                    if (_selectedSort == 'Tarih (En Yeni)') {
+                      filteredExpenses.sort((a, b) => b.date.compareTo(a.date));
+                    } else if (_selectedSort == 'Tarih (En Eski)') {
+                      filteredExpenses.sort((a, b) => a.date.compareTo(b.date));
+                    } else if (_selectedSort == 'Tutar (En Yüksek)') {
+                      filteredExpenses
+                          .sort((a, b) => b.amount.compareTo(a.amount));
+                    } else if (_selectedSort == 'Tutar (En Düşük)') {
+                      filteredExpenses
+                          .sort((a, b) => a.amount.compareTo(b.amount));
+                    }
+
+                    if (filteredExpenses.isEmpty) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 40,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 44,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Filtreye uygun masraf kaydı bulunamadı',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.darkNavy,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? '"$_searchQuery" araması için sonuç bulunamadı.'
+                                  : 'Bu sekmede veya seçili kategoride kayıt bulunmuyor.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        for (final exp in filteredExpenses) ...[
+                          _buildExpenseReviewCard(
+                            context: context,
+                            initials: exp.employeeName.isNotEmpty
+                                ? exp.employeeName
+                                    .split(' ')
+                                    .map((n) => n.isNotEmpty ? n[0] : '')
+                                    .take(2)
+                                    .join()
+                                : 'PR',
+                            employeeName: exp.employeeName.isNotEmpty
+                                ? exp.employeeName
+                                : 'Şirket Çalışanı',
+                            roleDept:
+                                '${exp.category} • ${exp.accountingCode}',
+                            amount:
+                                '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                            vatText:
+                                'KDV (₺${(exp.vatAmount / 100.0).toStringAsFixed(2).replaceAll('.', ',')})',
+                            categoryLine:
+                                '${exp.merchantTitle} • ${exp.date.day}.${exp.date.month}.${exp.date.year}',
+                            descLine:
+                                'Masraf Kaydı #${exp.expenseId.substring(0, exp.expenseId.length > 8 ? 8 : exp.expenseId.length)}',
+                            cardAndReceiptNo: exp.receiptImageUrl.isNotEmpty
+                                ? 'Belge: ${exp.receiptImageUrl}'
+                                : 'Yerel fiş belgesi eklenmiş',
+                            ocrTitle: '⚡ AI-OCR Doğrulandı',
+                            ocrSubtitle: exp.merchantTitle,
+                            ocrActionText: 'İncele 🔍',
+                            policyText: exp.status == 'approved'
+                                ? '✓ Onaylandı & Muhasebeleştirildi'
+                                : (exp.status == 'rejected'
+                                    ? '✕ Reddedildi (${exp.rejectReason ?? 'Gerekçeli'})'
+                                    : '● İnceleme Bekliyor'),
+                            isPolicyWarning: exp.status == 'rejected',
+                            onApprove: canApprove &&
+                                    (exp.status == 'pending' ||
+                                        exp.status == 'ONAY_BEKLIYOR')
+                                ? () => _handleApprove(
+                                      context,
+                                      exp.expenseId,
+                                      exp.employeeName,
+                                      '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                                    )
+                                : null,
+                            onReject: canApprove &&
+                                    (exp.status == 'pending' ||
+                                        exp.status == 'ONAY_BEKLIYOR')
+                                ? () => _showRejectDialog(
+                                      context,
+                                      exp.expenseId,
+                                      exp.employeeName,
+                                    )
+                                : null,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                       ],
-                    ],
-                  );
-                }
-
-                // Canlı Firestore kaydı henüz yoksa veya boşsa önceden tanımlı demo kartları göster
-                return Column(
-                  children: [
-                    // 1. Kart: Ahmet Yılmaz (BiTaksi ₺450,00)
-                    _buildExpenseReviewCard(
-                      context: context,
-                      initials: 'AY',
-                      employeeName: 'Ahmet Yılmaz',
-                      roleDept: 'Frontend Lead • Operasyon',
-                      amount: '₺450,00',
-                      vatText: 'KDV %20 (₺75,00)',
-                      categoryLine:
-                          '🚖 Taksi / Şehir İçi Ulaşım • Bugün, 08:40',
-                      descLine:
-                          'Müşteri Toplantısı (Akbank Genel Müdürlük / Levent)',
-                      cardAndReceiptNo:
-                          '💳 Nova Business Kart •••• 4120   Fiş No: BT-889104',
-                      ocrTitle: '⚡ AI-OCR %98 Doğrulandı',
-                      ocrSubtitle: 'BiTaksi E-Fiş Entegrasyonu',
-                      ocrActionText: 'Fişi Gör ↗',
-                      policyText:
-                          '✓ Harcama Politikasına Uygun (Günlük Ulaşım Limiti Altında)',
-                      isPolicyWarning: false,
-                      onApprove: () => _handleApprove(
-                        context,
-                        'exp_001',
-                        'Ahmet Yılmaz',
-                        '₺450,00',
-                      ),
-                      onReject: () => _showRejectDialog(
-                        context,
-                        'exp_001',
-                        'Ahmet Yılmaz',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // 2. Kart: Elif Demir (Midpoint ₺1.980,50)
-                    _buildExpenseReviewCard(
-                      context: context,
-                      initials: 'ED',
-                      employeeName: 'Elif Demir',
-                      roleDept: 'Ürün Tasarımcısı • Tasarım',
-                      amount: '₺1.980,50',
-                      vatText: 'KDV %10 (₺180,05)',
-                      categoryLine:
-                          '🍴 Müşteri Akşam Yemeği / Temsil • Dün, 19:15',
-                      descLine: '🏪 Midpoint Levent Şubesi • Fiş No: 004819',
-                      quoteNote:
-                          '"Fintech mobil uygulama lansman toplantısı müşteri ağırlama masrafı."',
-                      cardAndReceiptNo: 'Kart: Nova Business •••• 8831',
-                      ocrTitle: '🧾 Fiş Görseli Eklendi (PNG)',
-                      ocrSubtitle: 'Kart: Nova Business •••• 8831',
-                      ocrActionText: 'İncele 🔍',
-                      policyText:
-                          '⚠️ Departman Temsil Limiti (₺2.000) Sınırında (%99 Doluluk)',
-                      isPolicyWarning: true,
-                      onApprove: () => _handleApprove(
-                        context,
-                        'exp_002',
-                        'Elif Demir',
-                        '₺1.980,50',
-                      ),
-                      onReject: () => _showRejectDialog(
-                        context,
-                        'exp_002',
-                        'Elif Demir',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // 3. Kart: Caner Kılıç (IKEA ₺1.460,00)
-                    _buildExpenseReviewCard(
-                      context: context,
-                      initials: 'CK',
-                      employeeName: 'Caner Kılıç',
-                      roleDept: 'DevOps Uzmanı • Teknoloji',
-                      amount: '₺1.460,00',
-                      vatText: 'KDV %20 (₺243,33)',
-                      categoryLine:
-                          '💻 Ofis & Donanım / Ergonomi • 09 Kas, 11:20',
-                      descLine: '🏪 IKEA Maslak • E-Arşiv Fatura (#E-2026-9921)',
-                      quoteNote:
-                          '"Çift monitör kolu ve kablo omurgası (Ergonomik çalışma alanı düzeni)."',
-                      cardAndReceiptNo: '',
-                      ocrTitle: '',
-                      ocrSubtitle: '',
-                      ocrActionText: '',
-                      policyText:
-                          '✓ Ön Onaylı Talep (#ON-2026-88)   |   CTO İmzalı',
-                      isPolicyWarning: false,
-                      onApprove: () => _handleApprove(
-                        context,
-                        'exp_003',
-                        'Caner Kılıç',
-                        '₺1.460,00',
-                      ),
-                      onReject: () => _showRejectDialog(
-                        context,
-                        'exp_003',
-                        'Caner Kılıç',
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
-        const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
 
             // Otomatik Muhasebe & ERP Senkronizasyonu Kartı
             Container(

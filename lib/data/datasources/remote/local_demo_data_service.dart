@@ -139,11 +139,11 @@ class LocalDemoDataService {
       iban: 'TR92 0006 2000 8492 0100 0000 03',
     );
 
-    // Şirket Kasası: 50.000 TL (5.000.000 kuruş)
+    // Şirket Kasası: 245.800 TL (24.580.000 kuruş)
     final compSafeWallet = const WalletModel(
       walletId: 'wallet_comp_paypulse_tech',
       ownerId: 'comp_paypulse_tech',
-      balanceTl: 5000000,
+      balanceTl: 24580000,
       balanceUsd: 0,
       balanceEur: 0,
       iban: 'TR10 0006 2000 8492 0100 0000 00',
@@ -212,7 +212,40 @@ class LocalDemoDataService {
         date: DateTime.now().subtract(const Duration(days: 3)),
         accountingCode: '770.03',
       ),
+      ExpenseModel(
+        expenseId: 'exp_004',
+        employeeId: 'user_employee_ahmet',
+        employeeName: 'Ahmet Yılmaz',
+        merchantTitle: 'Yazılım Lisansı & Eklenti',
+        category: 'Yazılım & SaaS',
+        companyId: 'comp_paypulse_tech',
+        amount: 145000, // 1.450,00 TL
+        vatAmount: 24167,
+        receiptImageUrl: '',
+        status: 'rejected',
+        rejectReason: 'Şirket ön onayı bulunmayan yazılım aboneliği.',
+        date: DateTime.now().subtract(const Duration(days: 4)),
+        accountingCode: '770.04',
+      ),
     ]);
+
+    // comp_techsolutions_01 için de eşleştir
+    final techExpenses = _expenses.map((e) => ExpenseModel(
+      expenseId: '${e.expenseId}_tech',
+      employeeId: e.employeeId,
+      employeeName: e.employeeName,
+      merchantTitle: e.merchantTitle,
+      category: e.category,
+      companyId: 'comp_techsolutions_01',
+      amount: e.amount,
+      vatAmount: e.vatAmount,
+      receiptImageUrl: e.receiptImageUrl,
+      status: e.status,
+      rejectReason: e.rejectReason,
+      date: e.date,
+      accountingCode: e.accountingCode,
+    )).toList();
+    _expenses.addAll(techExpenses);
 
     // 7. Başlangıç Bildirimleri
     _notifications.addAll([
@@ -246,6 +279,22 @@ class LocalDemoDataService {
         relatedId: 'exp_001',
       ),
     ]);
+  }
+
+  /// Tüm demo verilerini Kasım 2026 başlangıç durumuna sıfırlar ve yayınlar
+  void resetOrSeedData() {
+    _users.clear();
+    _companies.clear();
+    _wallets.clear();
+    _recipients.clear();
+    _transactions.clear();
+    _expenses.clear();
+    _notifications.clear();
+    _initData();
+    _walletsController.add(Map.from(_wallets));
+    _transactionsController.add(List.from(_transactions));
+    _expensesController.add(List.from(_expenses));
+    _notificationsController.add(List.from(_notifications));
   }
 
   void _registerRecipient(String iban, String userId, String fullName) {

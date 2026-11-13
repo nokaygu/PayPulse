@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
@@ -144,6 +142,525 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
     );
   }
 
+  void _showZReportDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.darkNavy,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'POS GÜN SONU Z RAPORU',
+                        style: AppTextStyles.labelLarge.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.darkNavy,
+                        ),
+                      ),
+                      Text(
+                        'Mali Değeri Vardır • VUK Md. 227 Uyarınca',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: const Color(0xFF64748B),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1FAE5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Z NO: 0048',
+                    style: TextStyle(
+                      color: Color(0xFF065F46),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  _buildSlipRow('Terminal No:', 'POS-TR-8492'),
+                  _buildSlipRow('Üye İşyeri:', 'Nova Tasarım & Yazılım A.Ş.'),
+                  _buildSlipRow('VKN / TCKN:', '6320984112'),
+                  _buildSlipRow('Tarih & Saat:', '13 Kas 2026 18:00:22'),
+                  const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                  _buildSlipRow('Tek Çekim Satış (9):', '₺34.800,00'),
+                  _buildSlipRow('Taksitli Satış (3):', '₺12.500,00'),
+                  _buildSlipRow('PayPulse QR / FAST (2):', '₺5.000,00'),
+                  _buildSlipRow('İptal / İade (0):', '₺0,00'),
+                  const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                  _buildSlipRow('Toplam Brüt Ciro (14):', '₺52.300,00'),
+                  _buildSlipRow('POS Komisyonu (%1,39):', '-₺726,97'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'NET AKTARILACAK:',
+                          style: AppTextStyles.labelMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryTeal,
+                          ),
+                        ),
+                        Text(
+                          '₺51.573,03',
+                          style: AppTextStyles.headlineSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryTeal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildSlipRow('Hesaba Geçiş:', 'Yarın 10:00 (Garanti BBVA)'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.darkNavy,
+                      side: const BorderSide(color: Color(0xFFE2E8F0)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Z Raporu PDF formatında indirildi ve yazıcıya gönderildi.'),
+                          backgroundColor: AppColors.primaryTeal,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.print_outlined, size: 18),
+                    label: const Text('Yazdır / PDF', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.darkNavy,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommissionCard(double commission, double netAmount) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '%  İşlem Komisyonu (%1,39)',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF475569),
+                ),
+              ),
+              Text(
+                '₺${commission.toStringAsFixed(2).replaceAll('.', ',')}',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.darkNavy,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '🏦  Net Hesaba Geçecek',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF475569),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '₺${netAmount.toStringAsFixed(2).replaceAll('.', ',')}',
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      color: AppColors.primaryTeal,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'Ertesi Gün 10:00 Transfer',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: const Color(0xFF64748B),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '🔒 3D Secure 2.0 Korumalı  •  256-Bit SSL Şifreleme',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF64748B),
+              fontSize: 10.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrPaymentSection(double commission, double netAmount) {
+    return Column(
+      children: [
+        // QR Kod Kartı
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD1FAE5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 18,
+                          color: Color(0xFF065F46),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Karekod ile Tahsilat',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.darkNavy,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '● Tarama Bekleniyor',
+                      style: TextStyle(
+                        color: Color(0xFFB45309),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: 200,
+                height: 200,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.qr_code_2_rounded,
+                      size: 170,
+                      color: AppColors.darkNavy,
+                    ),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.bolt_rounded,
+                          color: AppColors.primaryTeal,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Müşteriye bu QR kodu okutun',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'PayPulse Cüzdan, BKM Karekod veya tüm banka uygulamaları ile uyumludur.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Geçerlilik Süresi: 04:52 dk',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: const Color(0xFF475569),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.darkNavy,
+                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Tahsilat bağlantısı panoya kopyalandı: https://paypulse.app/pay/pos-8492'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 16),
+                      label: const Text('Linki Kopyala', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF166534),
+                        backgroundColor: const Color(0xFFF0FDF4),
+                        side: const BorderSide(color: Color(0xFFBBF7D0)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ödeme linki müşterinin WhatsApp numarasına iletildi.'),
+                            backgroundColor: Color(0xFF166534),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.send_rounded, size: 16),
+                      label: const Text('WhatsApp', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Komisyon ve Net Tutar
+        _buildCommissionCard(commission, netAmount),
+        const SizedBox(height: 14),
+
+        // Buton: Müşteri Ödemesini Tamamla (Simüle Et)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryTeal,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: _isProcessing ? null : _handleCompletePayment,
+            icon: _isProcessing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.check_circle_rounded, size: 18),
+            label: Text(
+              _isProcessing
+                  ? 'QR Ödeme Doğrulanıyor...'
+                  : 'Müşteri Ödemesini Tamamla (₺${_amount.toStringAsFixed(2).replaceAll('.', ',')})',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Buton: Kart ile Tahsilata Dön
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.darkNavy,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => setState(() => _isCardTab = true),
+            icon: const Icon(
+              Icons.credit_card_rounded,
+              size: 18,
+              color: AppColors.darkNavy,
+            ),
+            label: const Text(
+              'Kart ile Çekim Ekranına Dön',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _handleCompletePayment() async {
     if (_isProcessing) return;
 
@@ -280,7 +797,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0).withOpacity(0.6),
+                color: const Color(0xFFE2E8F0).withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
@@ -297,10 +814,12 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.credit_card_rounded,
                               size: 16,
-                              color: AppColors.primaryTeal,
+                              color: _isCardTab
+                                  ? AppColors.primaryTeal
+                                  : const Color(0xFF64748B),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -310,7 +829,9 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                                 color: _isCardTab
                                     ? AppColors.darkNavy
                                     : const Color(0xFF64748B),
-                                fontWeight: FontWeight.w800,
+                                fontWeight: _isCardTab
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 height: 1.15,
                               ),
                             ),
@@ -333,10 +854,12 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.qr_code_rounded,
                               size: 16,
-                              color: Color(0xFF64748B),
+                              color: !_isCardTab
+                                  ? AppColors.primaryTeal
+                                  : const Color(0xFF64748B),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -346,7 +869,9 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                                 color: !_isCardTab
                                     ? AppColors.darkNavy
                                     : const Color(0xFF64748B),
-                                fontWeight: FontWeight.w700,
+                                fontWeight: !_isCardTab
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 height: 1.15,
                               ),
                             ),
@@ -527,7 +1052,8 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 2. Koyu NOVA TASARIM POS Kart Önizlemesi
+            if (_isCardTab) ...[
+              // 2. Koyu NOVA TASARIM POS Kart Önizlemesi
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -863,77 +1389,8 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
             ),
             const SizedBox(height: 14),
 
-            // 4. Komisyon (%1,39) ve Net Hesaba Geçecek Tutar Kartı (₺3.697,88)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '%  İşlem Komisyonu (%1,39)',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF475569),
-                        ),
-                      ),
-                      Text(
-                        '₺${commission.toStringAsFixed(2).replaceAll('.', ',')}',
-                        style: AppTextStyles.labelMedium.copyWith(
-                          color: AppColors.darkNavy,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '🏦  Net Hesaba Geçecek',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF475569),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '₺${netAmount.toStringAsFixed(2).replaceAll('.', ',')}',
-                            style: AppTextStyles.headlineSmall.copyWith(
-                              color: AppColors.primaryTeal,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          Text(
-                            'Ertesi Gün 10:00 Transfer',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: const Color(0xFF64748B),
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '🔒 3D Secure 2.0 Korumalı  •  256-Bit SSL Şifreleme',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF64748B),
-                      fontSize: 10.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // 4. Komisyon ve Net Tutar
+            _buildCommissionCard(commission, netAmount),
             const SizedBox(height: 14),
 
             // 5. Tahsilatı Tamamla Butonu
@@ -982,7 +1439,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () => context.push(AppRoutes.qr),
+                onPressed: () => setState(() => _isCardTab = false),
                 icon: const Icon(
                   Icons.qr_code_scanner_rounded,
                   size: 18,
@@ -994,10 +1451,15 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+          ] else ...[
+            _buildQrPaymentSection(commission, netAmount),
+          ],
+          const SizedBox(height: 12),
 
-            // Bugünkü POS İşlemleri / Z Raporu
-            Container(
+          // Bugünkü POS İşlemleri / Z Raporu
+          GestureDetector(
+            onTap: () => _showZReportDialog(context),
+            child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -1042,7 +1504,8 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+          ),
+          const SizedBox(height: 24),
           ],
         ),
       ),
