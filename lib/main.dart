@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_mode.dart';
 import 'core/firebase_configuration/firebase_configure.dart';
 import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
 import 'data/datasources/remote/firebase_notification_datasource.dart';
 import 'presentation/screens/auth/bloc/auth_bloc.dart';
 import 'presentation/screens/auth/bloc/auth_event.dart';
@@ -62,11 +63,18 @@ class _PayPulseApplicationState extends State<PayPulseApplication> {
   Widget build(BuildContext context) {
     return BlocProvider<AuthBloc>.value(
       value: _authBloc,
-      child: MaterialApp.router(
-        debugShowCheckedModeBanner: false,
-        title: 'PayPulse',
-        theme: ThemeData(useMaterial3: true),
-        routerConfig: _appRouter.router,
+      child: ValueListenableBuilder<ThemeMode>(
+        valueListenable: AppTheme.themeModeNotifier,
+        builder: (context, themeMode, _) {
+          return MaterialApp.router(
+            debugShowCheckedModeBanner: false,
+            title: 'PayPulse',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeMode,
+            routerConfig: _appRouter.router,
+          );
+        },
       ),
     );
   }

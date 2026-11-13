@@ -4,6 +4,16 @@ import 'app_colors.dart';
 import 'app_text_styles.dart';
 
 class AppTheme {
+  /// Global Tema Yönetimi (Açık, Koyu, Sistem)
+  static final ValueNotifier<ThemeMode> themeModeNotifier =
+      ValueNotifier<ThemeMode>(ThemeMode.light);
+
+  static bool get isDark => themeModeNotifier.value == ThemeMode.dark;
+
+  static void setThemeMode(ThemeMode mode) {
+    themeModeNotifier.value = mode;
+  }
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -80,6 +90,20 @@ class AppTheme {
             borderRadius: BorderRadius.circular(16),
           ),
         ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFF63E6BE),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? const Color(0xFF0F172A)
+                : const Color(0xFF64748B),
+          );
+        }),
       ),
     );
   }
@@ -160,6 +184,20 @@ class AppTheme {
             borderRadius: BorderRadius.circular(16),
           ),
         ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: const Color(0xFF1E293B),
+        indicatorColor: AppColors.primaryTeal.withValues(alpha: 0.35),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : const Color(0xFF94A3B8),
+          );
+        }),
       ),
     );
   }

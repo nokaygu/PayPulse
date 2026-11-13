@@ -78,6 +78,8 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       const ProfileSettingsScreen(), // 5. Sekme: Menü (Senin ekranın)
     ];
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -140,8 +142,8 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        backgroundColor: AppLightColors.surfaceContainerLow,
-        indicatorColor: AppLightColors.primaryFixed,
+        backgroundColor: isDark ? const Color(0xFF1E293B) : AppLightColors.surfaceContainerLow,
+        indicatorColor: isDark ? AppColors.primaryTeal.withValues(alpha: 0.35) : AppLightColors.primaryFixed,
         destinations: _isB2BMode
             ? const [
                 NavigationDestination(

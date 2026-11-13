@@ -90,6 +90,21 @@ class MainShellWrapperScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final navBarBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final navBarBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final indicatorColor = isDark
+        ? const Color(0xFF0D9488).withValues(alpha: 0.35)
+        : const Color(0xFF63E6BE);
+    final selectedIconColor =
+        isDark ? const Color(0xFF10B981) : const Color(0xFF0F172A);
+    final unselectedIconColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final selectedTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final unselectedTextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
@@ -106,30 +121,36 @@ class MainShellWrapperScreen extends StatelessWidget {
             ],
           ),
           bottomNavigationBar: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: navBarBg,
               border: Border(
-                top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                top: BorderSide(color: navBarBorder, width: 1),
               ),
             ),
             child: NavigationBarTheme(
               data: NavigationBarThemeData(
-                backgroundColor: Colors.white,
-                indicatorColor: const Color(0xFF63E6BE),
+                backgroundColor: navBarBg,
+                indicatorColor: indicatorColor,
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   final isSelected = states.contains(WidgetState.selected);
                   return TextStyle(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? const Color(0xFF0F172A)
-                        : const Color(0xFF64748B),
+                    color: isSelected ? selectedTextColor : unselectedTextColor,
+                  );
+                }),
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  final isSelected = states.contains(WidgetState.selected);
+                  return IconThemeData(
+                    color: isSelected ? selectedIconColor : unselectedIconColor,
+                    size: 24,
                   );
                 }),
               ),
               child: NavigationBar(
                 height: 68,
                 elevation: 0,
+                backgroundColor: navBarBg,
                 selectedIndex: selectedIndex,
                 onDestinationSelected: (index) {
                   final targetPath = tabs[index].path;
@@ -140,10 +161,10 @@ class MainShellWrapperScreen extends StatelessWidget {
                 destinations: tabs
                     .map(
                       (tab) => NavigationDestination(
-                        icon: Icon(tab.icon, color: const Color(0xFF64748B)),
+                        icon: Icon(tab.icon, color: unselectedIconColor),
                         selectedIcon: Icon(
                           tab.activeIcon,
-                          color: const Color(0xFF0F172A),
+                          color: selectedIconColor,
                         ),
                         label: tab.label,
                       ),
@@ -166,13 +187,25 @@ class _RoleAndModeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bannerBg = isBusiness
+        ? (isDark ? const Color(0xFF0B132B) : const Color(0xFF0F172A))
+        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC));
+    final bannerBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final badgeBg = isBusiness
+        ? (isDark ? const Color(0xFF1C2541) : const Color(0xFF1E293B))
+        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
+    final textColor =
+        isBusiness || isDark ? Colors.white : const Color(0xFF0F172A);
+
     return SafeArea(
       bottom: false,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isBusiness ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-          border: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+          color: bannerBg,
+          border: Border(bottom: BorderSide(color: bannerBorder)),
         ),
         child: Row(
           children: [

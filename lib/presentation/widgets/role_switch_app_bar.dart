@@ -39,16 +39,24 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
         AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
     final String currentUserId =
         authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appBarBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final appBarBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final primaryTextColor = isDark ? Colors.white : AppColors.darkNavy;
+    final secondaryTextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final iconBg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
 
     return SafeArea(
       bottom: false,
       child: Container(
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: appBarBg,
           border: Border(
-            bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+            bottom: BorderSide(color: appBarBorder, width: 1),
           ),
         ),
         child: Row(
@@ -70,14 +78,14 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Container(
                   width: 38,
                   height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1F5F9),
+                  decoration: BoxDecoration(
+                    color: iconBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_back_rounded,
                     size: 20,
-                    color: AppColors.darkNavy,
+                    color: primaryTextColor,
                   ),
                 ),
               ),
@@ -96,7 +104,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                       style: AppTextStyles.headlineSmall.copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.darkNavy,
+                        color: primaryTextColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -105,7 +113,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                         customSubtitle!,
                         style: AppTextStyles.bodySmall.copyWith(
                           fontSize: 11,
-                          color: const Color(0xFF64748B),
+                          color: secondaryTextColor,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -337,104 +345,181 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _showRoleSwitchSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Mod ve Rol Değiştir (Dual-Role)',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Bireysel Cüzdan (B2C) ile İşletme Paneli (B2B) arasında anında geçiş yapın.',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFD1FAE5),
-                  child: Icon(
-                    Icons.account_balance_wallet,
-                    color: AppColors.primaryGreen,
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF475569)
+                          : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                title: const Text('Deniz Aksoy — Bireysel Cüzdan (B2C)'),
-                subtitle: const Text('Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(
-                    const AuthRoleChanged('b2c'),
-                  );
-                  context.go(AppRoutes.home);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFEF3C7),
-                  child: Icon(Icons.badge_outlined, color: Color(0xFFD97706)),
-                ),
-                title: const Text('Ahmet Yılmaz — Şirket Çalışanı (Employee)'),
-                subtitle: const Text('PayPulse Teknoloji • Bakiye: ₺5.000,00 • Masraf Bildirimi'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(
-                    const AuthRoleChanged('employee'),
-                  );
-                  context.go(AppRoutes.home);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFE0F2FE),
-                  child: Icon(Icons.business_center, color: AppColors.darkNavy),
-                ),
-                title: const Text('Ali Yılmaz — Şirket Yöneticisi (Admin)'),
-                subtitle: const Text(
-                  'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Masraf Onay',
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
-                  context.go(AppRoutes.businessOverview);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFEE2E2),
-                  child: Icon(Icons.logout_rounded, color: Color(0xFFB91C1C)),
-                ),
-                title: const Text(
-                  'Güvenli Çıkış Yap',
-                  style: TextStyle(
-                    color: Color(0xFFB91C1C),
-                    fontWeight: FontWeight.bold,
+                Text(
+                  'Mod ve Rol Değiştir (Dual-Role)',
+                  style: AppTextStyles.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.darkNavy,
                   ),
                 ),
-                subtitle: const Text('Oturumu sonlandırıp giriş ekranına dön'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<AuthBloc>().add(const AuthLogoutRequested());
-                  context.go(AppRoutes.login);
-                },
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  'Bireysel Cüzdan (B2C) ile İşletme Paneli (B2B) arasında anında geçiş yapın.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFD1FAE5),
+                    child: Icon(
+                      Icons.account_balance_wallet,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                  title: Text(
+                    'Deniz Aksoy — Bireysel Cüzdan (B2C)',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<AuthBloc>().add(
+                      const AuthRoleChanged('b2c'),
+                    );
+                    context.go(AppRoutes.home);
+                  },
+                ),
+                Divider(
+                  color: isDark
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFF1F5F9),
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFEF3C7),
+                    child: Icon(Icons.badge_outlined, color: Color(0xFFD97706)),
+                  ),
+                  title: Text(
+                    'Ahmet Yılmaz — Şirket Çalışanı (Employee)',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'PayPulse Teknoloji • Bakiye: ₺5.000,00 • Masraf Bildirimi',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<AuthBloc>().add(
+                      const AuthRoleChanged('employee'),
+                    );
+                    context.go(AppRoutes.home);
+                  },
+                ),
+                Divider(
+                  color: isDark
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFF1F5F9),
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFE0F2FE),
+                    child:
+                        Icon(Icons.business_center, color: AppColors.darkNavy),
+                  ),
+                  title: Text(
+                    'Ali Yılmaz — Şirket Yöneticisi (Admin)',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Masraf Onay',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
+                    context.go(AppRoutes.businessOverview);
+                  },
+                ),
+                Divider(
+                  color: isDark
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFF1F5F9),
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFEE2E2),
+                    child: Icon(Icons.logout_rounded, color: Color(0xFFB91C1C)),
+                  ),
+                  title: const Text(
+                    'Güvenli Çıkış Yap',
+                    style: TextStyle(
+                      color: Color(0xFFB91C1C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Oturumu sonlandırıp giriş ekranına dön',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<AuthBloc>().add(const AuthLogoutRequested());
+                    context.go(AppRoutes.login);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
