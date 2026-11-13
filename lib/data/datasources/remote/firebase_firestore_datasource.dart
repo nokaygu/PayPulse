@@ -260,6 +260,16 @@ class FirebaseFirestoreDatasource {
     String currency = 'TRY',
     String? targetIban,
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.executeFastTransfer(
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
+        amountKurus: amountKurus,
+        currency: currency,
+        targetIban: targetIban,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.uid != senderUserId) {
       throw StateError(

@@ -464,6 +464,28 @@ class LocalDemoDataService {
     return _recipients[normalized];
   }
 
+  Future<TransactionModel> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
+  }) async {
+    if (senderUserId == receiverUserId) {
+      throw ArgumentError('Kendinize para transferi yapamazsınız.');
+    }
+
+    return _performDemoFastTransfer(
+      senderUserId: senderUserId,
+      receiverUserId: receiverUserId,
+      amountKurus: amountKurus,
+      currency: currency,
+      targetIban: targetIban,
+      recipientDisplayName:
+          _users[receiverUserId]?.name ?? 'PayPulse Kullanıcısı',
+    );
+  }
+
   Future<TransactionModel> executeFastTransferByIban({
     required String senderUserId,
     required String targetIban,
@@ -477,6 +499,24 @@ class LocalDemoDataService {
       throw Exception('Belirtilen IBAN numarasına ait geçerli bir hesap bulunamadı.');
     }
 
+    return _performDemoFastTransfer(
+      senderUserId: senderUserId,
+      receiverUserId: recipient.userId,
+      amountKurus: amountKurus,
+      currency: currency,
+      targetIban: targetIban,
+      recipientDisplayName: recipient.maskedName,
+    );
+  }
+
+  Future<TransactionModel> _performDemoFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    required String recipientDisplayName,
+    String currency = 'TRY',
+    String? targetIban,
+  }) async {
     if (amountKurus <= 0) {
       throw ArgumentError('Transfer tutarı sıfırdan büyük olmalıdır.');
     }
@@ -506,7 +546,6 @@ class LocalDemoDataService {
     _wallets[senderWallet.walletId] = updatedSenderWallet;
 
     // Alıcı yerel demo sistemindeyse alıcı bakiyesini de artır
-    final receiverUserId = recipient.userId;
     final receiverWallet = getUserWallet(receiverUserId);
     if (receiverWallet != null) {
       final updatedReceiverWallet = WalletModel(
@@ -531,7 +570,7 @@ class LocalDemoDataService {
       timestamp: DateTime.now(),
       type: 'fast',
       targetIban: targetIban,
-      title: recipient.maskedName,
+      title: recipientDisplayName,
       category: 'FAST Para Transferi',
       isExpense: true,
       dateGroup: 'BUGÜN, ${DateTime.now().day} KASIM',
@@ -567,7 +606,7 @@ class LocalDemoDataService {
         notificationId: 'notif_tx_${DateTime.now().millisecondsSinceEpoch}',
         userId: senderUserId,
         title: 'FAST Transfer Başarılı',
-        body: '${recipient.maskedName} adlı alıcıya ₺${(amountKurus / 100).toStringAsFixed(2)} aktarıldı.',
+        body: '$recipientDisplayName adlı alıcıya ₺${(amountKurus / 100).toStringAsFixed(2)} aktarıldı.',
         type: 'transfer_sent',
         isRead: false,
         createdAt: DateTime.now(),

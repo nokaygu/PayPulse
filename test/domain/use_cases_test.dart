@@ -99,6 +99,28 @@ class _FakeTransactionRepository implements ITransactionRepository {
   }
 
   @override
+  Future<TransactionEntity> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
+  }) async {
+    fastCalls++;
+    return TransactionEntity(
+      txId: 'fast_direct_1',
+      senderId: senderUserId,
+      receiverId: receiverUserId,
+      amount: amountKurus,
+      currency: currency,
+      timestamp: DateTime(2026, 11, 11),
+      type: 'fast',
+      targetIban: targetIban,
+      title: 'FAST',
+    );
+  }
+
+  @override
   Future<TransactionEntity> executeFastTransferByIban({
     required String senderUserId,
     required String targetIban,

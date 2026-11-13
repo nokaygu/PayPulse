@@ -12,6 +12,13 @@ abstract class ITransactionRepository {
   Stream<List<TransactionEntity>> watchReceivedTransactions(String userId);
   Future<SafeRecipientEntity?> findRecipientByIban(String rawIban);
   Future<List<SafeRecipientEntity>> getSavedRecipients();
+  Future<TransactionEntity> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
+  });
   Future<TransactionEntity> executeFastTransferByIban({
     required String senderUserId,
     required String targetIban,

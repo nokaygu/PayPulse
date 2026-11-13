@@ -3,13 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
-import '../../../core/utils/financial_amount.dart';
 import '../../../domain/repositories/i_transaction_repository.dart';
 import '../../widgets/four_state_view.dart';
-import '../../widgets/receipt_summary_card_widget.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import 'bloc/transfer_cubits.dart';
+import 'widgets/transfer_receipt_content.dart';
 
+/// 7/24 FAST İşlem Dekontu Ekranı (Adım 4/4 - `StatelessWidget`).
 class TransferReceiptScreen extends StatelessWidget {
   final String txId;
 
@@ -49,61 +49,13 @@ class _TransferReceiptView extends StatelessWidget {
               errorMessage: state.errorMessage ?? 'Dekont yüklenemedi.',
               emptyMessage: 'Dekont kaydı bulunamadı ($txId).',
               onRetry: () => cubit.loadTransaction(txId),
-              child: Builder(
-                builder: (context) {
-                  final tx = state.transaction;
-                  if (tx == null) return const SizedBox.shrink();
-
-                  final String amountFormatted = FinancialAmount.format(
-                    tx.amount,
-                  );
-                  final String senderStr = tx.senderId.isNotEmpty
-                      ? 'Cüzdan (${tx.senderId})'
-                      : 'PayPulse Cüzdanı';
-                  final String recipientStr = tx.title.isNotEmpty
-                      ? tx.title
-                      : 'Alıcı';
-                  final String ibanStr =
-                      tx.targetIban ?? 'PayPulse FAST Transferi';
-                  final String dateStr =
-                      '${tx.timestamp.day}.${tx.timestamp.month.toString().padLeft(2, '0')}.${tx.timestamp.year}, '
-                      '${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}';
-
-                  return Column(
-                    children: [
-                      ReceiptSummaryCardWidget(
-                        title: 'FAST Transferi Tamamlandı!',
-                        amountText: amountFormatted,
-                        badgeLabel: '✓ TCMB FAST • Anında İletildi',
-                        details: {
-                          'Sorgu / Dekont No': txId,
-                          'Gönderen': senderStr,
-                          'Alıcı Ad Soyad': recipientStr,
-                          'Alıcı Banka / IBAN': ibanStr,
-                          'İşlem Tarihi': dateStr,
-                          'İşlem Ücreti': '₺0,00 (Ücretsiz)',
-                          'Açıklama': tx.category,
-                        },
-                        onDownloadPdf: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '$txId numaralı PDF dekont hazırlandı.',
-                              ),
-                            ),
-                          );
-                        },
-                        onShare: () {},
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () => context.go(AppRoutes.home),
-                        child: const Text('Ana Sayfaya Dön'),
-                      ),
-                    ],
-                  );
-                },
-              ),
+              child: state.transaction == null
+                  ? const SizedBox.shrink()
+                  : TransferReceiptContent(
+                      txId: txId,
+                      transaction: state.transaction!,
+                      onGoHome: () => context.go(AppRoutes.home),
+                    ),
             );
           },
         ),

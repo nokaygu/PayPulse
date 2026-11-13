@@ -12,6 +12,7 @@ import 'package:pay_pulse/domain/entities/company_entity.dart';
 import 'package:pay_pulse/domain/entities/expense_entity.dart';
 import 'package:pay_pulse/domain/entities/invoice_entity.dart';
 import 'package:pay_pulse/domain/entities/notification_entity.dart';
+import 'package:pay_pulse/domain/entities/payment_request_entity.dart';
 import 'package:pay_pulse/domain/entities/pos_transaction_entity.dart';
 import 'package:pay_pulse/domain/entities/safe_recipient_entity.dart';
 import 'package:pay_pulse/domain/entities/transaction_entity.dart';
@@ -21,15 +22,18 @@ import 'package:pay_pulse/domain/repositories/i_company_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_expense_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_invoice_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_notification_repository.dart';
+import 'package:pay_pulse/domain/repositories/i_payment_request_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_transaction_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_user_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_wallet_repository.dart';
 import 'package:pay_pulse/presentation/screens/analytics_and_reports/bloc/tax_report_cubit.dart';
 import 'package:pay_pulse/presentation/screens/b2b_operations/bloc/expense_approval_cubit.dart';
+import 'package:pay_pulse/presentation/screens/b2b_operations/bloc/virtual_pos_cubit.dart';
 import 'package:pay_pulse/presentation/screens/home_wallet_and_safe/bloc/business_overview_cubit.dart';
 import 'package:pay_pulse/presentation/screens/home_wallet_and_safe/bloc/home_wallet_cubit.dart';
 import 'package:pay_pulse/presentation/screens/profile_and_cards/bloc/cards_management_cubit.dart';
 import 'package:pay_pulse/presentation/screens/profile_and_cards/bloc/profile_settings_cubit.dart';
+import 'package:pay_pulse/presentation/screens/qr_and_ocr/bloc/qr_payment_cubit.dart';
 import 'package:pay_pulse/presentation/screens/splash_and_onboarding/bloc/splash_cubit.dart';
 import 'package:pay_pulse/presentation/widgets/bloc/notification_cubit.dart';
 import 'package:pay_pulse/presentation/widgets/four_state_view.dart';
@@ -188,6 +192,15 @@ class _FakeTxRepo implements ITransactionRepository {
     required String maskedCardNumber,
     required int amountKurus,
     String currency = 'TRY',
+  }) => throw UnimplementedError();
+
+  @override
+  Future<TransactionEntity> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
   }) => throw UnimplementedError();
 
   @override
@@ -392,6 +405,29 @@ class _FakeInvoiceRepo implements IInvoiceRepository {
     required String payerUserId,
     required String targetIban,
   }) async {}
+}
+
+class _FakePaymentRequestRepo implements IPaymentRequestRepository {
+  final List<PaymentRequestEntity> created = [];
+
+  @override
+  Future<TransactionEntity> completePaymentRequestWithWallet({
+    required String requestId,
+    required String payerUserId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> createPaymentRequest(PaymentRequestEntity request) async {
+    created.add(request);
+  }
+
+  @override
+  Future<List<PaymentRequestEntity>> getAllPaymentRequests() async =>
+      List.of(created);
+
+  @override
+  Future<PaymentRequestEntity?> getPaymentRequestById(String requestId) async =>
+      null;
 }
 
 void main() {
@@ -852,6 +888,77 @@ void main() {
         );
         await canceledCubit.close();
         expect(canceledCubit.state.isCompleted, isFalse);
+      },
+    );
+
+    test(
+      'QrPaymentCubit 48sn dinamik QR yenileme, tutar seçimi ve tahsilat talebi üretir',
+      () async {
+        final paymentRepo = _FakePaymentRequestRepo();
+        final txRepo = _FakeTxRepo();
+        addTearDown(txRepo.dispose);
+
+        final cubit = QrPaymentCubit(
+          paymentRequestRepository: paymentRepo,
+          transactionRepository: txRepo,
+          startTimer: false,
+        );
+
+        expect(cubit.state.countdownSeconds, 48);
+        expect(cubit.state.formattedCountdown, '00:48');
+        final initialToken = cubit.state.qrToken;
+
+        cubit.selectRequestedAmount(250.0);
+        expect(cubit.state.requestedAmount, 250.0);
+        expect(cubit.state.generationCount, 2);
+        expect(cubit.state.qrToken, isNot(initialToken));
+
+        cubit.requestAmountController.text = '150';
+        await cubit.createPaymentRequestQr(
+          userId: 'user_qr_1',
+          userName: 'Deniz Aksoy',
+        );
+        expect(paymentRepo.created.length, 1);
+        expect(paymentRepo.created.first.amount, 15000);
+
+        cubit.setMode(showMyQr: false);
+        expect(cubit.state.isShowQrMode, isFalse);
+
+        await cubit.close();
+      },
+    );
+
+    test(
+      'VirtualPosCubit hızlı tutar ekleme, komisyon hesabı ve 48sn POS QR yenilemesini yönetir',
+      () async {
+        final txRepo = _FakeTxRepo();
+        addTearDown(txRepo.dispose);
+
+        final cubit = VirtualPosCubit(
+          transactionRepository: txRepo,
+          startQrTimer: false,
+        );
+
+        expect(cubit.state.remainingQrSeconds, 48);
+        expect(cubit.state.formattedQrCountdown, '00:48');
+        final initialToken = cubit.state.qrToken;
+
+        cubit.clearAmount();
+        cubit.addQuickAmountKurus(100000); // +1000 TL
+        expect(cubit.state.amountKurus, 100000);
+        expect(
+          cubit.state.netAmountKurus + cubit.state.commissionKurus,
+          cubit.state.amountKurus,
+        );
+
+        cubit.regeneratePosQr();
+        expect(cubit.state.qrToken, isNot(initialToken));
+        expect(cubit.state.qrGenerationCount, greaterThanOrEqualTo(3));
+
+        cubit.setTab(isCard: false);
+        expect(cubit.state.isCardTab, isFalse);
+
+        await cubit.close();
       },
     );
   });

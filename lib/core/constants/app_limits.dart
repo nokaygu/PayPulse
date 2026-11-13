@@ -4,8 +4,8 @@ class AppLimits {
   /// Tek seferlik transferde ek güvenlik / fraud uyarısı eşiği: 50.000,00 TL (5.000.000 kuruş).
   static const int fraudLimitInKurus = 5000000;
 
-  /// Dinamik TR Karekod geçerlilik ve yenilenme süresi (saniye).
-  static const int qrCountdownSeconds = 60;
+  /// Dinamik TR Karekod geçerlilik ve yenilenme süresi (saniye - PayPulseQrPayload.defaultTtlSeconds ile uyumlu).
+  static const int qrCountdownSeconds = 48;
 
   /// En düşük FAST transfer tutarı: 1,00 TL (100 kuruş).
   static const int minTransferKurus = 100;

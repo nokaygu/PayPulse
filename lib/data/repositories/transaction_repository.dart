@@ -64,6 +64,24 @@ class TransactionRepository implements ITransactionRepository {
   }
 
   @override
+  Future<TransactionEntity> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
+  }) async {
+    final tx = await _firestoreDatasource.executeFastTransfer(
+      senderUserId: senderUserId,
+      receiverUserId: receiverUserId,
+      amountKurus: amountKurus,
+      currency: currency,
+      targetIban: targetIban,
+    );
+    return tx.toEntity();
+  }
+
+  @override
   Future<TransactionEntity> executeFastTransferByIban({
     required String senderUserId,
     required String targetIban,

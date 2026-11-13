@@ -29,8 +29,10 @@ import 'package:pay_pulse/domain/repositories/i_user_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_wallet_repository.dart';
 import 'package:pay_pulse/presentation/screens/auth/bloc/auth_bloc.dart';
 import 'package:pay_pulse/presentation/screens/auth/bloc/auth_event.dart';
+import 'package:pay_pulse/presentation/screens/b2b_operations/virtual_pos_terminal_screen.dart';
 import 'package:pay_pulse/presentation/screens/profile_and_cards/cards_management_screen.dart';
 import 'package:pay_pulse/presentation/screens/profile_and_cards/profile_settings_screen.dart';
+import 'package:pay_pulse/presentation/screens/qr_and_ocr/qr_payment_center_screen.dart';
 import 'package:pay_pulse/presentation/screens/splash_and_onboarding/splash_screen.dart';
 import 'package:pay_pulse/presentation/widgets/bloc/notification_cubit.dart';
 
@@ -127,6 +129,15 @@ class _TestTransactionRepository implements ITransactionRepository {
     required String maskedCardNumber,
     required int amountKurus,
     String currency = 'TRY',
+  }) => throw UnimplementedError();
+
+  @override
+  Future<TransactionEntity> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
   }) => throw UnimplementedError();
 
   @override
@@ -634,6 +645,119 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.textContaining('başarıyla oluşturuldu'), findsOneWidget);
+      },
+    );
+  });
+
+  group('QR Ödeme ve Sanal POS Layout & Render Testleri', () {
+    for (final entry in <String, ThemeData>{
+      'lightTheme': AppTheme.lightTheme,
+      'darkTheme': AppTheme.darkTheme,
+    }.entries) {
+      testWidgets(
+        'QrPaymentCenterScreen (${entry.key}) iki sekme, tutar chipleri ve 48sn sayaçla 0 hatayla render edilir',
+        (tester) async {
+          tester.view.physicalSize = const Size(430, 932);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          final userRepo = _TestUserRepository();
+          final authBloc = AuthBloc(userRepository: userRepo)
+            ..add(
+              const AuthUserProfileLoaded(
+                UserEntity(
+                  uid: 'u_qr_test',
+                  name: 'Deniz Aksoy',
+                  email: 'deniz@paypulse.app',
+                  role: AppStrings.roleB2C,
+                ),
+              ),
+            );
+          addTearDown(() async {
+            await authBloc.close();
+            await userRepo.dispose();
+          });
+
+          await tester.pumpWidget(
+            _wrapWithProviders(
+              authBloc: authBloc,
+              child: MaterialApp(
+                theme: entry.value,
+                home: const QrPaymentCenterScreen(),
+              ),
+            ),
+          );
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+          expect(find.text('QR Kodumu Göster'), findsOneWidget);
+          expect(find.text('QR Okut ve Öde'), findsOneWidget);
+          expect(find.textContaining('00:48'), findsOneWidget);
+
+          // Tutar chip seçimi + 2 saniyelik geri sayım tiklemesi
+          await tester.ensureVisible(find.text('₺250'));
+          await tester.tap(find.text('₺250'));
+          await tester.pump(const Duration(seconds: 2));
+          expect(tester.takeException(), isNull);
+          expect(find.textContaining('00:46'), findsOneWidget);
+
+          // QR Okut ve Öde sekmesine geçiş
+          await tester.tap(find.text('QR Okut ve Öde'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('TR Karekod / PayPulse POS Okut'), findsOneWidget);
+          expect(find.text('Çözümle & Öde'), findsOneWidget);
+        },
+      );
+    }
+
+    testWidgets(
+      'VirtualPosTerminalScreen QR Tahsilat sekmesi 48sn dinamik QR ile hatasız render edilir',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final userRepo = _TestUserRepository();
+        final authBloc = AuthBloc(userRepository: userRepo)
+          ..add(
+            const AuthUserProfileLoaded(
+              UserEntity(
+                uid: 'u_pos_admin',
+                name: 'Ayşe Demir',
+                email: 'ayse@paypulse.app',
+                role: AppStrings.roleAdmin,
+                companyId: AppStrings.defaultCompanyId,
+                hasB2BAccess: true,
+              ),
+            ),
+          );
+        addTearDown(() async {
+          await authBloc.close();
+          await userRepo.dispose();
+        });
+
+        await tester.pumpWidget(
+          _wrapWithProviders(
+            authBloc: authBloc,
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              home: const VirtualPosTerminalScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.text('PayPulse QR Tahsilat'));
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('00:47'), findsOneWidget);
       },
     );
   });
