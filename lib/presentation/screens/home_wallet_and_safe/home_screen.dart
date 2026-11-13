@@ -128,43 +128,63 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          context.read<AuthBloc>().add(
-                                const AuthRoleChanged('admin'),
-                              );
-                          context.go(AppRoutes.businessOverview);
-                        },
-                        child: Container(
+                      if (context.watch<AuthBloc>().state.canAccessBusinessPanel)
+                        GestureDetector(
+                          onTap: () {
+                            context.read<AuthBloc>().add(
+                                  const AuthRoleChanged('admin'),
+                                );
+                            context.go(AppRoutes.businessOverview);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.business_center_outlined,
+                                  size: 13,
+                                  color: AppColors.primaryTeal,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'İşletme Paneline Geç',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.darkNavy,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 8,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            color: const Color(0xFFD1FAE5),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.business_center_outlined,
-                                size: 13,
-                                color: AppColors.primaryTeal,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'İşletme Paneline Geç',
-                                style: AppTextStyles.labelSmall.copyWith(
-                                  color: AppColors.darkNavy,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            'Bireysel Cüzdan',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: const Color(0xFF065F46),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
