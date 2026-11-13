@@ -4,11 +4,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/formatters/currency_and_card_formatters.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/qr_payload_parser.dart';
 import '../../../core/validators/financial_validators.dart';
 import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
 import '../../../data/models/payment_request_model.dart';
@@ -125,14 +127,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
   }
 
   void _generateNewPosQrCode({bool resetTimer = true}) {
-    final random = Random();
-    final randomHex = List.generate(
-      8,
-      (_) => random.nextInt(16).toRadixString(16).toUpperCase(),
-    ).join();
-    final epochSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-    _b2bQrToken = 'PPPOS-$epochSec-$randomHex';
+    _b2bQrToken = PayPulseQrPayload.generateDynamicToken(prefix: 'PPPOS');
     _qrGeneratedAt = DateTime.now();
     if (resetTimer) {
       _remainingQrSeconds = _qrRefreshIntervalSeconds;
@@ -140,20 +135,17 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
   }
 
   String _buildB2bPosQrPayload(String companyId) {
-    final expiresAt = _qrGeneratedAt.add(
-      const Duration(seconds: _qrRefreshIntervalSeconds),
+    return PayPulseQrPayload.buildB2bPosPayload(
+      merchantName: 'Nova Tasarım Ltd.',
+      companyId: companyId,
+      terminalId: 'POS-TR-8492',
+      amount: _amount,
+      installment: _selectedInstallment,
+      description: _descriptionController.text,
+      token: _b2bQrToken,
+      generatedAt: _qrGeneratedAt,
+      ttlSeconds: _qrRefreshIntervalSeconds,
     );
-    return 'PAYPULSE://TRKAREKOD/B2B_POS'
-        '?v=1'
-        '&merchant=${Uri.encodeComponent('Nova Tasarım Ltd.')}'
-        '&companyId=${Uri.encodeComponent(companyId)}'
-        '&terminal=POS-TR-8492'
-        '&amt=${_amount.toStringAsFixed(2)}'
-        '&curr=TRY'
-        '&inst=$_selectedInstallment'
-        '&desc=${Uri.encodeComponent(_descriptionController.text.trim())}'
-        '&token=$_b2bQrToken'
-        '&exp=${expiresAt.millisecondsSinceEpoch}';
   }
 
   String _formatCountdown(int seconds) {
@@ -244,7 +236,11 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
   }
 
   /// Kredi Kartı veya PayPulse QR ile Ödeme Alma & Başarılı İşlem Simülatörü
-  Future<void> _handleCompletePayment({required bool isQrPayment}) async {
+  Future<void> _handleCompletePayment({
+    required bool isQrPayment,
+    String? customCustomerDisplay,
+    String? customQrShortToken,
+  }) async {
     if (_isProcessing) return;
 
     if (!isQrPayment) {
@@ -273,7 +269,8 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
 
     final amountKurus = (_amount * 100).round();
     final maskedCard = _getMaskedCardPreview();
-    final activeQrShort = _b2bQrToken.substring(_b2bQrToken.length - 8);
+    final activeQrShort =
+        customQrShortToken ?? _b2bQrToken.substring(_b2bQrToken.length - 8);
 
     try {
       TransactionModel tx;
@@ -322,7 +319,8 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
       if (!mounted) return;
 
       final customerDisplay = isQrPayment
-          ? 'Deniz Aksoy (PayPulse Cüzdan • PP-849201)'
+          ? (customCustomerDisplay ??
+                'Deniz Aksoy (PayPulse Cüzdan • PP-849201)')
           : (_cardHolderController.text.trim().isEmpty
                 ? 'Mehmet Can Özkan'
                 : _cardHolderController.text.trim());
@@ -512,6 +510,204 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showCustomerQrScannerModal() {
+    final pasteController = TextEditingController();
+    bool hasScanned = false;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Müşteri B2C QR Okut & Tahsil Et',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkNavy,
+                  ),
+                ),
+                const StatusBadgeWidget(
+                  label: 'TR Karekod Okuyucu',
+                  type: BadgeType.info,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Müşterinin PayPulse B2C ekranındaki 48sn dinamik QR kodunu kamerayla okutun veya kod metnini yapıştırın:',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: const Color(0xFF64748B),
+                fontSize: 11.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    MobileScanner(
+                      onDetect: (capture) {
+                        if (hasScanned || capture.barcodes.isEmpty) return;
+                        final raw = capture.barcodes.first.rawValue;
+                        if (raw != null && raw.isNotEmpty) {
+                          hasScanned = true;
+                          Navigator.of(ctx).pop();
+                          _processScannedCustomerQr(raw);
+                        }
+                      },
+                    ),
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppColors.primaryTeal,
+                          width: 2.5,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: pasteController,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.darkNavy,
+                      fontSize: 11.5,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'PAYPULSE://TRKAREKOD/B2C?... yapıştırın',
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  tooltip: 'Panodan Yapıştır',
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFE2E8F0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final clip = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (clip?.text != null) {
+                      pasteController.text = clip!.text!.trim();
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.content_paste_rounded,
+                    size: 18,
+                    color: AppColors.darkNavy,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkNavy,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    final raw = pasteController.text.trim();
+                    if (raw.isEmpty) return;
+                    Navigator.of(ctx).pop();
+                    _processScannedCustomerQr(raw);
+                  },
+                  child: const Text(
+                    'Tahsil Et',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processScannedCustomerQr(String rawQr) async {
+    final parsed = PayPulseQrPayload.tryParse(rawQr);
+    if (parsed == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.expenseRed,
+          content: Text('Okutulan QR kod formatı tanınmadı.'),
+        ),
+      );
+      return;
+    }
+
+    if (parsed.isExpired()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.expenseRed,
+          content: Text(
+            'Müşterinin QR kodunun 48 saniyelik güvenlik süresi dolmuş!',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (parsed.amount > 0) {
+      setState(() => _amount = parsed.amount);
+    }
+
+    final custName = parsed.userName ?? 'Deniz Aksoy';
+    final custNo = parsed.customerNo ?? 'PP-849201';
+
+    await _handleCompletePayment(
+      isQrPayment: true,
+      customCustomerDisplay: '$custName (PayPulse Cüzdan • $custNo)',
+      customQrShortToken: parsed.shortToken,
     );
   }
 
@@ -1764,7 +1960,9 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
               child: QrImageView(
                 data: b2bQrPayload,
                 version: QrVersions.auto,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
                 size: 200,
+                gapless: true,
                 backgroundColor: Colors.white,
                 eyeStyle: const QrEyeStyle(
                   eyeShape: QrEyeShape.square,
@@ -1905,6 +2103,31 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.darkNavy,
+                backgroundColor: const Color(0xFFF8FAFC),
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: _showCustomerQrScannerModal,
+              icon: const Icon(
+                Icons.qr_code_scanner_rounded,
+                size: 16,
+                color: AppColors.primaryTeal,
+              ),
+              label: const Text(
+                'Müşterinin B2C QR Kodunu Okutarak Tahsil Et',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              ),
+            ),
           ),
         ],
       ),

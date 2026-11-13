@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -10,15 +9,16 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/qr_payload_parser.dart';
 import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/status_badge_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
 
 /// B2C Dinamik QR Kod ile Öde & Tahsil Et Ekranı
-/// - Gerçek QR Kod (qr_flutter)
-/// - 48 saniyede bir otomatik yenilenen dinamik güvenlik token'ı
-/// - Tutar belirleme (opsiyonel) ve QR Okut & Öde simülatörü
+/// - Gerçek okunabilir QR Kod (`qr_flutter`)
+/// - 48 saniyede bir otomatik yenilenen dinamik güvenlik token'ı ve TTL kontrolü
+/// - Kamera (`mobile_scanner`), Pano / Manuel QR okutma ve uçtan uca B2B/B2C ödeme entegrasyonu
 class QrPaymentCenterScreen extends StatefulWidget {
   const QrPaymentCenterScreen({super.key});
 
@@ -27,7 +27,8 @@ class QrPaymentCenterScreen extends StatefulWidget {
 }
 
 class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
-  static const int _qrRefreshIntervalSeconds = 48;
+  static const int _qrRefreshIntervalSeconds =
+      PayPulseQrPayload.defaultTtlSeconds; // 48 saniye
 
   bool _isShowQrMode = true;
   int _remainingSeconds = _qrRefreshIntervalSeconds;
@@ -39,10 +40,14 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
   double? _requestedAmount;
   bool _isCameraActive = false;
   bool _isSimulatingScanPayment = false;
+  bool _hasHandledCameraFrame = false;
+
+  late final TextEditingController _manualQrInputController;
 
   @override
   void initState() {
     super.initState();
+    _manualQrInputController = TextEditingController();
     _generateNewQrCode(resetTimer: true);
     _startCountdownTimer();
   }
@@ -50,6 +55,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _manualQrInputController.dispose();
     super.dispose();
   }
 
@@ -59,6 +65,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
       if (!mounted) return;
       setState(() {
         if (_remainingSeconds <= 1) {
+          _generationCount++;
           _generateNewQrCode(resetTimer: true);
         } else {
           _remainingSeconds--;
@@ -68,14 +75,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
   }
 
   void _generateNewQrCode({bool resetTimer = true}) {
-    final random = Random();
-    final randomHex = List.generate(
-      8,
-      (_) => random.nextInt(16).toRadixString(16).toUpperCase(),
-    ).join();
-    final epochSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-    _qrToken = 'PPB2C-$epochSec-$randomHex';
+    _qrToken = PayPulseQrPayload.generateDynamicToken(prefix: 'PPB2C');
     _generatedAt = DateTime.now();
     if (resetTimer) {
       _remainingSeconds = _qrRefreshIntervalSeconds;
@@ -88,22 +88,16 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
     required String customerNo,
     required String iban,
   }) {
-    final expiresAt =
-        _generatedAt.add(const Duration(seconds: _qrRefreshIntervalSeconds));
-    final amountStr = _requestedAmount != null
-        ? _requestedAmount!.toStringAsFixed(2)
-        : '0.00';
-
-    return 'PAYPULSE://TRKAREKOD/B2C'
-        '?v=1'
-        '&uid=${Uri.encodeComponent(userId)}'
-        '&name=${Uri.encodeComponent(userName)}'
-        '&cust=${Uri.encodeComponent(customerNo)}'
-        '&iban=${Uri.encodeComponent(iban.replaceAll(' ', ''))}'
-        '&amt=$amountStr'
-        '&curr=TRY'
-        '&token=$_qrToken'
-        '&exp=${expiresAt.millisecondsSinceEpoch}';
+    return PayPulseQrPayload.buildB2cPayload(
+      userId: userId,
+      userName: userName,
+      customerNo: customerNo,
+      iban: iban,
+      token: _qrToken,
+      generatedAt: _generatedAt,
+      amount: _requestedAmount,
+      ttlSeconds: _qrRefreshIntervalSeconds,
+    );
   }
 
   String _formatCountdown(int seconds) {
@@ -121,11 +115,139 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
     return '₺$intPart,${parts[1]}';
   }
 
+  /// Kamera veya Manuel Yapıştırma ile gelen gerçek QR verisini ayrıştırır ve işler
+  Future<void> _handleScannedRawQrData(String rawData) async {
+    final parsed = PayPulseQrPayload.tryParse(rawData);
+    if (parsed == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.expenseRed,
+          content: Text('Geçersiz veya boş QR kod verisi.'),
+        ),
+      );
+      return;
+    }
+
+    // 48 saniyelik güvenlik süresi kontrolü
+    if (parsed.isExpired()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.expenseRed,
+          content: Text(
+            'Bu QR kodun 48 saniyelik güvenlik süresi dolmuş! Lütfen yeni üretilen QR kodu okutun.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    double resolvedAmount = parsed.amount;
+    if (resolvedAmount <= 0) {
+      final entered = await _promptAmountForZeroValueQr(parsed);
+      if (entered == null || entered <= 0) return;
+      resolvedAmount = entered;
+    }
+
+    if (!mounted) return;
+
+    final merchantOrReceiver = parsed.mode == 'B2C'
+        ? '${parsed.userName ?? 'PayPulse Kullanıcısı'} (${parsed.customerNo ?? 'B2C'})'
+        : (parsed.merchantName ?? 'Nova Tasarım Ltd. POS');
+
+    final terminalOrIban = parsed.mode == 'B2C'
+        ? (parsed.iban ?? 'FAST TR Karekod')
+        : (parsed.terminalId ?? 'POS-TR-8492');
+
+    await _simulateScanAndPay(
+      merchantName: merchantOrReceiver,
+      terminalId: terminalOrIban,
+      amount: resolvedAmount,
+      qrRef: parsed.shortToken,
+      companyId: parsed.companyId ?? 'comp_techsolutions_01',
+      targetUserId: parsed.userId,
+      targetIban: parsed.iban,
+      mode: parsed.mode,
+      description: parsed.description,
+    );
+  }
+
+  Future<double?> _promptAmountForZeroValueQr(PayPulseQrPayload parsed) async {
+    final controller = TextEditingController(text: '250,00');
+    return showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'QR Ödeme Tutarı Girin',
+          style: AppTextStyles.bodyLarge.copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppColors.darkNavy,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Alıcı: ${parsed.userName ?? parsed.merchantName ?? 'PayPulse Hesabı'}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                prefixText: '₺ ',
+                labelText: 'Gönderilecek / Ödenecek Tutar',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.darkNavy,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              final cleaned = controller.text
+                  .trim()
+                  .replaceAll('.', '')
+                  .replaceAll(',', '.');
+              final val = double.tryParse(cleaned);
+              if (val != null && val > 0) {
+                Navigator.of(ctx).pop(val);
+              }
+            },
+            child: const Text('Devam Et'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _simulateScanAndPay({
     required String merchantName,
     required String terminalId,
     required double amount,
     required String qrRef,
+    String companyId = 'comp_techsolutions_01',
+    String? targetUserId,
+    String? targetIban,
+    String mode = 'B2B_POS',
+    String? description,
   }) async {
     if (_isSimulatingScanPayment) return;
     setState(() => _isSimulatingScanPayment = true);
@@ -139,18 +261,31 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
 
     try {
       if (firebaseUser != null) {
-        final tx = await FirebaseFirestoreDatasource().executeQrWalletPayment(
-          companyId: 'comp_techsolutions_01',
-          payerUserId: payerId,
-          amountKurus: (amount * 100).round(),
-        );
-        txId = tx.txId;
+        if (mode == 'B2C' &&
+            targetUserId != null &&
+            targetUserId.isNotEmpty &&
+            targetUserId != payerId) {
+          final tx = await FirebaseFirestoreDatasource().executeFastTransfer(
+            senderUserId: payerId,
+            receiverUserId: targetUserId,
+            amountKurus: (amount * 100).round(),
+            targetIban: targetIban,
+          );
+          txId = tx.txId;
+        } else {
+          final tx = await FirebaseFirestoreDatasource().executeQrWalletPayment(
+            companyId: companyId,
+            payerUserId: payerId,
+            amountKurus: (amount * 100).round(),
+          );
+          txId = tx.txId;
+        }
       } else {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 450));
       }
     } catch (_) {
       // Çevrimdışı veya demo hesap modunda yerel başarılı simülasyon devam eder.
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 350));
     }
 
     if (!mounted) return;
@@ -162,6 +297,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
       amount: amount,
       txId: txId,
       qrRef: qrRef,
+      description: description,
     );
   }
 
@@ -171,6 +307,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
     required double amount,
     required String txId,
     required String qrRef,
+    String? description,
   }) {
     final now = DateTime.now();
     showDialog<void>(
@@ -228,9 +365,11 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildSlipRow('Üye İşyeri:', merchantName),
-            _buildSlipRow('Terminal ID:', terminalId),
-            _buildSlipRow('QR Referans:', qrRef),
+            _buildSlipRow('Alıcı / İşyeri:', merchantName),
+            _buildSlipRow('Terminal / IBAN:', terminalId),
+            if (description != null && description.isNotEmpty)
+              _buildSlipRow('Açıklama:', description),
+            _buildSlipRow('QR Referans (48sn):', '#$qrRef'),
             _buildSlipRow('İşlem No:', txId),
             _buildSlipRow('Ödeme Yöntemi:', 'PayPulse TR Karekod'),
             _buildSlipRow(
@@ -267,6 +406,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
               fontSize: 11.5,
             ),
           ),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(
               value,
@@ -323,7 +463,10 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isShowQrMode = true),
+                      onTap: () => setState(() {
+                        _isShowQrMode = true;
+                        _isCameraActive = false;
+                      }),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
@@ -444,13 +587,13 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
               ),
               const SizedBox(height: 18),
 
-              // Gerçek Dinamik QR Kod (qr_flutter)
+              // Gerçek Dinamik QR Kod (qr_flutter) - Kamera ve barkod okuyucularla %100 okunabilir
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 280),
                 child: Container(
                   key: ValueKey<String>(qrPayload),
-                  width: 230,
-                  height: 230,
+                  width: 240,
+                  height: 240,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -472,7 +615,9 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                   child: QrImageView(
                     data: qrPayload,
                     version: QrVersions.auto,
-                    size: 200,
+                    errorCorrectionLevel: QrErrorCorrectLevel.M,
+                    size: 208,
+                    gapless: true,
                     backgroundColor: Colors.white,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
@@ -538,29 +683,27 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                 child: Column(
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.timer_outlined,
-                              size: 16,
+                        Icon(
+                          Icons.timer_outlined,
+                          size: 16,
+                          color: isUrgent
+                              ? AppColors.expenseRed
+                              : AppColors.primaryTeal,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Güvenlik için kod ${_formatCountdown(_remainingSeconds)} saniye içinde yenilenir',
+                            style: AppTextStyles.bodySmall.copyWith(
                               color: isUrgent
                                   ? AppColors.expenseRed
-                                  : AppColors.primaryTeal,
+                                  : const Color(0xFF475569),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11.5,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Güvenlik için kod ${_formatCountdown(_remainingSeconds)} saniye içinde yenilenir',
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: isUrgent
-                                    ? AppColors.expenseRed
-                                    : const Color(0xFF475569),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 11.5,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -730,15 +873,17 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'TR Karekod / PayPulse POS Okut',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.darkNavy,
+              Expanded(
+                child: Text(
+                  'TR Karekod / PayPulse POS Okut',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkNavy,
+                  ),
                 ),
               ),
               const StatusBadgeWidget(
-                label: 'Kamera & Simülatör',
+                label: 'Canlı Kamera & Okuyucu',
                 type: BadgeType.info,
               ),
             ],
@@ -749,7 +894,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
             child: Container(
-              height: 220,
+              height: 230,
               width: double.infinity,
               color: const Color(0xFF0F172A),
               child: _isCameraActive
@@ -758,30 +903,45 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                       children: [
                         MobileScanner(
                           onDetect: (capture) {
+                            if (_hasHandledCameraFrame) return;
                             if (capture.barcodes.isEmpty) return;
                             final raw = capture.barcodes.first.rawValue;
                             if (raw != null && raw.isNotEmpty) {
+                              _hasHandledCameraFrame = true;
                               setState(() => _isCameraActive = false);
-                              _simulateScanAndPay(
-                                merchantName: 'Nova Tasarım Ltd. POS',
-                                terminalId: 'POS-TR-8492',
-                                amount: 3750.00,
-                                qrRef: raw.length > 18
-                                    ? raw.substring(raw.length - 12)
-                                    : raw,
-                              );
+                              _handleScannedRawQrData(raw);
                             }
                           },
                         ),
                         Container(
-                          width: 150,
-                          height: 150,
+                          width: 155,
+                          height: 155,
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: AppColors.primaryGreen,
                               width: 2.5,
                             ),
                             borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 10,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black87,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                            ),
+                            onPressed: () =>
+                                setState(() => _isCameraActive = false),
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            label: const Text(
+                              'Kamerayı Kapat',
+                              style: TextStyle(fontSize: 11.5),
+                            ),
                           ),
                         ),
                       ],
@@ -815,13 +975,117 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                             foregroundColor: const Color(0xFF5EEAD4),
                             side: const BorderSide(color: Color(0xFF5EEAD4)),
                           ),
-                          onPressed: () =>
-                              setState(() => _isCameraActive = true),
+                          onPressed: () => setState(() {
+                            _hasHandledCameraFrame = false;
+                            _isCameraActive = true;
+                          }),
                           icon: const Icon(Icons.camera_alt_outlined, size: 16),
                           label: const Text('Kamerayı Başlat'),
                         ),
                       ],
                     ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Kopyalanan B2B / B2C QR Verisini Yapıştırarak Doğrudan Okuma ve Doğrulama
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Panodan veya Kodu Yapıştırarak QR Doğrula & Öde',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.darkNavy,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _manualQrInputController,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.darkNavy,
+                          fontSize: 11.5,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'PAYPULSE://TRKAREKOD/... kodunu yapıştırın',
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      tooltip: 'Panodan Yapıştır',
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final data =
+                            await Clipboard.getData(Clipboard.kTextPlain);
+                        if (data?.text != null && data!.text!.isNotEmpty) {
+                          setState(() {
+                            _manualQrInputController.text = data.text!.trim();
+                          });
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.content_paste_rounded,
+                        size: 18,
+                        color: AppColors.darkNavy,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryTeal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _isSimulatingScanPayment
+                          ? null
+                          : () => _handleScannedRawQrData(
+                              _manualQrInputController.text,
+                            ),
+                      child: const Text(
+                        'Çözümle & Öde',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -928,6 +1192,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
                     terminalId: terminalId,
                     amount: amount,
                     qrRef: _qrToken.substring(_qrToken.length - 8),
+                    description: description,
                   ),
             child: Text(
               'Öde (${_formatAmount(amount)})',
