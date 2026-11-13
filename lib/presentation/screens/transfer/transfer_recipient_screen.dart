@@ -51,7 +51,7 @@ class TransferRecipientScreen extends StatelessWidget {
                   'Garanti BBVA • TR34 0006 2000 •••• 6789 01',
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push(AppRoutes.fastTransfer),
+                onTap: () => context.push(AppRoutes.transferAmount),
               ),
             ),
           ],

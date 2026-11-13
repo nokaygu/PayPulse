@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/custom_numpad_widget.dart';
 import '../../widgets/role_switch_app_bar.dart';
-import 'transfer_summary_screen.dart';
 
 /// FAST Para Transferi Adım 2/4: Tutar Giriş Ekranı
 class TransferAmountScreen extends StatefulWidget {
@@ -92,15 +93,14 @@ class _TransferAmountScreenState extends State<TransferAmountScreen> {
                 ),
                 onPressed: () {
                   final int parsedAmount = int.tryParse(_amountText) ?? 1500;
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => TransferSummaryScreen(
-                        recipientIban: 'TR34 0006 2000 0001 2345 6789 01',
-                        recipientName: 'Zeynep Kaya',
-                        amountInKurus: parsedAmount * 100,
-                        description: 'Hafta sonu kahvaltı payı 🥐',
-                      ),
-                    ),
+                  context.push(
+                    AppRoutes.fastTransfer,
+                    extra: {
+                      'recipientIban': 'TR34 0006 2000 0001 2345 6789 01',
+                      'recipientName': 'Zeynep Kaya',
+                      'amountInKurus': parsedAmount * 100,
+                      'description': 'Hafta sonu kahvaltı payı 🥐',
+                    },
                   );
                 },
                 child: const Text(

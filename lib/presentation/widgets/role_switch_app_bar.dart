@@ -39,16 +39,24 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
         AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
     final String currentUserId =
         authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appBarBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final appBarBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final primaryTextColor = isDark ? Colors.white : AppColors.darkNavy;
+    final secondaryTextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final iconBg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
 
     return SafeArea(
       bottom: false,
       child: Container(
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: appBarBg,
           border: Border(
-            bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+            bottom: BorderSide(color: appBarBorder, width: 1),
           ),
         ),
         child: Row(
@@ -70,14 +78,14 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Container(
                   width: 38,
                   height: 38,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1F5F9),
+                  decoration: BoxDecoration(
+                    color: iconBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_back_rounded,
                     size: 20,
-                    color: AppColors.darkNavy,
+                    color: primaryTextColor,
                   ),
                 ),
               ),
@@ -96,7 +104,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                       style: AppTextStyles.headlineSmall.copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.darkNavy,
+                        color: primaryTextColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -105,7 +113,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                         customSubtitle!,
                         style: AppTextStyles.bodySmall.copyWith(
                           fontSize: 11,
-                          color: const Color(0xFF64748B),
+                          color: secondaryTextColor,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -149,16 +157,16 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                                     style: AppTextStyles.bodyLarge.copyWith(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 15,
-                                      color: AppColors.darkNavy,
+                                      color: primaryTextColor,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                const Icon(
+                                Icon(
                                   Icons.keyboard_arrow_down_rounded,
                                   size: 18,
-                                  color: AppColors.darkNavy,
+                                  color: primaryTextColor,
                                 ),
                               ],
                             ),
@@ -230,7 +238,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                       'PayPulse',
                       style: AppTextStyles.headlineSmall.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppColors.darkNavy,
+                        color: primaryTextColor,
                       ),
                     ),
                     if (AppMode.isDemoMode) ...[
@@ -274,9 +282,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                     IconButton(
                       onPressed: () =>
                           _showNotificationsSheet(context, currentUserId),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.notifications_none_rounded,
-                        color: AppColors.darkNavy,
+                        color: primaryTextColor,
                       ),
                     ),
                     if (unreadCount > 0)
@@ -318,7 +326,8 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
               onTap: () => _showRoleSwitchSheet(context),
               child: CircleAvatar(
                 radius: 17,
-                backgroundColor: AppColors.darkNavy,
+                backgroundColor:
+                    isDark ? const Color(0xFF334155) : AppColors.darkNavy,
                 child: Icon(
                   isBusinessMode ? Icons.person_outline_rounded : Icons.person,
                   size: 18,
@@ -333,7 +342,25 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _showRoleSwitchSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentRole = context.read<AuthBloc>().state.role;
+    final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final handleColor =
+        isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+    final titleColor = isDark ? Colors.white : AppColors.darkNavy;
+    final subtitleColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final logoutBg = isDark
+        ? const Color(0xFF450A0A).withValues(alpha: 0.55)
+        : const Color(0xFFFEE2E2).withValues(alpha: 0.5);
+    final logoutBorder =
+        isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA);
+    final logoutIconBg =
+        isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2);
+    final logoutAccent =
+        isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
+    final logoutSubColor =
+        isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B);
 
     showModalBottomSheet(
       context: context,
@@ -341,9 +368,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(ctx).size.height * 0.85,
@@ -363,7 +390,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFCBD5E1),
+                        color: handleColor,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -382,13 +409,14 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                               style: AppTextStyles.headlineSmall.copyWith(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 18,
+                                color: titleColor,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'Bireysel Cüzdan ile İşletme Paneli arasında anında geçiş yapın.',
                               style: AppTextStyles.bodySmall.copyWith(
-                                color: const Color(0xFF64748B),
+                                color: subtitleColor,
                                 fontSize: 12,
                               ),
                             ),
@@ -397,7 +425,11 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.close_rounded, size: 20),
+                        icon: Icon(
+                          Icons.close_rounded,
+                          size: 20,
+                          color: subtitleColor,
+                        ),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
@@ -408,6 +440,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   _buildRoleCard(
                     context: context,
                     ctx: ctx,
+                    isDark: isDark,
                     role: 'b2c',
                     isActive: currentRole == 'b2c',
                     icon: Icons.account_balance_wallet_rounded,
@@ -426,6 +459,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   _buildRoleCard(
                     context: context,
                     ctx: ctx,
+                    isDark: isDark,
                     role: 'employee',
                     isActive: currentRole == 'employee',
                     icon: Icons.badge_outlined,
@@ -444,6 +478,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   _buildRoleCard(
                     context: context,
                     ctx: ctx,
+                    isDark: isDark,
                     role: 'admin',
                     isActive: currentRole == 'admin',
                     icon: Icons.business_center_rounded,
@@ -472,23 +507,23 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2).withValues(alpha: 0.5),
+                        color: logoutBg,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFFECACA)),
+                        border: Border.all(color: logoutBorder),
                       ),
                       child: Row(
                         children: [
                           Container(
                             width: 36,
                             height: 36,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFEE2E2),
+                            decoration: BoxDecoration(
+                              color: logoutIconBg,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.logout_rounded,
                               size: 18,
-                              color: Color(0xFFB91C1C),
+                              color: logoutAccent,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -499,24 +534,24 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                                 Text(
                                   'Güvenli Çıkış Yap',
                                   style: AppTextStyles.bodyMedium.copyWith(
-                                    color: const Color(0xFFB91C1C),
+                                    color: logoutAccent,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 Text(
                                   'Oturumu sonlandırıp giriş ekranına dön',
                                   style: AppTextStyles.bodySmall.copyWith(
-                                    color: const Color(0xFF991B1B),
+                                    color: logoutSubColor,
                                     fontSize: 11,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward_ios_rounded,
                             size: 14,
-                            color: Color(0xFFB91C1C),
+                            color: logoutAccent,
                           ),
                         ],
                       ),
@@ -534,6 +569,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget _buildRoleCard({
     required BuildContext context,
     required BuildContext ctx,
+    required bool isDark,
     required String role,
     required bool isActive,
     required IconData icon,
@@ -546,6 +582,20 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
     required String subtitle,
     required String targetRoute,
   }) {
+    final cardBg = isActive
+        ? (isDark
+            ? AppColors.primaryGreen.withValues(alpha: 0.16)
+            : const Color(0xFFF0FDF4))
+        : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC));
+    final cardBorder = isActive
+        ? AppColors.primaryGreen
+        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
+    final primaryText = isDark ? Colors.white : AppColors.darkNavy;
+    final secondaryText =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final trailingArrowColor =
+        isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+
     return InkWell(
       onTap: () {
         Navigator.pop(ctx);
@@ -557,10 +607,10 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+          color: cardBg,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isActive ? AppColors.primaryGreen : const Color(0xFFE2E8F0),
+            color: cardBorder,
             width: isActive ? 1.5 : 1,
           ),
         ),
@@ -588,7 +638,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: AppColors.darkNavy,
+                            color: primaryText,
                           ),
                         ),
                       ),
@@ -618,7 +668,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                     subtitle,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF64748B),
+                      color: secondaryText,
                       fontSize: 11,
                     ),
                   ),
@@ -646,10 +696,10 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               )
             else
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,
-                color: Color(0xFF94A3B8),
+                color: trailingArrowColor,
               ),
           ],
         ),
@@ -658,6 +708,21 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _showNotificationsSheet(BuildContext context, String userId) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final titleColor = isDark ? Colors.white : AppColors.darkNavy;
+    final secondaryColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final dividerColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final emptyIconColor =
+        isDark ? const Color(0xFF475569) : Colors.grey.shade400;
+    final readAvatarBg =
+        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final unreadAvatarBg = isDark
+        ? AppColors.primaryTeal.withValues(alpha: 0.22)
+        : const Color(0xFFE0F2FE);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -668,9 +733,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
       builder: (ctx) {
         final datasource = FirebaseFirestoreDatasource();
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(16),
           constraints: BoxConstraints(
@@ -685,17 +750,17 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   Text(
                     'Bildirimler',
                     style: AppTextStyles.headlineSmall.copyWith(
-                      color: AppColors.darkNavy,
+                      color: titleColor,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded, color: secondaryColor),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
                 ],
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: dividerColor),
               Expanded(
                 child: StreamBuilder<List<NotificationModel>>(
                   stream: datasource.watchUserNotifications(userId),
@@ -717,13 +782,13 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                             Icon(
                               Icons.notifications_off_outlined,
                               size: 40,
-                              color: Colors.grey.shade400,
+                              color: emptyIconColor,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Yeni bildirim bulunmuyor.',
                               style: AppTextStyles.bodySmall.copyWith(
-                                color: const Color(0xFF64748B),
+                                color: secondaryColor,
                               ),
                             ),
                           ],
@@ -734,7 +799,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                     return ListView.separated(
                       itemCount: notifications.length,
                       separatorBuilder: (context, index) =>
-                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          Divider(height: 1, color: dividerColor),
                       itemBuilder: (context, i) {
                         final n = notifications[i];
                         return ListTile(
@@ -743,14 +808,13 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                             vertical: 2,
                           ),
                           leading: CircleAvatar(
-                            backgroundColor: n.isRead
-                                ? const Color(0xFFF1F5F9)
-                                : const Color(0xFFE0F2FE),
+                            backgroundColor:
+                                n.isRead ? readAvatarBg : unreadAvatarBg,
                             child: Icon(
                               Icons.notifications_active_outlined,
                               size: 20,
                               color: n.isRead
-                                  ? const Color(0xFF64748B)
+                                  ? secondaryColor
                                   : AppColors.primaryTeal,
                             ),
                           ),
@@ -760,13 +824,13 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                               fontWeight: n.isRead
                                   ? FontWeight.w600
                                   : FontWeight.w800,
-                              color: AppColors.darkNavy,
+                              color: titleColor,
                             ),
                           ),
                           subtitle: Text(
                             n.body,
                             style: AppTextStyles.bodySmall.copyWith(
-                              color: const Color(0xFF64748B),
+                              color: secondaryColor,
                               fontSize: 11,
                             ),
                           ),
