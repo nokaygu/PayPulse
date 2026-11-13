@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../config/app_mode.dart';
 import '../constants/firestore_collections.dart';
+import '../../data/datasources/remote/local_demo_data_service.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/models/budget_category_model.dart';
@@ -368,6 +370,14 @@ class FirestoreSeeder {
   // ================= FIRESTORE'A CANLI BASMA (BATCH WRITE) =================
   /// Tek tıkla tüm Kasım 2026 verilerini Cloud Firestore'a atomik olarak basar.
   Future<void> seedAll() async {
+    // 1. Yerel reaktif belleği her zaman sıfırla ve yeniden tohumla
+    LocalDemoDataService.instance.resetOrSeedData();
+
+    if (AppMode.isDemoMode) {
+      // macOS ve Demo modunda Firebase ağ istekleri atlanır
+      return;
+    }
+
     final batch = _firestore.batch();
 
     // 1. Kullanıcı ve Cüzdan
