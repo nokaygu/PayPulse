@@ -126,12 +126,17 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
               fontSize: 11,
             ),
           ),
-          Text(
-            value,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.darkNavy,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.darkNavy,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
             ),
           ),
         ],

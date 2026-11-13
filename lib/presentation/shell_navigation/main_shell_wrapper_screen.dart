@@ -176,26 +176,29 @@ class _RoleAndModeBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isBusiness
-                    ? const Color(0xFF1E293B)
-                    : const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                isBusiness
-                    ? 'Nova Tasarım Ltd. • İşletme'
-                    : 'PayPulse Bireysel',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: isBusiness ? Colors.white : const Color(0xFF0F172A),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isBusiness
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isBusiness
+                      ? 'Nova Tasarım'
+                      : 'PayPulse Bireysel',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isBusiness ? Colors.white : const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             PopupMenuButton<String>(
               tooltip: 'Rol Seç (Guard Testi)',
               onSelected: (role) {
@@ -222,7 +225,7 @@ class _RoleAndModeBanner extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Rol: ${authState.role}',
+                      '${authState.role}',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -242,12 +245,13 @@ class _RoleAndModeBanner extends StatelessWidget {
                 ),
               ),
             ),
-            const Spacer(),
-            if (authState.canAccessBusinessPanel)
+            const SizedBox(width: 6),
+            if (authState.canAccessBusinessPanel) ...[
+              const Spacer(),
               TextButton.icon(
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
+                    horizontal: 8,
                     vertical: 4,
                   ),
                   minimumSize: Size.zero,
@@ -272,16 +276,17 @@ class _RoleAndModeBanner extends StatelessWidget {
                   isBusiness
                       ? Icons.account_balance_wallet_outlined
                       : Icons.business_center_outlined,
-                  size: 14,
+                  size: 13,
                 ),
                 label: Text(
-                  isBusiness ? 'Kişisel Cüzdana Dön' : 'İşletme Paneli',
+                  isBusiness ? 'Bireysel' : 'KOBİ Paneli',
                   style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),

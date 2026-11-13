@@ -145,35 +145,41 @@ class _B2bExpenseApprovalCenterScreenState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'Masraf Onay Merkezi',
-                      style: AppTextStyles.headlineSmall.copyWith(
-                        color: AppColors.darkNavy,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '● 3 Bekleyen',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: const Color(0xFFDC2626),
-                          fontSize: 10,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Masraf Onay Merkezi',
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.headlineSmall.copyWith(
+                            color: AppColors.darkNavy,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '● 3 Bekleyen',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: const Color(0xFFDC2626),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   width: 38,
                   height: 38,
@@ -322,22 +328,28 @@ class _B2bExpenseApprovalCenterScreenState
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.savings_outlined,
-                              size: 16,
-                              color: Color(0xFF5EEAD4),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'KDV İndirimi Kazanımı',
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: const Color(0xFF94A3B8),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.savings_outlined,
+                                size: 16,
+                                color: Color(0xFF5EEAD4),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'KDV İndirimi Kazanımı',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: const Color(0xFF94A3B8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '+₺648,40',
                           style: AppTextStyles.labelMedium.copyWith(

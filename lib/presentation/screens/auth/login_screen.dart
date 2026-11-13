@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_mode.dart';
 import '../../../core/errors/auth_error_messages.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -40,17 +41,44 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Firebase Authentication ile gerçek kullanıcı girişi yapar.
+  /// Giriş işlemini yürütür: macOS üzerinde Apple hesapsız demo modunu çalıştırır,
+  /// Android üzerinde canlı Firebase Authentication ile giriş yapar.
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
+    if (AppMode.isDemoMode) {
+      // macOS Demo Modu: Firebase Auth Keychain erişim hatasını önler.
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+
+      final targetRole = _isB2BSelected ? 'admin' : 'b2c';
+      context.read<AuthBloc>().add(AuthDemoLoginRequested(targetRole));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isB2BSelected
+                ? 'B2B Kurumsal Demo Paneline giriş başarılı!'
+                : 'B2C Bireysel Demo Cüzdana giriş başarılı!',
+          ),
+          backgroundColor: AppColors.incomeGreen,
+        ),
+      );
+
+      context.go(
+        targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
+      );
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      // Firebase Authentication ile giriş
+      // Canlı Firebase Authentication ile giriş (Android)
       await FirebaseAuthDatasource().login(email, password);
 
       if (!mounted) return;
@@ -64,7 +92,19 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppColors.incomeGreen,
         ),
       );
+
+      final targetRole = _isB2BSelected ? 'admin' : 'b2c';
+      if (_isB2BSelected) {
+        context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
+      }
+      context.go(
+        targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
+      );
     } on FirebaseAuthException catch (e) {
+      debugPrint('🚨 [Firebase Auth Exception]');
+      debugPrint('   • Error Code: ${e.code}');
+      debugPrint('   • Message: ${e.message}');
+      debugPrint('   • Plugin: ${e.plugin}');
       if (!mounted) return;
       final msg = AuthErrorMessages.fromCode(e.code);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,7 +113,9 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppColors.expenseRed,
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('🚨 [General Auth Exception]: $e');
+      debugPrint('   • StackTrace: $stack');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -89,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Jüri sunumu ve hızlı demo için tek tıkla test girişi sağlar.
   void _handleDemoLogin() {
     final targetRole = _isB2BSelected ? 'admin' : 'b2c';
-    context.read<AuthBloc>().add(AuthRoleChanged(targetRole));
+    context.read<AuthBloc>().add(AuthDemoLoginRequested(targetRole));
     context.go(
       targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
     );
@@ -146,6 +188,40 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        if (AppMode.isDemoMode)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0F2FE),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFBAE6FD),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.bolt_rounded,
+                                  size: 13,
+                                  color: AppColors.primaryTeal,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Demo Modu (macOS)',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.primaryTeal,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],

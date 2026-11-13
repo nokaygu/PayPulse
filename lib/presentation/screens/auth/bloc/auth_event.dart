@@ -30,6 +30,13 @@ final class AuthRoleChanged extends AuthEvent {
   const AuthRoleChanged(this.role);
 }
 
+/// Jüri / demo sunumu için tek tıkla test girişi sağlar (Firebase kimlik doğrulaması olmadan).
+final class AuthDemoLoginRequested extends AuthEvent {
+  final String role; // 'b2c' veya 'admin'
+
+  const AuthDemoLoginRequested(this.role);
+}
+
 /// Mevcut oturumu kapatır.
 final class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();

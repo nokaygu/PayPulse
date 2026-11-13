@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_mode.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -45,9 +46,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authUser = context.watch<AuthBloc>().state.user;
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseUser =
+        AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
     final String currentUserId =
-        authUser?.uid ?? firebaseUser?.uid ?? 'user_b2c_001';
+        authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
     final String currentUserName =
         (authUser?.name != null && authUser!.name.isNotEmpty)
             ? authUser.name
@@ -60,9 +62,13 @@ class _HomeScreenState extends State<HomeScreen> {
       body: StreamBuilder<WalletModel?>(
         stream: _firestoreDatasource.watchUserWallet(currentUserId),
         builder: (context, walletSnapshot) {
+          final isDemoUser = currentUserId == 'user_deniz_aksoy' ||
+              authUser?.uid == 'user_deniz_aksoy' ||
+              currentUserId.startsWith('demo_');
+
           final wallet = walletSnapshot.data;
           final String ibanStr =
-              wallet?.iban ?? 'TR34 0006 2000 0001 2345 6789 01';
+              wallet?.iban ?? (authUser?.iban ?? 'TR42 0006 2000 8492 0100 0000 01');
 
           final String balanceStr;
           if (_selectedCurrency == 'TRY') {
@@ -96,26 +102,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primaryTeal,
-                              shape: BoxShape.circle,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primaryTeal,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$currentUserName • ${wallet?.walletId ?? 'PP-849201'}',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.darkNavy,
-                              fontWeight: FontWeight.w700,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '$currentUserName • ${wallet?.walletId ?? 'PP-849201'}',
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: AppColors.darkNavy,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () {
                           context.read<AuthBloc>().add(
@@ -231,14 +243,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              ibanStr,
-                              style: AppTextStyles.labelSmall.copyWith(
-                                color: Colors.white,
-                                fontFamily: 'monospace',
-                                fontSize: 10.5,
+                            Expanded(
+                              child: Text(
+                                ibanStr,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: Colors.white,
+                                  fontFamily: 'monospace',
+                                  fontSize: 10.5,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () {
                                 Clipboard.setData(
@@ -314,13 +330,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Son Cüzdan Hareketleri',
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.darkNavy,
+                    Expanded(
+                      child: Text(
+                        'Son Cüzdan Hareketleri',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.darkNavy,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () => context.go(AppRoutes.transactions),
                       child: Text(
@@ -357,7 +377,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }
 
-                      final transactions = txSnapshot.data ?? [];
+                      var transactions = txSnapshot.data ?? [];
+                      if (transactions.isEmpty && isDemoUser) {
+                        transactions = FirestoreSeeder.mockTransactions;
+                      }
                       if (transactions.isEmpty) {
                         return Padding(
                           padding: const EdgeInsets.symmetric(
