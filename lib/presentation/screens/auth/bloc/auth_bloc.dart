@@ -5,22 +5,27 @@ import '../../../../core/config/app_mode.dart';
 import '../../../../core/utils/firestore_seeder.dart';
 import '../../../../data/datasources/remote/firebase_auth_datasource.dart';
 import '../../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../../data/models/user_model.dart';
+import '../../../../data/repositories/user_repository.dart';
+import '../../../../domain/entities/user_entity.dart';
+import '../../../../domain/repositories/i_user_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final FirebaseAuthDatasource? _authDatasource;
-  final FirebaseFirestoreDatasource? _firestoreDatasource;
+  final IUserRepository? _userRepository;
 
   AuthBloc({
     FirebaseAuthDatasource? authDatasource,
     FirebaseFirestoreDatasource? firestoreDatasource,
-  }) : _authDatasource = authDatasource ??
-           (AppMode.isLiveFirebase ? FirebaseAuthDatasource() : null),
-       _firestoreDatasource = firestoreDatasource ??
-           (AppMode.isLiveFirebase ? FirebaseFirestoreDatasource() : null),
-       super(const AuthState()) {
+    IUserRepository? userRepository,
+  })  : _authDatasource = authDatasource ??
+            (AppMode.isLiveFirebase ? FirebaseAuthDatasource() : null),
+        _userRepository = userRepository ??
+            (firestoreDatasource != null
+                ? UserRepository(firestoreDatasource: firestoreDatasource)
+                : (AppMode.isLiveFirebase ? UserRepository() : null)),
+        super(const AuthState()) {
     on<AuthSubscriptionRequested>(_onSubscriptionRequested);
     on<AuthUserProfileLoaded>(_onUserProfileLoaded);
     on<AuthPanelModeToggled>(_onPanelModeToggled);
@@ -39,7 +44,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     await emit.forEach<User?>(
-      _authDatasource!.authStateChanges(),
+      _authDatasource.authStateChanges(),
       onData: (firebaseUser) {
         if (firebaseUser == null) {
           if (state.user?.uid.startsWith('demo_') == true ||
@@ -52,7 +57,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           );
         }
 
-        final initialUser = UserModel(
+        final initialUser = UserEntity(
           uid: firebaseUser.uid,
           name: firebaseUser.displayName ??
               firebaseUser.email?.split('@').first ??
@@ -81,15 +86,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _loadUserProfile(User firebaseUser) async {
     try {
-      final profile = await _firestoreDatasource?.getUserProfile(
-        firebaseUser.uid,
-      );
+      final profile = await _userRepository?.getUserById(firebaseUser.uid);
       if (profile != null && !isClosed) {
         add(AuthUserProfileLoaded(profile));
       } else if (!isClosed) {
         add(
           AuthUserProfileLoaded(
-            UserModel(
+            UserEntity(
               uid: firebaseUser.uid,
               name: firebaseUser.displayName ??
                   firebaseUser.email?.split('@').first ??
@@ -113,7 +116,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       state.copyWith(
         user: event.user,
         role: event.user.role,
-        isBusinessMode: event.user.role == 'b2c' ? false : state.isBusinessMode,
+        isBusinessMode: event.user.isB2C ? false : state.isBusinessMode,
       ),
     );
   }
@@ -144,13 +147,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
-    final updatedUser = UserModel(
+    final updatedUser = UserEntity(
       uid: currentUser.uid,
       name: currentUser.name,
       email: currentUser.email,
       role: event.role,
       companyId: event.role == 'b2c' ? null : currentUser.companyId,
-      hasB2BAccess: event.role != 'b2c' && currentUser.companyId != null,
+      hasB2BAccess: event.role != 'b2c' && currentUser.hasCompany,
     );
 
     emit(
@@ -166,11 +169,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthDemoLoginRequested event,
     Emitter<AuthState> emit,
   ) {
-    final UserModel demoUser;
+    final UserEntity demoUser;
     final bool isBusiness;
     if (event.role == 'admin') {
       isBusiness = true;
-      demoUser = const UserModel(
+      demoUser = const UserEntity(
         uid: 'user_admin_ali',
         name: 'Ali Yılmaz',
         email: 'ali.yilmaz@paypulse.com',
@@ -185,7 +188,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     } else if (event.role == 'employee') {
       isBusiness = true;
-      demoUser = const UserModel(
+      demoUser = const UserEntity(
         uid: 'user_employee_ahmet',
         name: 'Ahmet Yılmaz',
         email: 'ahmet.yilmaz@paypulse.com',
@@ -200,7 +203,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     } else {
       isBusiness = false;
-      demoUser = const UserModel(
+      demoUser = const UserEntity(
         uid: 'user_deniz_aksoy',
         name: 'Deniz Aksoy',
         email: 'deniz.aksoy@paypulse.com',
@@ -230,7 +233,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     if (!AppMode.isDemoMode && _authDatasource != null) {
       try {
-        await _authDatasource!.logout();
+        await _authDatasource.logout();
       } catch (_) {}
     }
     emit(

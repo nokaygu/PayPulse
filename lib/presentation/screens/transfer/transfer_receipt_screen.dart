@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/models/transaction_model.dart';
+import '../../../core/utils/financial_amount.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/entities/transaction_entity.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
 import '../../widgets/receipt_summary_card_widget.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
 /// FAST Para Transferi Adım 4/4: Resmi İşlem Dekontu Ekranı
 class TransferReceiptScreen extends StatelessWidget {
   final String txId;
+  final ITransactionRepository _transactionRepository = TransactionRepository();
 
-  const TransferReceiptScreen({super.key, required this.txId});
+  TransferReceiptScreen({super.key, required this.txId});
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +28,12 @@ class TransferReceiptScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: FutureBuilder<TransactionModel?>(
-          future: FirebaseFirestoreDatasource().getTransaction(txId),
+        child: FutureBuilder<TransactionEntity?>(
+          future: _transactionRepository.getTransactionById(txId),
           builder: (context, snapshot) {
             final tx = snapshot.data;
             final String amountFormatted = tx != null
-                ? '₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}'
+                ? FinancialAmount.format(tx.amount)
                 : '₺1.500,00';
             final String senderStr = tx != null && tx.senderId.isNotEmpty
                 ? 'Cüzdan (${tx.senderId})'

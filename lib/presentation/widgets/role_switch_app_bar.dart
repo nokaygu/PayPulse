@@ -7,8 +7,9 @@ import '../../core/config/app_mode.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../data/datasources/remote/firebase_firestore_datasource.dart';
 import '../../data/models/notification_model.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../domain/repositories/i_notification_repository.dart';
 import '../screens/auth/bloc/auth_bloc.dart';
 import '../screens/auth/bloc/auth_event.dart';
 
@@ -273,8 +274,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
 
             // Canlı Firestore Bildirim İkonu & Rozeti
             StreamBuilder<int>(
-              stream: FirebaseFirestoreDatasource()
-                  .watchUnreadNotificationCount(currentUserId),
+              stream: NotificationRepository().getUnreadCount(currentUserId),
               builder: (context, notifSnapshot) {
                 final unreadCount = notifSnapshot.data ?? 0;
                 return Stack(
@@ -731,7 +731,8 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        final datasource = FirebaseFirestoreDatasource();
+        final INotificationRepository notificationRepository =
+            NotificationRepository();
         return Container(
           decoration: BoxDecoration(
             color: sheetBg,
@@ -763,7 +764,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
               Divider(height: 1, color: dividerColor),
               Expanded(
                 child: StreamBuilder<List<NotificationModel>>(
-                  stream: datasource.watchUserNotifications(userId),
+                  stream: notificationRepository.getUserNotifications(userId),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
@@ -843,8 +844,8 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                                     size: 18,
                                     color: AppColors.primaryGreen,
                                   ),
-                                  onPressed: () =>
-                                      datasource.markNotificationAsRead(n.notificationId),
+                                  onPressed: () => notificationRepository
+                                      .markAsRead(n.notificationId),
                                 ),
                         );
                       },

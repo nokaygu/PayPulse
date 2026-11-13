@@ -41,7 +41,7 @@ class FinancialAmount {
         '${(kurus % 100).toString().padLeft(2, '0')}';
   }
 
-  static String format(int kurus) {
+  static String format(int kurus, {String symbol = '₺'}) {
     final absolute = kurus.abs();
     final digits = (absolute ~/ 100).toString();
     final grouped = StringBuffer();
@@ -56,7 +56,12 @@ class FinancialAmount {
 
     final fraction = (absolute % 100).toString().padLeft(2, '0');
 
-    return '${kurus < 0 ? '-' : ''}₺$grouped,$fraction';
+    return '${kurus < 0 ? '-' : ''}$symbol$grouped,$fraction';
+  }
+
+  /// Ana birim (TL, USD, EUR) tutarını binlik ayraçlı formatlar.
+  static String formatLira(double amount, {String symbol = '₺'}) {
+    return format((amount * 100).round(), symbol: symbol);
   }
 
   static int balanceAfter({

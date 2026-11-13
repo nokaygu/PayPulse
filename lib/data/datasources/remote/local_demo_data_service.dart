@@ -5,6 +5,7 @@ import '../../../core/utils/firestore_seeder.dart';
 import '../../models/company_model.dart';
 import '../../models/expense_model.dart';
 import '../../models/notification_model.dart';
+import '../../models/payment_request_model.dart';
 import '../../models/safe_recipient_model.dart';
 import '../../models/transaction_model.dart';
 import '../../models/user_model.dart';
@@ -38,6 +39,7 @@ class LocalDemoDataService {
   final List<TransactionModel> _transactions = [];
   final List<ExpenseModel> _expenses = [];
   final List<NotificationModel> _notifications = [];
+  final Map<String, PaymentRequestModel> _paymentRequests = {};
 
   // ================= 3. BAŞLANGIÇ VERİLERİNİN YÜKLENMESİ =================
   void _initData() {
@@ -290,6 +292,7 @@ class LocalDemoDataService {
     _transactions.clear();
     _expenses.clear();
     _notifications.clear();
+    _paymentRequests.clear();
     _initData();
     _walletsController.add(Map.from(_wallets));
     _transactionsController.add(List.from(_transactions));
@@ -309,6 +312,20 @@ class LocalDemoDataService {
   }
 
   // ================= 4. KULLANICI & ŞİRKET İŞLEMLERİ =================
+  List<UserModel> getAllUsers() => List.unmodifiable(_users.values);
+
+  List<CompanyModel> getAllCompanies() => List.unmodifiable(_companies.values);
+
+  List<WalletModel> getAllWallets() => List.unmodifiable(_wallets.values);
+
+  List<TransactionModel> getAllTransactions() =>
+      List.unmodifiable(_transactions);
+
+  List<ExpenseModel> getAllExpenses() => List.unmodifiable(_expenses);
+
+  List<PaymentRequestModel> getAllPaymentRequests() =>
+      List.unmodifiable(_paymentRequests.values);
+
   UserModel? getUserProfile(String uid) {
     if (_users.containsKey(uid)) return _users[uid];
     if (uid == 'user_deniz_aksoy' || uid == 'user_b2c_001') return _users['user_deniz_aksoy'];
@@ -381,6 +398,28 @@ class LocalDemoDataService {
     return _recipients[normalized];
   }
 
+  Future<TransactionModel> executeFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+    String? targetIban,
+  }) async {
+    if (senderUserId == receiverUserId) {
+      throw ArgumentError('Kendinize para transferi yapamazsınız.');
+    }
+
+    return _performDemoFastTransfer(
+      senderUserId: senderUserId,
+      receiverUserId: receiverUserId,
+      amountKurus: amountKurus,
+      currency: currency,
+      targetIban: targetIban,
+      recipientDisplayName:
+          _users[receiverUserId]?.name ?? 'PayPulse Kullanıcısı',
+    );
+  }
+
   Future<TransactionModel> executeFastTransferByIban({
     required String senderUserId,
     required String targetIban,
@@ -394,6 +433,24 @@ class LocalDemoDataService {
       throw Exception('Belirtilen IBAN numarasına ait geçerli bir hesap bulunamadı.');
     }
 
+    return _performDemoFastTransfer(
+      senderUserId: senderUserId,
+      receiverUserId: recipient.userId,
+      amountKurus: amountKurus,
+      currency: currency,
+      targetIban: targetIban,
+      recipientDisplayName: recipient.maskedName,
+    );
+  }
+
+  Future<TransactionModel> _performDemoFastTransfer({
+    required String senderUserId,
+    required String receiverUserId,
+    required int amountKurus,
+    required String recipientDisplayName,
+    String currency = 'TRY',
+    String? targetIban,
+  }) async {
     if (amountKurus <= 0) {
       throw ArgumentError('Transfer tutarı sıfırdan büyük olmalıdır.');
     }
@@ -423,8 +480,7 @@ class LocalDemoDataService {
     _wallets[senderWallet.walletId] = updatedSenderWallet;
 
     // Alıcı yerel demo sistemindeyse alıcı bakiyesini de artır
-    final receiverUserId = recipient.userId;
-    final receiverWallet = getUserWallet(receiverUserId);
+    final receiverWallet = _wallets['wallet_$receiverUserId'];
     if (receiverWallet != null) {
       final updatedReceiverWallet = WalletModel(
         walletId: receiverWallet.walletId,
@@ -448,7 +504,7 @@ class LocalDemoDataService {
       timestamp: DateTime.now(),
       type: 'fast',
       targetIban: targetIban,
-      title: recipient.maskedName,
+      title: recipientDisplayName,
       category: 'FAST Para Transferi',
       isExpense: true,
       dateGroup: 'BUGÜN, ${DateTime.now().day} KASIM',
@@ -484,7 +540,7 @@ class LocalDemoDataService {
         notificationId: 'notif_tx_${DateTime.now().millisecondsSinceEpoch}',
         userId: senderUserId,
         title: 'FAST Transfer Başarılı',
-        body: '${recipient.maskedName} adlı alıcıya ₺${(amountKurus / 100).toStringAsFixed(2)} aktarıldı.',
+        body: '$recipientDisplayName adlı alıcıya ₺${(amountKurus / 100).toStringAsFixed(2)} aktarıldı.',
         type: 'transfer_sent',
         isRead: false,
         createdAt: DateTime.now(),
@@ -790,6 +846,117 @@ class LocalDemoDataService {
     _notificationsController.add(List.unmodifiable(_notifications));
 
     return tx;
+  }
+
+  /// QR Kod ile Cüzdan Ödemesi Simülasyonu
+  Future<TransactionModel> executeQrWalletPayment({
+    required String companyId,
+    required String payerUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+  }) async {
+    if (amountKurus <= 0) {
+      throw ArgumentError('Tahsilat tutarı sıfırdan büyük olmalıdır.');
+    }
+
+    var normalizedCurrency = currency.toUpperCase();
+    if (normalizedCurrency == 'TL') normalizedCurrency = 'TRY';
+    if (!['TRY', 'USD', 'EUR'].contains(normalizedCurrency)) {
+      throw ArgumentError('Desteklenmeyen para birimi: $currency');
+    }
+
+    final payerWallet = getUserWallet(payerUserId);
+    if (payerWallet == null) {
+      throw Exception('Müşteri cüzdanı bulunamadı.');
+    }
+
+    final currentPayerBalance = normalizedCurrency == 'USD'
+        ? payerWallet.balanceUsd
+        : normalizedCurrency == 'EUR'
+        ? payerWallet.balanceEur
+        : payerWallet.balanceTl;
+
+    if (currentPayerBalance < amountKurus) {
+      throw Exception('Yetersiz müşteri bakiyesi. İşlem gerçekleştirilemedi.');
+    }
+
+    final updatedPayerWallet = WalletModel(
+      walletId: payerWallet.walletId,
+      ownerId: payerWallet.ownerId,
+      balanceTl: normalizedCurrency == 'TRY'
+          ? payerWallet.balanceTl - amountKurus
+          : payerWallet.balanceTl,
+      balanceUsd: normalizedCurrency == 'USD'
+          ? payerWallet.balanceUsd - amountKurus
+          : payerWallet.balanceUsd,
+      balanceEur: normalizedCurrency == 'EUR'
+          ? payerWallet.balanceEur - amountKurus
+          : payerWallet.balanceEur,
+      iban: payerWallet.iban,
+    );
+    _wallets[payerWallet.walletId] = updatedPayerWallet;
+
+    final compWallet = _wallets['wallet_$companyId'];
+    if (compWallet != null) {
+      final updatedCompWallet = WalletModel(
+        walletId: compWallet.walletId,
+        ownerId: compWallet.ownerId,
+        balanceTl: normalizedCurrency == 'TRY'
+            ? compWallet.balanceTl + amountKurus
+            : compWallet.balanceTl,
+        balanceUsd: normalizedCurrency == 'USD'
+            ? compWallet.balanceUsd + amountKurus
+            : compWallet.balanceUsd,
+        balanceEur: normalizedCurrency == 'EUR'
+            ? compWallet.balanceEur + amountKurus
+            : compWallet.balanceEur,
+        iban: compWallet.iban,
+      );
+      _wallets[compWallet.walletId] = updatedCompWallet;
+      if (companyId == 'comp_paypulse_tech' ||
+          companyId == 'comp_techsolutions_01') {
+        _wallets['wallet_comp_paypulse_tech'] = updatedCompWallet;
+        _wallets['wallet_comp_techsolutions_01'] = updatedCompWallet;
+      }
+    }
+
+    final txId =
+        'PP-QR-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(999)}';
+    final tx = TransactionModel(
+      txId: txId,
+      senderId: payerUserId,
+      receiverId: companyId,
+      amount: amountKurus,
+      currency: normalizedCurrency,
+      timestamp: DateTime.now(),
+      type: 'qr_pos_payment',
+      title: 'PayPulse QR Ödeme ($companyId)',
+      category: 'QR Ödeme',
+      isExpense: true,
+      dateGroup: 'BUGÜN, ${DateTime.now().day} KASIM',
+      status: 'Başarılı',
+    );
+
+    _transactions.insert(0, tx);
+    _walletsController.add(Map.unmodifiable(_wallets));
+    _transactionsController.add(List.unmodifiable(_transactions));
+    return tx;
+  }
+
+  Future<void> createPaymentRequest(PaymentRequestModel request) async {
+    _paymentRequests[request.requestId] = request;
+  }
+
+  PaymentRequestModel? getPaymentRequest(String requestId) {
+    return _paymentRequests[requestId];
+  }
+
+  Future<void> createNotification(NotificationModel notification) async {
+    _notifications.removeWhere(
+      (n) => n.notificationId == notification.notificationId,
+    );
+    _notifications.insert(0, notification);
+    _notificationsController.add(List.unmodifiable(_notifications));
   }
 
   // ================= 9. İŞLEM GEÇMİŞİ & SORGULAR =================

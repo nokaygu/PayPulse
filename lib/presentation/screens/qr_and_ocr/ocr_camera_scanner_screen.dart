@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/datasources/remote/local_demo_data_service.dart';
-import '../../../data/models/expense_model.dart';
+import '../../../core/utils/financial_amount.dart';
+import '../../../data/repositories/expense_repository.dart';
+import '../../../domain/entities/expense_entity.dart';
+import '../../../domain/repositories/i_expense_repository.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
@@ -18,8 +20,64 @@ class OcrCameraScannerScreen extends StatefulWidget {
 }
 
 class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
+  final IExpenseRepository _expenseRepository = ExpenseRepository();
   int _selectedDocMode =
       1; // 0: Fatura (A4), 1: Gider Fişi, 2: E-Arşiv, 3: Sözleşme
+
+  Future<void> _submitExpense({
+    required BuildContext dialogContext,
+    required String title,
+    required String category,
+    required double amountLira,
+    required double vatLira,
+    String? receiptImageUrl,
+    required String successSuffix,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(dialogContext);
+    final authState = context.read<AuthBloc>().state;
+    final employeeId = authState.user?.uid ?? 'user_employee_ahmet';
+    final employeeName = authState.user?.name ?? 'Ahmet Yılmaz';
+    final companyId = authState.user?.companyId ?? 'comp_techsolutions_01';
+
+    final expense = ExpenseEntity(
+      expenseId: 'exp_${DateTime.now().millisecondsSinceEpoch}',
+      employeeId: employeeId,
+      employeeName: employeeName,
+      merchantTitle: title,
+      category: category,
+      companyId: companyId,
+      amount: (amountLira * 100).round(),
+      vatAmount: (vatLira * 100).round(),
+      receiptImageUrl:
+          receiptImageUrl ?? 'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
+      status: 'pending',
+      date: DateTime.now(),
+      accountingCode: '770.01',
+    );
+
+    try {
+      await _expenseRepository.createExpense(expense);
+      if (!mounted) return;
+      nav.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primaryTeal,
+          content: Text(
+            '$title (${FinancialAmount.formatLira(amountLira)}) $successSuffix',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.expenseRed,
+          content: Text('Masraf gönderilemedi: $e'),
+        ),
+      );
+    }
+  }
 
   Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
     return Padding(
@@ -156,7 +214,7 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                   _buildDetailRow('Tedarikçi / İşyeri:', title, isBold: true),
                   _buildDetailRow('Tarih & Saat:', dateStr),
                   _buildDetailRow('Kategori:', category),
-                  _buildDetailRow('KDV Tutarı:', '₺${vat.toStringAsFixed(2).replaceAll('.', ',')} (%20)'),
+                  _buildDetailRow('KDV Tutarı:', '${FinancialAmount.formatLira(vat)} (%20)'),
                   const Divider(height: 16, color: Color(0xFFE2E8F0)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -169,7 +227,7 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                         ),
                       ),
                       Text(
-                        '₺${amount.toStringAsFixed(2).replaceAll('.', ',')}',
+                        FinancialAmount.formatLira(amount),
                         style: AppTextStyles.headlineSmall.copyWith(
                           fontWeight: FontWeight.w800,
                           color: AppColors.primaryTeal,
@@ -230,42 +288,15 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      final nav = Navigator.of(ctx);
-                      final authState = context.read<AuthBloc>().state;
-                      final employeeId = authState.user?.uid ?? 'user_employee_ahmet';
-                      final employeeName = authState.user?.name ?? 'Ahmet Yılmaz';
-                      final companyId = authState.user?.companyId ?? 'comp_techsolutions_01';
-
-                      final expense = ExpenseModel(
-                        expenseId: 'exp_${DateTime.now().millisecondsSinceEpoch}',
-                        employeeId: employeeId,
-                        employeeName: employeeName,
-                        merchantTitle: title,
-                        category: category,
-                        companyId: companyId,
-                        amount: (amount * 100).toInt(),
-                        vatAmount: (vat * 100).toInt(),
-                        receiptImageUrl: receiptImage ?? 'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
-                        status: 'pending',
-                        date: DateTime.now(),
-                        accountingCode: '770.01',
-                      );
-
-                      await LocalDemoDataService.instance.createExpense(expense);
-
-                      if (!mounted) return;
-                      nav.pop();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          backgroundColor: AppColors.primaryTeal,
-                          content: Text(
-                            '$title (₺${amount.toStringAsFixed(2).replaceAll('.', ',')}) masrafı başarıyla onaya iletildi!',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => _submitExpense(
+                      dialogContext: ctx,
+                      title: title,
+                      category: category,
+                      amountLira: amount,
+                      vatLira: vat,
+                      receiptImageUrl: receiptImage,
+                      successSuffix: 'masrafı başarıyla onaya iletildi!',
+                    ),
                     icon: const Icon(Icons.check_circle_rounded, size: 18),
                     label: const Text(
                       'Masrafı Onaya Gönder',
@@ -429,7 +460,7 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                             ),
                           ),
                           Text(
-                            '₺${(rec['amount'] as double).toStringAsFixed(2).replaceAll('.', ',')}',
+                            FinancialAmount.formatLira(rec['amount'] as double),
                             style: AppTextStyles.labelMedium.copyWith(
                               fontWeight: FontWeight.w800,
                               color: AppColors.darkNavy,
@@ -680,39 +711,13 @@ class _OcrCameraScannerScreenState extends State<OcrCameraScannerScreen> {
                     }
 
                     final vat = parsed * (selectedVatRate / 100.0);
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(ctx);
-                    final authState = context.read<AuthBloc>().state;
-                    final employeeId = authState.user?.uid ?? 'user_employee_ahmet';
-                    final employeeName = authState.user?.name ?? 'Ahmet Yılmaz';
-                    final companyId = authState.user?.companyId ?? 'comp_techsolutions_01';
-
-                    final expense = ExpenseModel(
-                      expenseId: 'exp_${DateTime.now().millisecondsSinceEpoch}',
-                      employeeId: employeeId,
-                      employeeName: employeeName,
-                      merchantTitle: title,
+                    await _submitExpense(
+                      dialogContext: ctx,
+                      title: title,
                       category: selectedCat,
-                      companyId: companyId,
-                      amount: (parsed * 100).toInt(),
-                      vatAmount: (vat * 100).toInt(),
-                      receiptImageUrl: 'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
-                      status: 'pending',
-                      date: DateTime.now(),
-                      accountingCode: '770.01',
-                    );
-
-                    await LocalDemoDataService.instance.createExpense(expense);
-
-                    if (!mounted) return;
-                    nav.pop();
-                    messenger.showSnackBar(
-                      SnackBar(
-                        backgroundColor: AppColors.primaryTeal,
-                        content: Text(
-                          '$title (₺${parsed.toStringAsFixed(2).replaceAll('.', ',')}) masrafı kaydedildi ve onaya iletildi!',
-                        ),
-                      ),
+                      amountLira: parsed,
+                      vatLira: vat,
+                      successSuffix: 'masrafı kaydedildi ve onaya iletildi!',
                     );
                   },
                   icon: const Icon(Icons.check_circle_rounded, size: 18),

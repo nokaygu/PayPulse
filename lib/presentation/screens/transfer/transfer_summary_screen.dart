@@ -7,7 +7,9 @@ import '../../../core/config/app_mode.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../core/utils/financial_amount.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../auth/bloc/auth_bloc.dart';
 
@@ -31,6 +33,7 @@ class TransferSummaryScreen extends StatefulWidget {
 }
 
 class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
+  final ITransactionRepository _transactionRepository = TransactionRepository();
   bool _rulesAccepted = true;
   bool _isSubmitting = false;
 
@@ -55,7 +58,7 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
           authUser?.uid ?? currentUser?.uid ?? 'user_deniz_aksoy';
 
       if (senderUid.isNotEmpty) {
-        final tx = await FirebaseFirestoreDatasource().executeFastTransferByIban(
+        final tx = await _transactionRepository.executeFastTransferByIban(
           senderUserId: senderUid,
           targetIban: widget.recipientIban,
           amountKurus: widget.amountInKurus,
@@ -207,7 +210,7 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '₺${(widget.amountInKurus / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                    FinancialAmount.format(widget.amountInKurus),
                     style: AppTextStyles.numericBalance.copyWith(
                       color: Colors.white,
                       fontSize: 36,

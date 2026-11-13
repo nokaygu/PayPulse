@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/financial_amount.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
 class _InvoiceItemData {
@@ -724,7 +725,7 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                         ),
                       ),
                       Text(
-                        '₺${total.toStringAsFixed(2).replaceAll('.', ',')}',
+                        FinancialAmount.formatLira(total),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -1462,10 +1463,9 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
                         title: inv.title,
                         gibNo: inv.gibNo,
                         docType: inv.docType,
-                        amount:
-                            '₺${inv.amount.toStringAsFixed(2).replaceAll('.', ',')}',
+                        amount: FinancialAmount.formatLira(inv.amount),
                         subAmount:
-                            'KDV %20: ₺${inv.vatAmount.toStringAsFixed(2).replaceAll('.', ',')}',
+                            'KDV %20: ${FinancialAmount.formatLira(inv.vatAmount)}',
                         tag1: inv.tag1,
                         tag1Bg: inv.tag1Bg,
                         tag1Fg: inv.tag1Fg,

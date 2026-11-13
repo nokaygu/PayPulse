@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/models/expense_model.dart';
+import '../../../core/utils/financial_amount.dart';
+import '../../../data/repositories/expense_repository.dart';
+import '../../../domain/entities/expense_entity.dart';
+import '../../../domain/repositories/i_expense_repository.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
@@ -23,8 +25,7 @@ class _B2bExpenseApprovalCenterScreenState
     extends State<B2bExpenseApprovalCenterScreen> {
   int _selectedTab =
       0; // 0: Bekleyenler, 1: Onaylananlar, 2: Reddedilenler
-  final FirebaseFirestoreDatasource _firestoreDatasource =
-      FirebaseFirestoreDatasource();
+  final IExpenseRepository _expenseRepository = ExpenseRepository();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategoryFilter = 'Tümü';
@@ -251,7 +252,7 @@ class _B2bExpenseApprovalCenterScreenState
             onPressed: () async {
               Navigator.of(ctx).pop();
               try {
-                await _firestoreDatasource.rejectExpense(
+                await _expenseRepository.rejectExpense(
                   expenseId: expenseId,
                   reason: controller.text.trim(),
                 );
@@ -286,7 +287,7 @@ class _B2bExpenseApprovalCenterScreenState
     String amount,
   ) async {
     try {
-      await _firestoreDatasource.approveExpense(expenseId: expenseId);
+      await _expenseRepository.approveExpense(expenseId: expenseId);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -733,14 +734,15 @@ class _B2bExpenseApprovalCenterScreenState
                 final authState = context.watch<AuthBloc>().state;
                 final canApprove = authState.canApproveExpenses;
 
-                return StreamBuilder<List<ExpenseModel>>(
-                  stream:
-                      _firestoreDatasource.watchCompanyExpenses(activeCompanyId),
+                return StreamBuilder<List<ExpenseEntity>>(
+                  stream: _expenseRepository.watchCompanyExpenses(
+                    activeCompanyId,
+                  ),
                   builder: (context, snapshot) {
                     var listToFilter = snapshot.data ?? [];
                     if (listToFilter.isEmpty) {
                       listToFilter = [
-                        ExpenseModel(
+                        ExpenseEntity(
                           expenseId: 'exp_001',
                           employeeId: 'user_employee_ahmet',
                           employeeName: 'Ahmet Yılmaz',
@@ -755,7 +757,7 @@ class _B2bExpenseApprovalCenterScreenState
                           date: DateTime.now(),
                           accountingCode: '770.01',
                         ),
-                        ExpenseModel(
+                        ExpenseEntity(
                           expenseId: 'exp_002',
                           employeeId: 'user_employee_elif',
                           employeeName: 'Elif Demir',
@@ -769,7 +771,7 @@ class _B2bExpenseApprovalCenterScreenState
                           date: DateTime.now().subtract(const Duration(days: 1)),
                           accountingCode: '770.02',
                         ),
-                        ExpenseModel(
+                        ExpenseEntity(
                           expenseId: 'exp_003',
                           employeeId: 'user_employee_caner',
                           employeeName: 'Caner Kılıç',
@@ -783,7 +785,7 @@ class _B2bExpenseApprovalCenterScreenState
                           date: DateTime.now().subtract(const Duration(days: 2)),
                           accountingCode: '770.03',
                         ),
-                        ExpenseModel(
+                        ExpenseEntity(
                           expenseId: 'exp_004',
                           employeeId: 'user_employee_ahmet',
                           employeeName: 'Ahmet Yılmaz',
@@ -805,14 +807,11 @@ class _B2bExpenseApprovalCenterScreenState
                     final filteredExpenses = listToFilter.where((e) {
                       // 1. Sekme / Durum Filtresi
                       final statusMatch = (_selectedTab == 0 &&
-                              (e.status == 'pending' ||
-                                  e.status == 'ONAY_BEKLIYOR')) ||
+                              (e.isPending || e.status == 'ONAY_BEKLIYOR')) ||
                           (_selectedTab == 1 &&
-                              (e.status == 'approved' ||
-                                  e.status == 'ONAYLANDI')) ||
+                              (e.isApproved || e.status == 'ONAYLANDI')) ||
                           (_selectedTab == 2 &&
-                              (e.status == 'rejected' ||
-                                  e.status == 'REDDEDILDI'));
+                              (e.isRejected || e.status == 'REDDEDILDI'));
                       if (!statusMatch) return false;
 
                       // 2. Kategori Filtresi
@@ -921,10 +920,8 @@ class _B2bExpenseApprovalCenterScreenState
                                 : 'Şirket Çalışanı',
                             roleDept:
                                 '${exp.category} • ${exp.accountingCode}',
-                            amount:
-                                '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
-                            vatText:
-                                'KDV (₺${(exp.vatAmount / 100.0).toStringAsFixed(2).replaceAll('.', ',')})',
+                            amount: FinancialAmount.format(exp.amount),
+                            vatText: 'KDV (${FinancialAmount.format(exp.vatAmount)})',
                             categoryLine:
                                 '${exp.merchantTitle} • ${exp.date.day}.${exp.date.month}.${exp.date.year}',
                             descLine:
@@ -935,24 +932,24 @@ class _B2bExpenseApprovalCenterScreenState
                             ocrTitle: '⚡ AI-OCR Doğrulandı',
                             ocrSubtitle: exp.merchantTitle,
                             ocrActionText: 'İncele 🔍',
-                            policyText: exp.status == 'approved'
+                            policyText: exp.isApproved
                                 ? '✓ Onaylandı & Muhasebeleştirildi'
-                                : (exp.status == 'rejected'
+                                : (exp.isRejected
                                     ? '✕ Reddedildi (${exp.rejectReason ?? 'Gerekçeli'})'
                                     : '● İnceleme Bekliyor'),
-                            isPolicyWarning: exp.status == 'rejected',
+                            isPolicyWarning: exp.isRejected,
                             onApprove: canApprove &&
-                                    (exp.status == 'pending' ||
+                                    (exp.isPending ||
                                         exp.status == 'ONAY_BEKLIYOR')
                                 ? () => _handleApprove(
                                       context,
                                       exp.expenseId,
                                       exp.employeeName,
-                                      '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                                      FinancialAmount.format(exp.amount),
                                     )
                                 : null,
                             onReject: canApprove &&
-                                    (exp.status == 'pending' ||
+                                    (exp.isPending ||
                                         exp.status == 'ONAY_BEKLIYOR')
                                 ? () => _showRejectDialog(
                                       context,

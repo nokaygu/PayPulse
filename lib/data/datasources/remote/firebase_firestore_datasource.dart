@@ -194,6 +194,16 @@ class FirebaseFirestoreDatasource {
     String currency = 'TRY',
     String? targetIban,
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.executeFastTransfer(
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
+        amountKurus: amountKurus,
+        currency: currency,
+        targetIban: targetIban,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.uid != senderUserId) {
       throw StateError(
@@ -942,6 +952,15 @@ class FirebaseFirestoreDatasource {
     required int amountKurus,
     String currency = 'TRY',
   }) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.executeQrWalletPayment(
+        companyId: companyId,
+        payerUserId: payerUserId,
+        amountKurus: amountKurus,
+        currency: currency,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.uid != payerUserId) {
       throw StateError(
@@ -1081,6 +1100,10 @@ class FirebaseFirestoreDatasource {
   }
 
   Future<void> createPaymentRequest(PaymentRequestModel request) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.createPaymentRequest(request);
+    }
+
     await _firestore
         .collection(FirestoreCollections.paymentRequests)
         .doc(request.requestId)
@@ -1088,6 +1111,10 @@ class FirebaseFirestoreDatasource {
   }
 
   Future<PaymentRequestModel?> getPaymentRequest(String requestId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getPaymentRequest(requestId);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.paymentRequests)
         .doc(requestId)
@@ -1226,6 +1253,12 @@ class FirebaseFirestoreDatasource {
 
   /// Yeni bildirim oluşturur. Deterministik ID kullanımı sayesinde mükerrer bildirim engellenir.
   Future<void> createNotification(NotificationModel notification) async {
+    if (AppMode.isDemoMode) {
+      return await LocalDemoDataService.instance.createNotification(
+        notification,
+      );
+    }
+
     await _firestore
         .collection(FirestoreCollections.notifications)
         .doc(notification.notificationId)

@@ -9,10 +9,14 @@ import '../../../core/config/app_mode.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/financial_amount.dart';
 import '../../../core/utils/firestore_seeder.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/models/transaction_model.dart';
-import '../../../data/models/wallet_model.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../data/repositories/wallet_repository.dart';
+import '../../../domain/entities/transaction_entity.dart';
+import '../../../domain/entities/wallet_entity.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
+import '../../../domain/repositories/i_wallet_repository.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/transaction_list_tile_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -29,18 +33,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _hideBalance = false;
   String _selectedCurrency = 'TRY';
-  final FirebaseFirestoreDatasource _firestoreDatasource =
-      FirebaseFirestoreDatasource();
-
-  String _formatKurus(int kurus, String symbol) {
-    final double amount = kurus / 100.0;
-    final parts = amount.toStringAsFixed(2).split('.');
-    final integerPart = parts[0].replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-    return '$symbol$integerPart,${parts[1]}';
-  }
+  final IWalletRepository _walletRepository = WalletRepository();
+  final ITransactionRepository _transactionRepository = TransactionRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: const RoleSwitchAppBar(isBusinessMode: false),
-      body: StreamBuilder<WalletModel?>(
-        stream: _firestoreDatasource.watchUserWallet(currentUserId),
+      body: StreamBuilder<WalletEntity?>(
+        stream: _walletRepository.watchUserWallet(currentUserId),
         builder: (context, walletSnapshot) {
           final isDemoUser = currentUserId == 'user_deniz_aksoy' ||
               authUser?.uid == 'user_deniz_aksoy' ||
@@ -72,15 +66,15 @@ class _HomeScreenState extends State<HomeScreen> {
           final String balanceStr;
           if (_selectedCurrency == 'TRY') {
             balanceStr = wallet != null
-                ? _formatKurus(wallet.balanceTl, '₺')
+                ? FinancialAmount.format(wallet.balanceTl)
                 : (_hideBalance ? '••••••' : '₺0,00');
           } else if (_selectedCurrency == 'USD') {
             balanceStr = wallet != null
-                ? _formatKurus(wallet.balanceUsd, r'$')
+                ? FinancialAmount.format(wallet.balanceUsd, symbol: r'$')
                 : (_hideBalance ? '••••••' : r'$0,00');
           } else {
             balanceStr = wallet != null
-                ? _formatKurus(wallet.balanceEur, '€')
+                ? FinancialAmount.format(wallet.balanceEur, symbol: '€')
                 : (_hideBalance ? '••••••' : '€0,00');
           }
 
@@ -379,8 +373,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  child: StreamBuilder<List<TransactionModel>>(
-                    stream: _firestoreDatasource
+                  child: StreamBuilder<List<TransactionEntity>>(
+                    stream: _transactionRepository
                         .watchUserTransactions(currentUserId),
                     builder: (context, txSnapshot) {
                       if (txSnapshot.connectionState ==
@@ -398,7 +392,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       var transactions = txSnapshot.data ?? [];
                       if (transactions.isEmpty && isDemoUser) {
-                        transactions = FirestoreSeeder.mockTransactions;
+                        transactions = FirestoreSeeder.mockTransactions
+                            .map((m) => m.toEntity())
+                            .toList();
                       }
                       if (transactions.isEmpty) {
                         return Padding(
@@ -436,7 +432,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: 1,
                                 color: Color(0xFFF1F5F9),
                               ),
-                            _buildTransactionTile(recentTxs[i]),
+                            TransactionListTileWidget.fromEntity(
+                              recentTxs[i],
+                              onTap: () => context.push(
+                                '/home/transfer/receipt/${recentTxs[i].txId}',
+                              ),
+                            ),
                           ],
                         ],
                       );
@@ -538,33 +539,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildTransactionTile(TransactionModel tx) {
-    final bool isIncome = !tx.isExpense;
-    final String amountFormatted = isIncome
-        ? '+${_formatKurus(tx.amount, '₺')}'
-        : '-${_formatKurus(tx.amount, '₺')}';
-
-    return TransactionListTileWidget(
-      title:
-          tx.title.isNotEmpty ? tx.title : (tx.targetIban ?? 'FAST Transferi'),
-      badgeText: tx.type.toUpperCase(),
-      badgeBgColor:
-          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFE0F2FE),
-      badgeTextColor:
-          isIncome ? const Color(0xFF065F46) : const Color(0xFF0369A1),
-      subtitle:
-          '${tx.category} • ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
-      amountText: amountFormatted,
-      isIncome: isIncome,
-      statusOrNoteText: tx.status,
-      icon: isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
-      iconBgColor:
-          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9),
-      iconColor: isIncome ? AppColors.primaryGreen : AppColors.darkNavy,
-      onTap: () => context.push('/home/transfer/receipt/${tx.txId}'),
     );
   }
 
@@ -1242,8 +1216,7 @@ class _BusinessSafeOverviewScreenState
 
   @override
   Widget build(BuildContext context) {
-    final balanceFormatted =
-        '₺${_companyBalance.toStringAsFixed(2).replaceAll('.', ',')}';
+    final balanceFormatted = FinancialAmount.formatLira(_companyBalance);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),

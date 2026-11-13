@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/financial_amount.dart';
+import '../../domain/entities/transaction_entity.dart';
 
 /// Görsel 3 ve Görsel 9'da kullanılan kurumsal işlem satırı bileşeni.
 class TransactionListTileWidget extends StatelessWidget {
@@ -35,6 +37,37 @@ class TransactionListTileWidget extends StatelessWidget {
     this.iconColor = AppColors.darkNavy,
     this.onTap,
   });
+
+  /// Domain katmanındaki [TransactionEntity] nesnesinden doğrudan liste satırı üretir.
+  factory TransactionListTileWidget.fromEntity(
+    TransactionEntity tx, {
+    VoidCallback? onTap,
+  }) {
+    final bool isIncome = !tx.isExpense;
+    final String amountFormatted = isIncome
+        ? '+${FinancialAmount.format(tx.amount)}'
+        : '-${FinancialAmount.format(tx.amount)}';
+
+    return TransactionListTileWidget(
+      title:
+          tx.title.isNotEmpty ? tx.title : (tx.targetIban ?? 'FAST Transferi'),
+      badgeText: tx.type.toUpperCase(),
+      badgeBgColor:
+          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFE0F2FE),
+      badgeTextColor:
+          isIncome ? const Color(0xFF065F46) : const Color(0xFF0369A1),
+      subtitle:
+          '${tx.category} • ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
+      amountText: amountFormatted,
+      isIncome: isIncome,
+      statusOrNoteText: tx.status,
+      icon: isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
+      iconBgColor:
+          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9),
+      iconColor: isIncome ? AppColors.primaryGreen : AppColors.darkNavy,
+      onTap: onTap,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -6,8 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/app_mode.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/models/transaction_model.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/entities/transaction_entity.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/transaction_list_tile_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -22,6 +23,7 @@ class TransactionHistoryScreen extends StatefulWidget {
 }
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
+  final ITransactionRepository _transactionRepository = TransactionRepository();
   String _selectedFilter = 'Tümü';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
@@ -442,9 +444,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             const SizedBox(height: 18),
 
             // Canlı Firestore İşlem Geçmişi
-            StreamBuilder<List<TransactionModel>>(
-              stream: FirebaseFirestoreDatasource()
-                  .watchUserTransactions(currentUserId),
+            StreamBuilder<List<TransactionEntity>>(
+              stream:
+                  _transactionRepository.watchUserTransactions(currentUserId),
               builder: (context, snapshot) {
                 final liveTxs = snapshot.data ?? [];
                 if (liveTxs.isEmpty) return const SizedBox.shrink();
@@ -488,7 +490,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                 height: 1,
                                 color: Color(0xFFF1F5F9),
                               ),
-                            _buildLiveTile(filtered[i]),
+                            TransactionListTileWidget.fromEntity(
+                              filtered[i],
+                              onTap: () => context.push(
+                                '/home/transfer/receipt/${filtered[i].txId}',
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -797,33 +804,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildLiveTile(TransactionModel tx) {
-    final bool isIncome = !tx.isExpense;
-    final String amountFormatted = isIncome
-        ? '+₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}'
-        : '-₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}';
-
-    return TransactionListTileWidget(
-      title:
-          tx.title.isNotEmpty ? tx.title : (tx.targetIban ?? 'FAST Transferi'),
-      badgeText: tx.type.toUpperCase(),
-      badgeBgColor:
-          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFE0F2FE),
-      badgeTextColor:
-          isIncome ? const Color(0xFF065F46) : const Color(0xFF0369A1),
-      subtitle:
-          '${tx.category} • ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
-      amountText: amountFormatted,
-      isIncome: isIncome,
-      statusOrNoteText: tx.status,
-      icon: isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
-      iconBgColor:
-          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9),
-      iconColor: isIncome ? AppColors.primaryGreen : AppColors.darkNavy,
-      onTap: () => context.push('/home/transfer/receipt/${tx.txId}'),
     );
   }
 }
