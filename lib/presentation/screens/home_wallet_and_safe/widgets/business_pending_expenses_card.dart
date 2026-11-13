@@ -37,13 +37,18 @@ class BusinessPendingExpensesCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Son Tahsilat ve Onaylar',
-              style: AppTextStyles.bodyLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.darkNavy,
+            Expanded(
+              child: Text(
+                'Son Tahsilat ve Onaylar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.darkNavy,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: () => context.go(AppRoutes.businessExpenses),
               child: Text(

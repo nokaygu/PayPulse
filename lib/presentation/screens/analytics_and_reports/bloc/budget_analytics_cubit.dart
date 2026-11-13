@@ -11,10 +11,29 @@ import '../../../widgets/four_state_view.dart';
 
 class BudgetAnalyticsState extends Equatable {
   static const List<String> periodLabels = ['Haftalık', 'Aylık', 'Yıllık'];
+  static const int minPeriodOffset = -11;
+  static const int maxPeriodOffset = 0;
+  static const List<String> _monthNames = [
+    'Ocak',
+    'Şubat',
+    'Mart',
+    'Nisan',
+    'Mayıs',
+    'Haziran',
+    'Temmuz',
+    'Ağustos',
+    'Eylül',
+    'Ekim',
+    'Kasım',
+    'Aralık',
+  ];
 
   final ViewStatus status;
   final String activeUserId;
   final int selectedPeriodIndex;
+  final int periodOffset;
+  final bool onlyWarningsFilter;
+  final bool sortDescendingBySpent;
   final List<BudgetCategoryEntity> categories;
   final SavingsGoalEntity? savingsGoal;
   final String? errorMessage;
@@ -23,6 +42,9 @@ class BudgetAnalyticsState extends Equatable {
     this.status = ViewStatus.loading,
     this.activeUserId = '',
     this.selectedPeriodIndex = 1,
+    this.periodOffset = 0,
+    this.onlyWarningsFilter = false,
+    this.sortDescendingBySpent = false,
     this.categories = const [],
     this.savingsGoal,
     this.errorMessage,
@@ -30,6 +52,40 @@ class BudgetAnalyticsState extends Equatable {
 
   String get selectedPeriodLabel =>
       periodLabels[selectedPeriodIndex.clamp(0, periodLabels.length - 1)];
+
+  bool get canGoPrevious => periodOffset > minPeriodOffset;
+
+  bool get canGoNext => periodOffset < maxPeriodOffset;
+
+  bool get isCurrentPeriod => periodOffset == 0;
+
+  bool get hasActiveFilter => onlyWarningsFilter || sortDescendingBySpent;
+
+  String get dynamicDateLabel {
+    if (selectedPeriodIndex == 0) {
+      final rawWeekIndex = 3 + periodOffset; // 0..3 -> 1..4. Hafta (Kasım 2026)
+      final monthDelta = (rawWeekIndex / 4).floor();
+      final weekInMonth = ((rawWeekIndex % 4) + 4) % 4 + 1;
+      final date = DateTime(2026, 11 + monthDelta, 1);
+      return '$weekInMonth. Hafta • ${_monthNames[date.month - 1]} ${date.year}';
+    }
+    if (selectedPeriodIndex == 2) {
+      final year = 2026 + periodOffset;
+      return '$year (Yıllık)';
+    }
+    final date = DateTime(2026, 11 + periodOffset, 1);
+    return '${_monthNames[date.month - 1]} ${date.year} ($selectedPeriodLabel)';
+  }
+
+  List<BudgetCategoryEntity> get visibleCategories {
+    var list = onlyWarningsFilter
+        ? categories.where((c) => c.isLimitWarning).toList()
+        : List<BudgetCategoryEntity>.from(categories);
+    if (sortDescendingBySpent) {
+      list.sort((a, b) => b.spentAmount.compareTo(a.spentAmount));
+    }
+    return list;
+  }
 
   double get totalSpentTl =>
       categories.fold<double>(0.0, (sum, c) => sum + c.spentAmount);
@@ -95,6 +151,9 @@ class BudgetAnalyticsState extends Equatable {
     ViewStatus? status,
     String? activeUserId,
     int? selectedPeriodIndex,
+    int? periodOffset,
+    bool? onlyWarningsFilter,
+    bool? sortDescendingBySpent,
     List<BudgetCategoryEntity>? categories,
     SavingsGoalEntity? savingsGoal,
     bool clearSavingsGoal = false,
@@ -105,6 +164,10 @@ class BudgetAnalyticsState extends Equatable {
       status: status ?? this.status,
       activeUserId: activeUserId ?? this.activeUserId,
       selectedPeriodIndex: selectedPeriodIndex ?? this.selectedPeriodIndex,
+      periodOffset: periodOffset ?? this.periodOffset,
+      onlyWarningsFilter: onlyWarningsFilter ?? this.onlyWarningsFilter,
+      sortDescendingBySpent:
+          sortDescendingBySpent ?? this.sortDescendingBySpent,
       categories: categories ?? this.categories,
       savingsGoal: clearSavingsGoal ? null : (savingsGoal ?? this.savingsGoal),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -116,6 +179,9 @@ class BudgetAnalyticsState extends Equatable {
     status,
     activeUserId,
     selectedPeriodIndex,
+    periodOffset,
+    onlyWarningsFilter,
+    sortDescendingBySpent,
     categories,
     savingsGoal,
     errorMessage,
@@ -132,8 +198,13 @@ class BudgetAnalyticsCubit extends Cubit<BudgetAnalyticsState> {
   Future<void> load({
     required String userId,
     int? periodIndex,
+    int? periodOffset,
   }) async {
     final targetPeriodIndex = periodIndex ?? state.selectedPeriodIndex;
+    final targetOffset = (periodOffset ?? state.periodOffset).clamp(
+      BudgetAnalyticsState.minPeriodOffset,
+      BudgetAnalyticsState.maxPeriodOffset,
+    );
     final periodLabel = BudgetAnalyticsState
         .periodLabels[targetPeriodIndex.clamp(0, 2)];
 
@@ -142,6 +213,7 @@ class BudgetAnalyticsCubit extends Cubit<BudgetAnalyticsState> {
         status: ViewStatus.loading,
         activeUserId: userId,
         selectedPeriodIndex: targetPeriodIndex,
+        periodOffset: targetOffset,
         clearError: true,
       ),
     );
@@ -151,6 +223,7 @@ class BudgetAnalyticsCubit extends Cubit<BudgetAnalyticsState> {
         _budgetRepo.getBudgetCategories(
           userId: userId,
           period: periodLabel,
+          periodOffset: targetOffset,
         ),
         _budgetRepo.getSavingsGoal(userId: userId),
       ]);
@@ -179,16 +252,62 @@ class BudgetAnalyticsCubit extends Cubit<BudgetAnalyticsState> {
 
   Future<void> selectPeriod(int index) async {
     if (index == state.selectedPeriodIndex &&
+        state.periodOffset == 0 &&
         state.status == ViewStatus.success) {
       return;
     }
-    await load(userId: state.activeUserId, periodIndex: index);
+    await load(
+      userId: state.activeUserId,
+      periodIndex: index,
+      periodOffset: 0,
+    );
+  }
+
+  Future<void> previousPeriod() async {
+    if (!state.canGoPrevious) return;
+    await load(
+      userId: state.activeUserId,
+      periodIndex: state.selectedPeriodIndex,
+      periodOffset: state.periodOffset - 1,
+    );
+  }
+
+  Future<void> nextPeriod() async {
+    if (!state.canGoNext) return;
+    await load(
+      userId: state.activeUserId,
+      periodIndex: state.selectedPeriodIndex,
+      periodOffset: state.periodOffset + 1,
+    );
+  }
+
+  void setOnlyWarningsFilter(bool value) {
+    emit(state.copyWith(onlyWarningsFilter: value));
+  }
+
+  void setSortDescendingBySpent(bool value) {
+    emit(state.copyWith(sortDescendingBySpent: value));
+  }
+
+  Future<void> resetFiltersAndPeriod() async {
+    emit(
+      state.copyWith(
+        onlyWarningsFilter: false,
+        sortDescendingBySpent: false,
+      ),
+    );
+    await load(
+      userId: state.activeUserId,
+      periodIndex: state.selectedPeriodIndex,
+      periodOffset: 0,
+    );
   }
 
   Future<void> refresh() async {
     await load(
       userId: state.activeUserId,
       periodIndex: state.selectedPeriodIndex,
+      periodOffset: state.periodOffset,
     );
   }
 }

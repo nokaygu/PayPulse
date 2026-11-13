@@ -21,13 +21,18 @@ class BusinessQuickActionsGrid extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Hızlı İşlemler',
-              style: AppTextStyles.bodyLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.darkNavy,
+            Expanded(
+              child: Text(
+                'Hızlı İşlemler',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.darkNavy,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               'Kurumsal Kısa Yollar',
               style: AppTextStyles.labelSmall.copyWith(

@@ -26,6 +26,23 @@ extension TransactionFilterTypeLabel on TransactionFilterType {
   }
 }
 
+enum TransactionSortOrder { newest, oldest, highestAmount, lowestAmount }
+
+extension TransactionSortOrderLabel on TransactionSortOrder {
+  String get label {
+    switch (this) {
+      case TransactionSortOrder.newest:
+        return 'En Yeni Tarih';
+      case TransactionSortOrder.oldest:
+        return 'En Eski Tarih';
+      case TransactionSortOrder.highestAmount:
+        return 'En Yüksek Tutar';
+      case TransactionSortOrder.lowestAmount:
+        return 'En Düşük Tutar';
+    }
+  }
+}
+
 class TransactionGroup {
   final String dateLabel;
   final List<TransactionEntity> items;
@@ -51,6 +68,8 @@ class TransactionHistoryState extends Equatable {
   final List<TransactionEntity> transactions;
   final String searchQuery;
   final TransactionFilterType selectedFilter;
+  final String? selectedCategory;
+  final TransactionSortOrder sortOrder;
   final String? errorMessage;
 
   const TransactionHistoryState({
@@ -59,8 +78,23 @@ class TransactionHistoryState extends Equatable {
     this.transactions = const [],
     this.searchQuery = '',
     this.selectedFilter = TransactionFilterType.all,
+    this.selectedCategory,
+    this.sortOrder = TransactionSortOrder.newest,
     this.errorMessage,
   });
+
+  bool get hasActiveAdvancedFilters =>
+      selectedCategory != null || sortOrder != TransactionSortOrder.newest;
+
+  List<String> get availableCategories {
+    final cats = <String>{};
+    for (final tx in transactions) {
+      final clean = tx.category.trim();
+      if (clean.isNotEmpty) cats.add(clean);
+    }
+    final list = cats.toList()..sort();
+    return list;
+  }
 
   bool isIncomingTransaction(TransactionEntity tx) {
     if (activeUserId.isNotEmpty) {
@@ -95,7 +129,7 @@ class TransactionHistoryState extends Equatable {
 
   List<TransactionEntity> get filteredTransactions {
     final q = searchQuery.trim().toLowerCase();
-    return transactions.where((tx) {
+    final filtered = transactions.where((tx) {
       final isIncome = isIncomingTransaction(tx);
       final isQr =
           tx.isPosPayment ||
@@ -113,6 +147,10 @@ class TransactionHistoryState extends Equatable {
           if (!isQr) return false;
       }
 
+      if (selectedCategory != null && tx.category.trim() != selectedCategory) {
+        return false;
+      }
+
       if (q.isEmpty) return true;
 
       final titleMatch = tx.title.toLowerCase().contains(q);
@@ -123,6 +161,19 @@ class TransactionHistoryState extends Equatable {
 
       return titleMatch || ibanMatch || categoryMatch || amountMatch || txIdMatch;
     }).toList();
+
+    switch (sortOrder) {
+      case TransactionSortOrder.newest:
+        filtered.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      case TransactionSortOrder.oldest:
+        filtered.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      case TransactionSortOrder.highestAmount:
+        filtered.sort((a, b) => b.amount.compareTo(a.amount));
+      case TransactionSortOrder.lowestAmount:
+        filtered.sort((a, b) => a.amount.compareTo(b.amount));
+    }
+
+    return filtered;
   }
 
   TransactionEntity? get latestFastTransaction {
@@ -164,6 +215,9 @@ class TransactionHistoryState extends Equatable {
     List<TransactionEntity>? transactions,
     String? searchQuery,
     TransactionFilterType? selectedFilter,
+    String? selectedCategory,
+    bool clearCategory = false,
+    TransactionSortOrder? sortOrder,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -173,6 +227,10 @@ class TransactionHistoryState extends Equatable {
       transactions: transactions ?? this.transactions,
       searchQuery: searchQuery ?? this.searchQuery,
       selectedFilter: selectedFilter ?? this.selectedFilter,
+      selectedCategory: clearCategory
+          ? null
+          : (selectedCategory ?? this.selectedCategory),
+      sortOrder: sortOrder ?? this.sortOrder,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -184,6 +242,8 @@ class TransactionHistoryState extends Equatable {
     transactions,
     searchQuery,
     selectedFilter,
+    selectedCategory,
+    sortOrder,
     errorMessage,
   ];
 }
@@ -256,12 +316,27 @@ class TransactionHistoryCubit extends Cubit<TransactionHistoryState> {
     emit(state.copyWith(selectedFilter: filter));
   }
 
+  void setCategoryFilter(String? category) {
+    emit(
+      state.copyWith(
+        selectedCategory: category,
+        clearCategory: category == null,
+      ),
+    );
+  }
+
+  void setSortOrder(TransactionSortOrder order) {
+    emit(state.copyWith(sortOrder: order));
+  }
+
   void resetFilters() {
     searchController.clear();
     emit(
       state.copyWith(
         searchQuery: '',
         selectedFilter: TransactionFilterType.all,
+        clearCategory: true,
+        sortOrder: TransactionSortOrder.newest,
       ),
     );
   }

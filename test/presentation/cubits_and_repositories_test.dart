@@ -8,6 +8,7 @@ import 'package:pay_pulse/core/validators/financial_validators.dart';
 import 'package:pay_pulse/data/datasources/remote/firebase_firestore_datasource.dart';
 import 'package:pay_pulse/data/models/expense_model.dart';
 import 'package:pay_pulse/data/repositories/expense_repository.dart';
+import 'package:pay_pulse/domain/entities/budget_entity.dart';
 import 'package:pay_pulse/domain/entities/company_entity.dart';
 import 'package:pay_pulse/domain/entities/expense_entity.dart';
 import 'package:pay_pulse/domain/entities/invoice_entity.dart';
@@ -18,6 +19,7 @@ import 'package:pay_pulse/domain/entities/safe_recipient_entity.dart';
 import 'package:pay_pulse/domain/entities/transaction_entity.dart';
 import 'package:pay_pulse/domain/entities/user_entity.dart';
 import 'package:pay_pulse/domain/entities/wallet_entity.dart';
+import 'package:pay_pulse/domain/repositories/i_budget_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_company_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_expense_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_invoice_repository.dart';
@@ -26,7 +28,9 @@ import 'package:pay_pulse/domain/repositories/i_payment_request_repository.dart'
 import 'package:pay_pulse/domain/repositories/i_transaction_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_user_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_wallet_repository.dart';
+import 'package:pay_pulse/presentation/screens/analytics_and_reports/bloc/budget_analytics_cubit.dart';
 import 'package:pay_pulse/presentation/screens/analytics_and_reports/bloc/tax_report_cubit.dart';
+import 'package:pay_pulse/presentation/screens/analytics_and_reports/bloc/transaction_history_cubit.dart';
 import 'package:pay_pulse/presentation/screens/b2b_operations/bloc/expense_approval_cubit.dart';
 import 'package:pay_pulse/presentation/screens/b2b_operations/bloc/virtual_pos_cubit.dart';
 import 'package:pay_pulse/presentation/screens/home_wallet_and_safe/bloc/business_overview_cubit.dart';
@@ -427,6 +431,36 @@ class _FakePaymentRequestRepo implements IPaymentRequestRepository {
 
   @override
   Future<PaymentRequestEntity?> getPaymentRequestById(String requestId) async =>
+      null;
+}
+
+class _FakeBudgetRepo implements IBudgetRepository {
+  @override
+  Future<List<BudgetCategoryEntity>> getBudgetCategories({
+    required String userId,
+    required String period,
+    int periodOffset = 0,
+  }) async {
+    return [
+      BudgetCategoryEntity(
+        categoryId: 'market',
+        title: 'Market & Gıda',
+        spentAmount: periodOffset == 0 ? 4600 : 3200,
+        allocatedAmount: 5000,
+        percentage: 45,
+      ),
+      BudgetCategoryEntity(
+        categoryId: 'ulasim',
+        title: 'Ulaşım',
+        spentAmount: periodOffset == 0 ? 1200 : 1800,
+        allocatedAmount: 3000,
+        percentage: 25,
+      ),
+    ];
+  }
+
+  @override
+  Future<SavingsGoalEntity?> getSavingsGoal({required String userId}) async =>
       null;
 }
 
@@ -957,6 +991,104 @@ void main() {
 
         cubit.setTab(isCard: false);
         expect(cubit.state.isCardTab, isFalse);
+
+        await cubit.close();
+      },
+    );
+
+    test(
+      'BudgetAnalyticsCubit dönem okları, dinamik tarih etiketi ve kategori filtrelerini yönetir',
+      () async {
+        final cubit = BudgetAnalyticsCubit(
+          budgetRepository: _FakeBudgetRepo(),
+        );
+
+        await cubit.load(userId: 'b2c_1');
+        expect(cubit.state.periodOffset, 0);
+        expect(cubit.state.dynamicDateLabel, 'Kasım 2026 (Aylık)');
+        expect(cubit.state.canGoNext, isFalse);
+        expect(cubit.state.canGoPrevious, isTrue);
+
+        await cubit.previousPeriod();
+        expect(cubit.state.periodOffset, -1);
+        expect(cubit.state.dynamicDateLabel, 'Ekim 2026 (Aylık)');
+        expect(cubit.state.isCurrentPeriod, isFalse);
+        expect(cubit.state.canGoNext, isTrue);
+        expect(cubit.state.categories.first.spentAmount, 3200);
+
+        await cubit.nextPeriod();
+        expect(cubit.state.periodOffset, 0);
+        expect(cubit.state.dynamicDateLabel, 'Kasım 2026 (Aylık)');
+
+        cubit.setOnlyWarningsFilter(true);
+        expect(cubit.state.visibleCategories.length, 1);
+        expect(cubit.state.visibleCategories.first.categoryId, 'market');
+
+        cubit.setSortDescendingBySpent(true);
+        expect(cubit.state.hasActiveFilter, isTrue);
+
+        await cubit.resetFiltersAndPeriod();
+        expect(cubit.state.hasActiveFilter, isFalse);
+        expect(cubit.state.visibleCategories.length, 2);
+
+        await cubit.close();
+      },
+    );
+
+    test(
+      'TransactionHistoryCubit gelişmiş kategori filtresi ve sıralamayı uygular',
+      () async {
+        final txRepo = _FakeTxRepo();
+        addTearDown(txRepo.dispose);
+
+        final cubit = TransactionHistoryCubit(transactionRepository: txRepo);
+        await cubit.watchUser('b2c_1');
+        txRepo.controller.add([
+          TransactionEntity(
+            txId: 't1',
+            senderId: 'b2c_1',
+            receiverId: 'm1',
+            amount: 25000,
+            currency: 'TRY',
+            timestamp: DateTime(2026, 11, 10),
+            type: 'fast',
+            title: 'Migros',
+            category: 'Market',
+          ),
+          TransactionEntity(
+            txId: 't2',
+            senderId: 'b2c_1',
+            receiverId: 'm2',
+            amount: 90000,
+            currency: 'TRY',
+            timestamp: DateTime(2026, 11, 11),
+            type: 'fast',
+            title: 'Uçak Bileti',
+            category: 'Seyahat',
+          ),
+        ]);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.state.availableCategories, ['Market', 'Seyahat']);
+        expect(cubit.state.hasActiveAdvancedFilters, isFalse);
+
+        cubit.setCategoryFilter('Market');
+        expect(cubit.state.hasActiveAdvancedFilters, isTrue);
+        expect(cubit.state.filteredTransactions.map((e) => e.txId), ['t1']);
+
+        cubit.setCategoryFilter(null);
+        cubit.setSortOrder(TransactionSortOrder.lowestAmount);
+        expect(cubit.state.filteredTransactions.map((e) => e.txId), [
+          't1',
+          't2',
+        ]);
+
+        cubit.resetFilters();
+        expect(cubit.state.hasActiveAdvancedFilters, isFalse);
+        expect(cubit.state.filteredTransactions.map((e) => e.txId), [
+          't2',
+          't1',
+        ]);
 
         await cubit.close();
       },

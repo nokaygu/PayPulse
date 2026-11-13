@@ -1476,16 +1476,23 @@ class FirebaseFirestoreDatasource {
   Future<List<BudgetCategoryModel>> getBudgetCategories({
     required String userId,
     required String period,
+    int periodOffset = 0,
   }) async {
     if (AppMode.isDemoMode) {
-      return LocalDemoDataService.instance.getBudgetCategories(period);
+      return LocalDemoDataService.instance.getBudgetCategories(
+        period,
+        periodOffset: periodOffset,
+      );
     }
 
     final snapshot = await _firestore
         .collection(FirestoreCollections.budgetCategories)
         .get();
     if (snapshot.docs.isEmpty) {
-      return LocalDemoDataService.instance.getBudgetCategories(period);
+      return LocalDemoDataService.instance.getBudgetCategories(
+        period,
+        periodOffset: periodOffset,
+      );
     }
     return snapshot.docs
         .map((d) => BudgetCategoryModel.fromJson(d.data()))

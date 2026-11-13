@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../bloc/transaction_history_cubit.dart';
+import 'transaction_filter_sheet.dart';
 
-/// İşlem geçmişi arama kutusu, filtre çipleri ve sıfırlama butonu (`StatelessWidget`).
+/// İşlem geçmişi arama kutusu, filtre çipleri ve gelişmiş filtre butonu (`StatelessWidget`).
 class TransactionSearchAndFilterBar extends StatelessWidget {
   final TransactionHistoryCubit cubit;
   final TransactionHistoryState state;
@@ -20,7 +21,11 @@ class TransactionSearchAndFilterBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SearchBarRow(cubit: cubit, searchQuery: state.searchQuery),
+        _SearchBarRow(
+          cubit: cubit,
+          searchQuery: state.searchQuery,
+          hasAdvancedFilters: state.hasActiveAdvancedFilters,
+        ),
         const SizedBox(height: 12),
         _FilterChipStrip(cubit: cubit, selectedFilter: state.selectedFilter),
       ],
@@ -31,8 +36,13 @@ class TransactionSearchAndFilterBar extends StatelessWidget {
 class _SearchBarRow extends StatelessWidget {
   final TransactionHistoryCubit cubit;
   final String searchQuery;
+  final bool hasAdvancedFilters;
 
-  const _SearchBarRow({required this.cubit, required this.searchQuery});
+  const _SearchBarRow({
+    required this.cubit,
+    required this.searchQuery,
+    required this.hasAdvancedFilters,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -76,19 +86,25 @@ class _SearchBarRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         InkWell(
-          onTap: cubit.resetFilters,
+          onTap: () => TransactionFilterSheet.show(context, cubit: cubit),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: hasAdvancedFilters ? const Color(0xFFD1FAE5) : Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(
+                color: hasAdvancedFilters
+                    ? AppColors.primaryTeal
+                    : const Color(0xFFE2E8F0),
+              ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.tune_rounded,
-              color: AppColors.darkNavy,
+              color: hasAdvancedFilters
+                  ? const Color(0xFF0F766E)
+                  : AppColors.darkNavy,
               size: 20,
             ),
           ),

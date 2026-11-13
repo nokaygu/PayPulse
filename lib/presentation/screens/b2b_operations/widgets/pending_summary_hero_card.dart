@@ -73,13 +73,18 @@ class _SummaryHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'BEKLEYEN TOPLAM TUTAR',
-          style: AppTextStyles.labelSmall.copyWith(
-            color: const Color(0xFF94A3B8),
-            letterSpacing: 0.7,
+        Expanded(
+          child: Text(
+            'BEKLEYEN TOPLAM TUTAR',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: const Color(0xFF94A3B8),
+              letterSpacing: 0.7,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(

@@ -1184,21 +1184,29 @@ class LocalDemoDataService {
   }
 
   // ================= 12. BÜTÇE & E-FATURA (DEMO) =================
-  List<BudgetCategoryModel> getBudgetCategories(String period) {
+  List<BudgetCategoryModel> getBudgetCategories(
+    String period, {
+    int periodOffset = 0,
+  }) {
     final multiplier = period == 'Haftalık'
         ? 0.25
         : period == 'Yıllık'
             ? 12.0
             : 1.0;
-    return _budgetCategories
-        .map(
-          (cat) => cat.copyWith(
-            spentAmount: double.parse((cat.spentAmount * multiplier).toStringAsFixed(2)),
-            allocatedAmount:
-                double.parse((cat.allocatedAmount * multiplier).toStringAsFixed(2)),
-          ),
-        )
-        .toList();
+    return List<BudgetCategoryModel>.generate(_budgetCategories.length, (idx) {
+      final cat = _budgetCategories[idx];
+      final offsetFactor = periodOffset == 0
+          ? 1.0
+          : (0.82 + (((periodOffset.abs() * 3 + idx * 5) % 7) * 0.05));
+      return cat.copyWith(
+        spentAmount: double.parse(
+          (cat.spentAmount * multiplier * offsetFactor).toStringAsFixed(2),
+        ),
+        allocatedAmount: double.parse(
+          (cat.allocatedAmount * multiplier).toStringAsFixed(2),
+        ),
+      );
+    });
   }
 
   SavingsGoalModel getSavingsGoal() => _savingsGoal;

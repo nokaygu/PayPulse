@@ -71,26 +71,31 @@ class _ApprovalHeaderRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'KURUMSAL FİNANS',
-              style: AppTextStyles.labelSmall.copyWith(
-                color: const Color(0xFF64748B),
-                letterSpacing: 0.8,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'KURUMSAL FİNANS',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  letterSpacing: 0.8,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Masraf Onay Merkezi',
-              style: AppTextStyles.headlineMedium.copyWith(
-                color: AppColors.darkNavy,
-                fontWeight: FontWeight.w800,
+              const SizedBox(height: 2),
+              Text(
+                'Masraf Onay Merkezi',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: AppColors.darkNavy,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(

@@ -13,10 +13,12 @@ class BudgetRepository implements IBudgetRepository {
   Future<List<BudgetCategoryEntity>> getBudgetCategories({
     required String userId,
     required String period,
+    int periodOffset = 0,
   }) async {
     final list = await _firestoreDatasource.getBudgetCategories(
       userId: userId,
       period: period,
+      periodOffset: periodOffset,
     );
     return list.map((e) => e.toEntity()).toList();
   }

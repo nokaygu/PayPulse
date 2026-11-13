@@ -27,6 +27,8 @@ import 'package:pay_pulse/domain/repositories/i_payment_request_repository.dart'
 import 'package:pay_pulse/domain/repositories/i_transaction_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_user_repository.dart';
 import 'package:pay_pulse/domain/repositories/i_wallet_repository.dart';
+import 'package:pay_pulse/presentation/screens/analytics_and_reports/budget_analytics_screen.dart';
+import 'package:pay_pulse/presentation/screens/analytics_and_reports/transaction_history_screen.dart';
 import 'package:pay_pulse/presentation/screens/auth/bloc/auth_bloc.dart';
 import 'package:pay_pulse/presentation/screens/auth/bloc/auth_event.dart';
 import 'package:pay_pulse/presentation/screens/b2b_operations/virtual_pos_terminal_screen.dart';
@@ -123,6 +125,10 @@ class _TestWalletRepository implements IWalletRepository {
 }
 
 class _TestTransactionRepository implements ITransactionRepository {
+  final List<TransactionEntity> seedTransactions;
+
+  _TestTransactionRepository({this.seedTransactions = const []});
+
   @override
   Future<TransactionEntity> executeCardPosPayment({
     required String companyId,
@@ -190,7 +196,7 @@ class _TestTransactionRepository implements ITransactionRepository {
 
   @override
   Stream<List<TransactionEntity>> watchUserTransactions(String userId) =>
-      Stream.value(const []);
+      Stream.value(seedTransactions);
 }
 
 class _TestExpenseRepository implements IExpenseRepository {
@@ -295,11 +301,18 @@ class _TestPaymentRequestRepository implements IPaymentRequestRepository {
 }
 
 class _TestBudgetRepository implements IBudgetRepository {
+  final List<BudgetCategoryEntity> Function(String period, int offset)?
+  categoriesBuilder;
+
+  _TestBudgetRepository({this.categoriesBuilder});
+
   @override
   Future<List<BudgetCategoryEntity>> getBudgetCategories({
     required String userId,
     required String period,
-  }) async => const [];
+    int periodOffset = 0,
+  }) async =>
+      categoriesBuilder?.call(period, periodOffset) ?? const [];
 
   @override
   Future<SavingsGoalEntity?> getSavingsGoal({required String userId}) async =>
@@ -323,6 +336,8 @@ class _TestInvoiceRepository implements IInvoiceRepository {
 Widget _wrapWithProviders({
   required AuthBloc authBloc,
   required Widget child,
+  ITransactionRepository? transactionRepository,
+  IBudgetRepository? budgetRepository,
 }) {
   return MultiRepositoryProvider(
     providers: [
@@ -331,7 +346,7 @@ Widget _wrapWithProviders({
         create: (_) => _TestWalletRepository(),
       ),
       RepositoryProvider<ITransactionRepository>(
-        create: (_) => _TestTransactionRepository(),
+        create: (_) => transactionRepository ?? _TestTransactionRepository(),
       ),
       RepositoryProvider<IExpenseRepository>(
         create: (_) => _TestExpenseRepository(),
@@ -346,7 +361,7 @@ Widget _wrapWithProviders({
         create: (_) => _TestPaymentRequestRepository(),
       ),
       RepositoryProvider<IBudgetRepository>(
-        create: (_) => _TestBudgetRepository(),
+        create: (_) => budgetRepository ?? _TestBudgetRepository(),
       ),
       RepositoryProvider<IInvoiceRepository>(
         create: (_) => _TestInvoiceRepository(),
@@ -758,6 +773,235 @@ void main() {
         await tester.pump(const Duration(seconds: 1));
         expect(tester.takeException(), isNull);
         expect(find.textContaining('00:47'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Rol Alt Bar, Bütçe Okları ve Deniz Aksoy Filtre Testleri', () {
+    testWidgets(
+      'Ahmet Yılmaz (employee) işletme modunda Raporlar sekmesini görmez, Admin görür',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final userRepo = _TestUserRepository();
+        final authBloc = AuthBloc(userRepository: userRepo)
+          ..add(
+            const AuthUserProfileLoaded(
+              UserEntity(
+                uid: 'user_employee_ahmet',
+                name: 'Ahmet Yılmaz',
+                email: 'ahmet@paypulse.app',
+                role: AppStrings.roleEmployee,
+                companyId: AppStrings.defaultCompanyId,
+                hasB2BAccess: true,
+              ),
+            ),
+          );
+        final appRouter = AppRouter(authBloc: authBloc);
+        addTearDown(() async {
+          appRouter.router.dispose();
+          await authBloc.close();
+          await userRepo.dispose();
+        });
+
+        await tester.pumpWidget(
+          _wrapWithProviders(
+            authBloc: authBloc,
+            child: MaterialApp.router(
+              theme: AppTheme.lightTheme,
+              routerConfig: appRouter.router,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        authBloc.add(const AuthPanelModeToggled(isBusinessMode: true));
+        appRouter.router.go(AppRoutes.businessOverview);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Genel Bakış'), findsOneWidget);
+        expect(find.text('Masraflar'), findsOneWidget);
+        expect(find.text('Raporlar'), findsNothing);
+
+        await tester.tap(find.text('Masraflar'));
+        await tester.pumpAndSettle();
+        expect(
+          appRouter.router.routeInformationProvider.value.uri.path,
+          AppRoutes.businessExpenses,
+        );
+
+        // Admin kullanıcıya geçince Raporlar sekmesi alt barda görünür
+        authBloc.add(
+          const AuthUserProfileLoaded(
+            UserEntity(
+              uid: 'user_admin_ali',
+              name: 'Ali Yılmaz',
+              email: 'ali@paypulse.app',
+              role: AppStrings.roleAdmin,
+              companyId: AppStrings.defaultCompanyId,
+              hasB2BAccess: true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Raporlar'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'BudgetAnalyticsScreen dönem okları ayı değiştirir ve tune butonu filtre penceresi açar',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final userRepo = _TestUserRepository();
+        final authBloc = AuthBloc(userRepository: userRepo)
+          ..add(
+            const AuthUserProfileLoaded(
+              UserEntity(
+                uid: AppStrings.demoB2CUid,
+                name: 'Deniz Aksoy',
+                email: 'deniz@paypulse.app',
+                role: AppStrings.roleB2C,
+              ),
+            ),
+          );
+        addTearDown(() async {
+          await authBloc.close();
+          await userRepo.dispose();
+        });
+
+        final budgetRepo = _TestBudgetRepository(
+          categoriesBuilder: (period, offset) => [
+            BudgetCategoryEntity(
+              categoryId: 'market',
+              title: 'Market & Gıda',
+              spentAmount: offset == 0 ? 4600 : 2500,
+              allocatedAmount: 5000,
+              percentage: 60,
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          _wrapWithProviders(
+            authBloc: authBloc,
+            budgetRepository: budgetRepo,
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              home: const BudgetAnalyticsScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Kasım 2026 (Aylık)'), findsOneWidget);
+        expect(find.text('Aktif'), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.chevron_left_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Ekim 2026 (Aylık)'), findsOneWidget);
+        expect(find.text('Geçmiş'), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Kasım 2026 (Aylık)'), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Bütçe Görünümü ve Filtreler'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'TransactionHistoryScreen (Deniz Aksoy) tune filtre butonu sheet açar ve kategoriyi filtreler',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final userRepo = _TestUserRepository();
+        final authBloc = AuthBloc(userRepository: userRepo)
+          ..add(
+            const AuthUserProfileLoaded(
+              UserEntity(
+                uid: AppStrings.demoB2CUid,
+                name: 'Deniz Aksoy',
+                email: 'deniz@paypulse.app',
+                role: AppStrings.roleB2C,
+              ),
+            ),
+          );
+        addTearDown(() async {
+          await authBloc.close();
+          await userRepo.dispose();
+        });
+
+        final txRepo = _TestTransactionRepository(
+          seedTransactions: [
+            TransactionEntity(
+              txId: 'tx_market',
+              senderId: AppStrings.demoB2CUid,
+              receiverId: 'm_1',
+              amount: 24500,
+              currency: 'TRY',
+              timestamp: DateTime(2026, 11, 12),
+              type: 'fast',
+              title: 'Migros Jet',
+              category: 'Market',
+            ),
+            TransactionEntity(
+              txId: 'tx_coffee',
+              senderId: AppStrings.demoB2CUid,
+              receiverId: 'm_2',
+              amount: 14500,
+              currency: 'TRY',
+              timestamp: DateTime(2026, 11, 11),
+              type: 'fast',
+              title: 'Espresso Lab',
+              category: 'Kahve & İçecek',
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          _wrapWithProviders(
+            authBloc: authBloc,
+            transactionRepository: txRepo,
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              home: const TransactionHistoryScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Migros Jet'), findsWidgets);
+        expect(find.text('Espresso Lab'), findsWidgets);
+
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('İşlemleri Filtrele ve Sırala'), findsOneWidget);
+
+        await tester.tap(find.text('Market'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.textContaining('Sonuçları Göster'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Migros Jet'), findsWidgets);
+        expect(find.text('Espresso Lab'), findsNothing);
       },
     );
   });

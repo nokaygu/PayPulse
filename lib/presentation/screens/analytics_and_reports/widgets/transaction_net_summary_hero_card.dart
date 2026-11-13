@@ -127,11 +127,15 @@ class _MiniFlowBox extends StatelessWidget {
             children: [
               Icon(icon, size: 12, color: iconColor),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: 10,
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: const Color(0xFF94A3B8),
+                    fontSize: 10,
+                  ),
                 ),
               ),
             ],

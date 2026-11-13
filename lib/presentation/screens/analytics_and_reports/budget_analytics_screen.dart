@@ -9,6 +9,7 @@ import '../auth/bloc/auth_state.dart';
 import 'bloc/budget_analytics_cubit.dart';
 import 'widgets/budget_advice_card.dart';
 import 'widgets/budget_category_breakdown_card.dart';
+import 'widgets/budget_filter_sheet.dart';
 import 'widgets/budget_period_tab_bar.dart';
 import 'widgets/budget_quota_hero_card.dart';
 import 'widgets/budget_savings_goal_card.dart';
@@ -62,9 +63,16 @@ class _BudgetAnalyticsBody extends StatelessWidget {
                     BudgetPeriodTabBar(
                       periodLabels: BudgetAnalyticsState.periodLabels,
                       selectedPeriodIndex: state.selectedPeriodIndex,
-                      selectedPeriodLabel: state.selectedPeriodLabel,
+                      dynamicDateLabel: state.dynamicDateLabel,
+                      isCurrentPeriod: state.isCurrentPeriod,
+                      canGoPrevious: state.canGoPrevious,
+                      canGoNext: state.canGoNext,
+                      hasActiveFilter: state.hasActiveFilter,
                       onSelectPeriod: cubit.selectPeriod,
-                      onRefresh: cubit.refresh,
+                      onPreviousPeriod: cubit.previousPeriod,
+                      onNextPeriod: cubit.nextPeriod,
+                      onOpenFilter: () =>
+                          BudgetFilterSheet.show(context, cubit: cubit),
                     ),
                     const SizedBox(height: 14),
                     FourStateView(

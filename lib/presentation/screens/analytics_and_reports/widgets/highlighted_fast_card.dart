@@ -86,12 +86,16 @@ class _FastCardDetails extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
-              'SON FAST İŞLEMİ',
-              style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.primaryTeal,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
+            Flexible(
+              child: Text(
+                'SON FAST İŞLEMİ',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.primaryTeal,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(width: 6),

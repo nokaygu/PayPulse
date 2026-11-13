@@ -25,7 +25,8 @@ class TransactionGroupedListSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasFilter =
         state.searchQuery.isNotEmpty ||
-        state.selectedFilter != TransactionFilterType.all;
+        state.selectedFilter != TransactionFilterType.all ||
+        state.hasActiveAdvancedFilters;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

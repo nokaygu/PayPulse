@@ -44,38 +44,41 @@ class MainShellWrapperScreen extends StatelessWidget {
     ),
   ];
 
-  static const List<_NavTabItem> _businessTabs = [
-    _NavTabItem(
-      label: 'Genel Bakış',
-      path: AppRoutes.businessOverview,
-      icon: Icons.grid_view_outlined,
-      activeIcon: Icons.grid_view_rounded,
-    ),
-    _NavTabItem(
-      label: 'Tahsilat',
-      path: AppRoutes.businessPos,
-      icon: Icons.point_of_sale_outlined,
-      activeIcon: Icons.point_of_sale_rounded,
-    ),
-    _NavTabItem(
-      label: 'Faturalar',
-      path: AppRoutes.businessInvoices,
-      icon: Icons.description_outlined,
-      activeIcon: Icons.description_rounded,
-    ),
-    _NavTabItem(
-      label: 'Masraflar',
-      path: AppRoutes.businessExpenses,
-      icon: Icons.account_balance_wallet_outlined,
-      activeIcon: Icons.account_balance_wallet_rounded,
-    ),
-    _NavTabItem(
-      label: 'Raporlar',
-      path: AppRoutes.businessReports,
-      icon: Icons.insights_outlined,
-      activeIcon: Icons.insights_rounded,
-    ),
-  ];
+  static List<_NavTabItem> _resolveBusinessTabs(AuthState authState) {
+    return [
+      _NavTabItem(
+        label: 'Genel Bakış',
+        path: AppRoutes.businessOverview,
+        icon: Icons.grid_view_outlined,
+        activeIcon: Icons.grid_view_rounded,
+      ),
+      _NavTabItem(
+        label: 'Tahsilat',
+        path: AppRoutes.businessPos,
+        icon: Icons.point_of_sale_outlined,
+        activeIcon: Icons.point_of_sale_rounded,
+      ),
+      _NavTabItem(
+        label: 'Faturalar',
+        path: AppRoutes.businessInvoices,
+        icon: Icons.description_outlined,
+        activeIcon: Icons.description_rounded,
+      ),
+      _NavTabItem(
+        label: 'Masraflar',
+        path: AppRoutes.businessExpenses,
+        icon: Icons.account_balance_wallet_outlined,
+        activeIcon: Icons.account_balance_wallet_rounded,
+      ),
+      if (authState.canApproveExpenses)
+        _NavTabItem(
+          label: 'Raporlar',
+          path: AppRoutes.businessReports,
+          icon: Icons.insights_outlined,
+          activeIcon: Icons.insights_rounded,
+        ),
+    ];
+  }
 
   int _calculateSelectedIndex(String location, List<_NavTabItem> tabs) {
     for (var i = 0; i < tabs.length; i++) {
@@ -109,8 +112,11 @@ class MainShellWrapperScreen extends StatelessWidget {
       builder: (context, authState) {
         final isBusiness =
             authState.isBusinessMode && authState.canAccessBusinessPanel;
-        final tabs = isBusiness ? _businessTabs : _personalTabs;
-        final selectedIndex = _calculateSelectedIndex(location, tabs);
+        final tabs = isBusiness
+            ? _resolveBusinessTabs(authState)
+            : _personalTabs;
+        final selectedIndex =
+            _calculateSelectedIndex(location, tabs).clamp(0, tabs.length - 1);
 
         return Scaffold(
           body: child,

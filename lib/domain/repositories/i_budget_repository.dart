@@ -5,6 +5,7 @@ abstract class IBudgetRepository {
   Future<List<BudgetCategoryEntity>> getBudgetCategories({
     required String userId,
     required String period,
+    int periodOffset = 0,
   });
   Future<SavingsGoalEntity?> getSavingsGoal({required String userId});
 }

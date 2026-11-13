@@ -31,6 +31,7 @@ class BudgetCategoryBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final donutItems = state.donutItems;
+    final visibleList = state.visibleCategories;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -42,7 +43,7 @@ class BudgetCategoryBreakdownCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BreakdownHeader(categoryCount: state.categories.length),
+          _BreakdownHeader(categoryCount: visibleList.length),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -57,34 +58,53 @@ class BudgetCategoryBreakdownCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          ...state.categories.map((cat) {
-            final color = BudgetAnalyticsState.parseHexColor(cat.colorHex);
-            final progress = cat.allocatedAmount > 0
-                ? (cat.spentAmount / cat.allocatedAmount).clamp(0.0, 1.0)
-                : 0.0;
-            final pct = (progress * 100).round();
-            final statusText = cat.isLimitWarning
-                ? 'Limit uyarısı (%$pct)'
-                : '%$pct kullanıldı';
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: BudgetCategoryBox(
-                icon: _iconForCategory(cat.iconName),
-                iconBg: color,
-                title: cat.title,
-                quota:
-                    'Kota: ${BudgetAnalyticsState.formatTl(cat.allocatedAmount)}',
-                amount: BudgetAnalyticsState.formatTl(cat.spentAmount),
-                statusText: statusText,
-                statusColor: cat.isLimitWarning
-                    ? AppColors.expenseRed
-                    : AppColors.primaryTeal,
-                progress: progress,
-                barColor: color,
+          if (visibleList.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-            );
-          }),
+              child: Text(
+                'Seçili filtreye uygun bütçe kategorisi bulunamadı.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            ...visibleList.map((cat) {
+              final color = BudgetAnalyticsState.parseHexColor(cat.colorHex);
+              final progress = cat.allocatedAmount > 0
+                  ? (cat.spentAmount / cat.allocatedAmount).clamp(0.0, 1.0)
+                  : 0.0;
+              final pct = (progress * 100).round();
+              final statusText = cat.isLimitWarning
+                  ? 'Limit uyarısı (%$pct)'
+                  : '%$pct kullanıldı';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: BudgetCategoryBox(
+                  icon: _iconForCategory(cat.iconName),
+                  iconBg: color,
+                  title: cat.title,
+                  quota:
+                      'Kota: ${BudgetAnalyticsState.formatTl(cat.allocatedAmount)}',
+                  amount: BudgetAnalyticsState.formatTl(cat.spentAmount),
+                  statusText: statusText,
+                  statusColor: cat.isLimitWarning
+                      ? AppColors.expenseRed
+                      : AppColors.primaryTeal,
+                  progress: progress,
+                  barColor: color,
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -101,30 +121,37 @@ class _BreakdownHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.pie_chart_outline_rounded,
+                  size: 18,
+                  color: AppColors.darkNavy,
+                ),
               ),
-              child: const Icon(
-                Icons.pie_chart_outline_rounded,
-                size: 18,
-                color: AppColors.darkNavy,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Harcama Kategorileri',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkNavy,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Harcama Kategorileri',
-              style: AppTextStyles.bodyLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.darkNavy,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         Text(
           '$categoryCount Kategori',
           style: AppTextStyles.labelSmall.copyWith(

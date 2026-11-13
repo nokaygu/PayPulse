@@ -70,30 +70,37 @@ class _QuotaTopBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: AppColors.primaryGreen,
+                  size: 16,
+                ),
               ),
-              child: const Icon(
-                Icons.account_balance_wallet_outlined,
-                color: AppColors.primaryGreen,
-                size: 16,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'ANA CÜZDAN KOTASI',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: const Color(0xFF94A3B8),
+                    letterSpacing: 0.8,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'ANA CÜZDAN KOTASI',
-              style: AppTextStyles.labelSmall.copyWith(
-                color: const Color(0xFF94A3B8),
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         StatusBadgeWidget(
           label: '%$remainingPercent Bütçe Kaldı',
           type: BadgeType.darkGlass,
@@ -121,10 +128,15 @@ class _QuotaProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              spentLabel,
-              style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
+            Expanded(
+              child: Text(
+                spentLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               allocatedLabel,
               style: AppTextStyles.labelSmall.copyWith(

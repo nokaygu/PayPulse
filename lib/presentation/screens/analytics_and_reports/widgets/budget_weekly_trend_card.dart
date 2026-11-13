@@ -73,12 +73,17 @@ class BudgetWeeklyTrendCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Haftalık Ortalama: $formattedAvg',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: const Color(0xFF64748B),
+              Expanded(
+                child: Text(
+                  'Haftalık Ortalama: $formattedAvg',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: const Color(0xFF64748B),
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 'Toplam: ${state.formattedTotalSpentTl}',
                 style: AppTextStyles.labelMedium.copyWith(
@@ -102,31 +107,38 @@ class _TrendCardHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.bar_chart_rounded,
+                  size: 18,
+                  color: AppColors.darkNavy,
+                ),
               ),
-              child: const Icon(
-                Icons.bar_chart_rounded,
-                size: 18,
-                color: AppColors.darkNavy,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Dönemsel Harcama\nTrendi',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkNavy,
+                    height: 1.2,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Dönemsel Harcama\nTrendi',
-              style: AppTextStyles.bodyLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.darkNavy,
-                height: 1.2,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         const StatusBadgeWidget(label: 'Dengeli Seyir', type: BadgeType.success),
       ],
     );

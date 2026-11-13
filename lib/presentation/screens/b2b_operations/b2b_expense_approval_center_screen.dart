@@ -192,13 +192,18 @@ class _SortHeaderRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'Masraf Kayıtları ($count)',
-          style: AppTextStyles.bodyLarge.copyWith(
-            fontWeight: FontWeight.w800,
-            color: AppColors.darkNavy,
+        Expanded(
+          child: Text(
+            'Masraf Kayıtları ($count)',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.darkNavy,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         InkWell(
           onTap: onTapSort,
           borderRadius: BorderRadius.circular(8),
