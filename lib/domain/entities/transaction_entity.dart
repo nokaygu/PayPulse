@@ -18,6 +18,7 @@ class TransactionEntity extends Equatable {
   final bool isExpense; // true: Giden (-), false: Gelen (+)
   final String dateGroup; // 'BUGÜN, 11 KASIM', 'DÜN, 10 KASIM', 'GEÇEN HAFTA'
   final String status; // 'Başarılı', 'Beklemede', 'İptal'
+  final String? relatedId;
 
   const TransactionEntity({
     required this.txId,
@@ -33,6 +34,7 @@ class TransactionEntity extends Equatable {
     this.isExpense = true,
     this.dateGroup = 'BUGÜN, 11 KASIM',
     this.status = 'Başarılı',
+    this.relatedId,
   });
 
   /// TL / Ana birim cinsinden tutar (örn: 1500.00)
@@ -66,6 +68,7 @@ class TransactionEntity extends Equatable {
     bool? isExpense,
     String? dateGroup,
     String? status,
+    String? relatedId,
   }) {
     return TransactionEntity(
       txId: txId ?? this.txId,
@@ -81,6 +84,7 @@ class TransactionEntity extends Equatable {
       isExpense: isExpense ?? this.isExpense,
       dateGroup: dateGroup ?? this.dateGroup,
       status: status ?? this.status,
+      relatedId: relatedId ?? this.relatedId,
     );
   }
 
@@ -99,5 +103,6 @@ class TransactionEntity extends Equatable {
     isExpense,
     dateGroup,
     status,
+    relatedId,
   ];
 }

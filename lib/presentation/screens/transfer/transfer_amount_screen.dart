@@ -91,9 +91,15 @@ class _TransferAmountScreenState extends State<TransferAmountScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 15),
                 ),
                 onPressed: () {
+                  final int parsedAmount = int.tryParse(_amountText) ?? 1500;
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const TransferSummaryScreen(),
+                      builder: (_) => TransferSummaryScreen(
+                        recipientIban: 'TR34 0006 2000 0001 2345 6789 01',
+                        recipientName: 'Zeynep Kaya',
+                        amountInKurus: parsedAmount * 100,
+                        description: 'Hafta sonu kahvaltı payı 🥐',
+                      ),
                     ),
                   );
                 },

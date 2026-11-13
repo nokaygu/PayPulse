@@ -1,14 +1,29 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
 import '../../widgets/role_switch_app_bar.dart';
+import '../auth/bloc/auth_bloc.dart';
 
 /// Görsel 2: Transfer Özeti (Adım 3/4) Ekranı
 class TransferSummaryScreen extends StatefulWidget {
-  const TransferSummaryScreen({super.key});
+  final String recipientIban;
+  final String recipientName;
+  final int amountInKurus;
+  final String description;
+
+  const TransferSummaryScreen({
+    super.key,
+    this.recipientIban = 'TR34 0006 2000 0001 2345 6789 01',
+    this.recipientName = 'Zeynep Kaya',
+    this.amountInKurus = 150000,
+    this.description = 'Hafta sonu kahvaltı payı 🥐',
+  });
 
   @override
   State<TransferSummaryScreen> createState() => _TransferSummaryScreenState();
@@ -16,6 +31,50 @@ class TransferSummaryScreen extends StatefulWidget {
 
 class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
   bool _rulesAccepted = true;
+  bool _isSubmitting = false;
+
+  Future<void> _onConfirmTransfer() async {
+    if (!_rulesAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen FAST transfer kurallarını onaylayın.'),
+        ),
+      );
+      return;
+    }
+
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final authUser = context.read<AuthBloc>().state.user;
+      final senderUid = currentUser?.uid ?? authUser?.uid;
+
+      if (senderUid != null && senderUid.isNotEmpty) {
+        final tx = await FirebaseFirestoreDatasource().executeFastTransferByIban(
+          senderUserId: senderUid,
+          targetIban: widget.recipientIban,
+          amountKurus: widget.amountInKurus,
+        );
+        if (!mounted) return;
+        context.push('/home/transfer/receipt/${tx.txId}');
+      } else {
+        if (!mounted) return;
+        context.push('/home/transfer/receipt/PP-FAST-20261111-849201');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Transfer hatası: $e'),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +204,7 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '₺1.500,00',
+                    '₺${(widget.amountInKurus / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
                     style: AppTextStyles.numericBalance.copyWith(
                       color: Colors.white,
                       fontSize: 36,
@@ -322,7 +381,7 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
                               ],
                             ),
                             Text(
-                              'Zeynep Kaya',
+                              widget.recipientName,
                               style: AppTextStyles.bodyLarge.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.darkNavy,
@@ -330,7 +389,7 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'TR34 0006 2000 0001 2345 6789 01',
+                              widget.recipientIban,
                               style: AppTextStyles.labelSmall.copyWith(
                                 color: AppColors.darkNavy,
                                 fontFamily: 'monospace',
@@ -590,15 +649,22 @@ class _TransferSummaryScreenState extends State<TransferSummaryScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
-                  context.push(
-                    '/home/transfer/receipt/PP-FAST-20261111-849201',
-                  );
-                },
-                icon: const Icon(Icons.face_unlock_outlined, size: 20),
-                label: const Text(
-                  'Transferi Onayla (Face ID ile)',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                onPressed: _isSubmitting ? null : _onConfirmTransfer,
+                icon: _isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.face_unlock_outlined, size: 20),
+                label: Text(
+                  _isSubmitting
+                      ? 'FAST İşlemi Yapılıyor...'
+                      : 'Transferi Onayla (Biyometrik / PIN Simülasyonu)',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
             ),

@@ -16,6 +16,7 @@ class TransactionModel extends Equatable {
   final bool isExpense;
   final String dateGroup;
   final String status;
+  final String? relatedId;
 
   const TransactionModel({
     required this.txId,
@@ -31,6 +32,7 @@ class TransactionModel extends Equatable {
     this.isExpense = true,
     this.dateGroup = 'BUGÜN, 11 KASIM',
     this.status = 'Başarılı',
+    this.relatedId,
   });
 
   double get amountInMajorUnit => amount / 100.0;
@@ -61,6 +63,7 @@ class TransactionModel extends Equatable {
       isExpense: json['isExpense'] as bool? ?? true,
       dateGroup: json['dateGroup'] as String? ?? 'BUGÜN, 11 KASIM',
       status: json['status'] as String? ?? 'Başarılı',
+      relatedId: json['relatedId'] as String?,
     );
   }
 
@@ -79,6 +82,7 @@ class TransactionModel extends Equatable {
       'isExpense': isExpense,
       'dateGroup': dateGroup,
       'status': status,
+      if (relatedId != null) 'relatedId': relatedId,
     };
   }
 
@@ -97,6 +101,7 @@ class TransactionModel extends Equatable {
       isExpense: isExpense,
       dateGroup: dateGroup,
       status: status,
+      relatedId: relatedId,
     );
   }
 
@@ -115,6 +120,7 @@ class TransactionModel extends Equatable {
       isExpense: entity.isExpense,
       dateGroup: entity.dateGroup,
       status: entity.status,
+      relatedId: entity.relatedId,
     );
   }
 
@@ -132,6 +138,7 @@ class TransactionModel extends Equatable {
     bool? isExpense,
     String? dateGroup,
     String? status,
+    String? relatedId,
   }) {
     return TransactionModel(
       txId: txId ?? this.txId,
@@ -147,6 +154,7 @@ class TransactionModel extends Equatable {
       isExpense: isExpense ?? this.isExpense,
       dateGroup: dateGroup ?? this.dateGroup,
       status: status ?? this.status,
+      relatedId: relatedId ?? this.relatedId,
     );
   }
 
@@ -165,5 +173,6 @@ class TransactionModel extends Equatable {
     isExpense,
     dateGroup,
     status,
+    relatedId,
   ];
 }

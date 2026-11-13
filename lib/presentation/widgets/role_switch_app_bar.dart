@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../data/models/notification_model.dart';
 import '../screens/auth/bloc/auth_bloc.dart';
 import '../screens/auth/bloc/auth_event.dart';
 
@@ -30,6 +33,11 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authUser = context.watch<AuthBloc>().state.user;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final String currentUserId =
+        authUser?.uid ?? firebaseUser?.uid ?? 'user_b2c_001';
+
     return SafeArea(
       bottom: false,
       child: Container(
@@ -200,13 +208,22 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: AppColors.darkNavy,
                           borderRadius: BorderRadius.circular(9),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  AppColors.primaryGreen.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.bolt_rounded,
-                          color: AppColors.primaryGreen,
-                          size: 22,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Image.asset(
+                            'assets/images/paypulse_logo.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -224,39 +241,53 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
 
             if (extraActions != null) ...extraActions!,
 
-            // Bildirim İkonu
-            Stack(
-              children: [
-                IconButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          '3 yeni bildirim: FAST ve GİB E-Fatura senkronize edildi.',
+            // Canlı Firestore Bildirim İkonu & Rozeti
+            StreamBuilder<int>(
+              stream: FirebaseFirestoreDatasource()
+                  .watchUnreadNotificationCount(currentUserId),
+              builder: (context, notifSnapshot) {
+                final unreadCount = notifSnapshot.data ?? 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      onPressed: () =>
+                          _showNotificationsSheet(context, currentUserId),
+                      icon: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: AppColors.darkNavy,
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: isBusinessMode
+                                ? AppColors.expenseRed
+                                : AppColors.primaryGreen,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  icon: const Icon(
-                    Icons.notifications_none_rounded,
-                    color: AppColors.darkNavy,
-                  ),
-                ),
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: isBusinessMode
-                          ? AppColors.expenseRed
-                          : AppColors.primaryGreen,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
             const SizedBox(width: 4),
 
@@ -340,6 +371,136 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
                   context.go(AppRoutes.businessOverview);
                 },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showNotificationsSheet(BuildContext context, String userId) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final datasource = FirebaseFirestoreDatasource();
+        return Container(
+          padding: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxHeight: 450),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Bildirimler',
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      color: AppColors.darkNavy,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: StreamBuilder<List<NotificationModel>>(
+                  stream: datasource.watchUserNotifications(userId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryTeal,
+                        ),
+                      );
+                    }
+                    final notifications = snapshot.data ?? [];
+                    if (notifications.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_off_outlined,
+                              size: 40,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Yeni bildirim bulunmuyor.',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      itemCount: notifications.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      itemBuilder: (context, i) {
+                        final n = notifications[i];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          leading: CircleAvatar(
+                            backgroundColor: n.isRead
+                                ? const Color(0xFFF1F5F9)
+                                : const Color(0xFFE0F2FE),
+                            child: Icon(
+                              Icons.notifications_active_outlined,
+                              size: 20,
+                              color: n.isRead
+                                  ? const Color(0xFF64748B)
+                                  : AppColors.primaryTeal,
+                            ),
+                          ),
+                          title: Text(
+                            n.title,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: n.isRead
+                                  ? FontWeight.w600
+                                  : FontWeight.w800,
+                              color: AppColors.darkNavy,
+                            ),
+                          ),
+                          subtitle: Text(
+                            n.body,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: const Color(0xFF64748B),
+                              fontSize: 11,
+                            ),
+                          ),
+                          trailing: n.isRead
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Okundu İşaretle',
+                                  icon: const Icon(
+                                    Icons.done_all_rounded,
+                                    size: 18,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                  onPressed: () =>
+                                      datasource.markNotificationAsRead(n.notificationId),
+                                ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),

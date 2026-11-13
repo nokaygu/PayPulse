@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,6 +9,9 @@ import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/firestore_seeder.dart';
+import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/models/transaction_model.dart';
+import '../../../data/models/wallet_model.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/transaction_list_tile_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -24,416 +29,505 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _hideBalance = false;
   String _selectedCurrency = 'TRY';
+  final FirebaseFirestoreDatasource _firestoreDatasource =
+      FirebaseFirestoreDatasource();
+
+  String _formatKurus(int kurus, String symbol) {
+    final double amount = kurus / 100.0;
+    final parts = amount.toStringAsFixed(2).split('.');
+    final integerPart = parts[0].replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+    return '$symbol$integerPart,${parts[1]}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String balanceStr = _selectedCurrency == 'TRY'
-        ? '₺24.850,00'
-        : (_selectedCurrency == 'USD' ? '\$1.420,00' : '€980,00');
+    final authUser = context.watch<AuthBloc>().state.user;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final String currentUserId =
+        authUser?.uid ?? firebaseUser?.uid ?? 'user_b2c_001';
+    final String currentUserName =
+        (authUser?.name != null && authUser!.name.isNotEmpty)
+            ? authUser.name
+            : (firebaseUser?.displayName ??
+                (firebaseUser?.email?.split('@').first ?? 'Deniz Aksoy'));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: const RoleSwitchAppBar(isBusinessMode: false),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Üst Rol Geçiş & Seed Bandı
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0F2FE).withOpacity(0.55),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryTeal,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Deniz Aksoy • PP-849201',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.darkNavy,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      context.read<AuthBloc>().add(
-                        const AuthRoleChanged('admin'),
-                      );
-                      context.go(AppRoutes.businessOverview);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.business_center_outlined,
-                            size: 13,
-                            color: AppColors.primaryTeal,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'İşletme Paneline Geç',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.darkNavy,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
+      body: StreamBuilder<WalletModel?>(
+        stream: _firestoreDatasource.watchUserWallet(currentUserId),
+        builder: (context, walletSnapshot) {
+          final wallet = walletSnapshot.data;
+          final String ibanStr =
+              wallet?.iban ?? 'TR34 0006 2000 0001 2345 6789 01';
 
-            // 1. Çoklu Para Birimli Ana Cüzdan Kartı
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: AppColors.heroCardGradient,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.darkNavy.withOpacity(0.35),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
+          final String balanceStr;
+          if (_selectedCurrency == 'TRY') {
+            balanceStr = wallet != null
+                ? _formatKurus(wallet.balanceTl, '₺')
+                : (_hideBalance ? '••••••' : '₺0,00');
+          } else if (_selectedCurrency == 'USD') {
+            balanceStr = wallet != null
+                ? _formatKurus(wallet.balanceUsd, r'$')
+                : (_hideBalance ? '••••••' : r'$0,00');
+          } else {
+            balanceStr = wallet != null
+                ? _formatKurus(wallet.balanceEur, '€')
+                : (_hideBalance ? '••••••' : '€0,00');
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Üst Rol Geçiş & Profil Bandı
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2FE).withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBAE6FD)),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          _buildCurrencyChip('TRY'),
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryTeal,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                           const SizedBox(width: 6),
-                          _buildCurrencyChip('USD'),
-                          const SizedBox(width: 6),
-                          _buildCurrencyChip('EUR'),
+                          Text(
+                            '$currentUserName • ${wallet?.walletId ?? 'PP-849201'}',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: AppColors.darkNavy,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () =>
-                            setState(() => _hideBalance = !_hideBalance),
-                        icon: Icon(
-                          _hideBalance
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: const Color(0xFF5EEAD4),
-                          size: 20,
+                      GestureDetector(
+                        onTap: () {
+                          context.read<AuthBloc>().add(
+                                const AuthRoleChanged('admin'),
+                              );
+                          context.go(AppRoutes.businessOverview);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.business_center_outlined,
+                                size: 13,
+                                color: AppColors.primaryTeal,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'İşletme Paneline Geç',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: AppColors.darkNavy,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'KULLANILABİLİR CÜZDAN BAKİYESİ',
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: const Color(0xFF94A3B8),
-                      letterSpacing: 0.7,
-                    ),
+                ),
+                const SizedBox(height: 14),
+
+                // 1. Çoklu Para Birimli Ana Cüzdan Kartı
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.heroCardGradient,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.darkNavy.withOpacity(0.35),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _hideBalance ? '₺ ••••••' : balanceStr,
-                    style: AppTextStyles.numericBalance.copyWith(
-                      color: Colors.white,
-                      fontSize: 34,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              _buildCurrencyChip('TRY'),
+                              const SizedBox(width: 6),
+                              _buildCurrencyChip('USD'),
+                              const SizedBox(width: 6),
+                              _buildCurrencyChip('EUR'),
+                            ],
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () =>
+                                setState(() => _hideBalance = !_hideBalance),
+                            icon: Icon(
+                              _hideBalance
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: const Color(0xFF5EEAD4),
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'KULLANILABİLİR CÜZDAN BAKİYESİ',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: const Color(0xFF94A3B8),
+                          letterSpacing: 0.7,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _hideBalance ? '₺ ••••••' : balanceStr,
+                        style: AppTextStyles.numericBalance.copyWith(
+                          color: Colors.white,
+                          fontSize: 34,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              ibanStr,
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: Colors.white,
+                                fontFamily: 'monospace',
+                                fontSize: 10.5,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: ibanStr),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('FAST IBAN kopyalandı.'),
+                                  ),
+                                );
+                              },
+                              child: const Icon(
+                                Icons.copy_rounded,
+                                size: 15,
+                                color: Color(0xFF5EEAD4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5EEAD4),
+                                foregroundColor: AppColors.darkNavy,
+                                minimumSize: const Size(0, 44),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () =>
+                                  context.push(AppRoutes.fastTransfer),
+                              icon: const Icon(Icons.bolt_rounded, size: 18),
+                              label: const Text(
+                                'FAST Gönder',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                backgroundColor: Colors.white.withOpacity(0.08),
+                                side: BorderSide(
+                                  color: Colors.white.withOpacity(0.18),
+                                ),
+                                minimumSize: const Size(0, 44),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () => context.go(AppRoutes.qr),
+                              icon: const Icon(Icons.qr_code_rounded, size: 18),
+                              label: const Text(
+                                'QR ile Öde',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 18),
+
+                // 2. Canlı Cüzdan Hareketleri
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Son Cüzdan Hareketleri',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkNavy,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.go(AppRoutes.transactions),
+                      child: Text(
+                        'Tümünü Gör >',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.primaryTeal,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: StreamBuilder<List<TransactionModel>>(
+                    stream: _firestoreDatasource
+                        .watchUserTransactions(currentUserId),
+                    builder: (context, txSnapshot) {
+                      if (txSnapshot.connectionState ==
+                              ConnectionState.waiting &&
+                          !txSnapshot.hasData) {
+                        return const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primaryTeal,
+                            ),
+                          ),
+                        );
+                      }
+
+                      final transactions = txSnapshot.data ?? [];
+                      if (transactions.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 24,
+                            horizontal: 16,
+                          ),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.receipt_long_outlined,
+                                  size: 36,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Henüz kayıtlı cüzdan hareketi bulunmuyor.',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      final recentTxs = transactions.take(3).toList();
+                      return Column(
+                        children: [
+                          for (int i = 0; i < recentTxs.length; i++) ...[
+                            if (i > 0)
+                              const Divider(
+                                height: 1,
+                                color: Color(0xFFF1F5F9),
+                              ),
+                            _buildTransactionTile(recentTxs[i]),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ),
+
+                // 3. Jüri Sunumu Firestore Seed & Canlı Test Paneli Butonu (Geliştirici & Demo)
+                if (kDebugMode) ...[
+                  const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'TR34 0006 2000 0001 2345 6789 01',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: Colors.white,
-                            fontFamily: 'monospace',
-                            fontSize: 10.5,
+                        const Icon(
+                          Icons.cloud_upload_outlined,
+                          color: AppColors.primaryTeal,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Kasım 2026 Verilerini Firestore\'a Bas',
+                                style: AppTextStyles.labelMedium.copyWith(
+                                  color: AppColors.darkNavy,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                'Jüri sunumu için tüm koleksiyonları tek tıkla doldur veya Firebase konsolunu aç.',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: const Color(0xFF64748B),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () {
-                            Clipboard.setData(
-                              const ClipboardData(
-                                text: 'TR34 0006 2000 0001 2345 6789 01',
-                              ),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('FAST IBAN kopyalandı.'),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.darkNavy,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(0, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          onPressed: () async {
+                            try {
+                              await FirestoreSeeder().seedAll();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    backgroundColor: AppColors.primaryGreen,
+                                    content: Text(
+                                      'Kasım 2026 Seed verileri Cloud Firestore\'a başarıyla basıldı!',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Yerel Mock veriler aktif ($e)'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: const Text(
+                            'Seed Bas',
+                            style: TextStyle(fontSize: 11.5),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          tooltip: 'Firebase Test Konsolu',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const HomeAndWalletEkrani(),
                               ),
                             );
                           },
-                          child: const Icon(
-                            Icons.copy_rounded,
-                            size: 15,
-                            color: Color(0xFF5EEAD4),
+                          icon: const Icon(
+                            Icons.developer_mode_rounded,
+                            size: 20,
+                            color: AppColors.darkNavy,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5EEAD4),
-                            foregroundColor: AppColors.darkNavy,
-                            minimumSize: const Size(0, 44),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () => context.push(AppRoutes.fastTransfer),
-                          icon: const Icon(Icons.bolt_rounded, size: 18),
-                          label: const Text(
-                            'FAST Gönder',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Colors.white.withOpacity(0.08),
-                            side: BorderSide(
-                              color: Colors.white.withOpacity(0.18),
-                            ),
-                            minimumSize: const Size(0, 44),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () => context.go(AppRoutes.qr),
-                          icon: const Icon(Icons.qr_code_rounded, size: 18),
-                          label: const Text(
-                            'QR ile Öde',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // 2. Hızlı Erişim Butonları
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Son Cüzdan Hareketleri',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.darkNavy,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => context.go(AppRoutes.transactions),
-                  child: Text(
-                    'Tümünü Gör >',
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.primaryTeal,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  TransactionListTileWidget(
-                    title: 'Zeynep Kaya',
-                    badgeText: 'FAST',
-                    badgeBgColor: const Color(0xFFD1FAE5),
-                    badgeTextColor: const Color(0xFF065F46),
-                    subtitle: 'Para Transferi • 15:42',
-                    amountText: '-₺1.500,00',
-                    isIncome: false,
-                    statusOrNoteText: 'Tamamlandı',
-                    icon: Icons.north_east_rounded,
-                    onTap: () => context.push(
-                      '/home/transfer/receipt/PP-FAST-20261111-849201',
-                    ),
-                  ),
-                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                  const TransactionListTileWidget(
-                    title: 'Espresso Lab',
-                    badgeText: 'QR Ödeme',
-                    subtitle: 'Yeme & İçme • 11:20',
-                    amountText: '-₺185,00',
-                    isIncome: false,
-                    statusOrNoteText: '₺9,25 Cashback',
-                    statusTextColor: AppColors.primaryTeal,
-                    icon: Icons.coffee_outlined,
-                  ),
-                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                  const TransactionListTileWidget(
-                    title: 'Mert Can',
-                    badgeText: 'FAST',
-                    badgeBgColor: const Color(0xFFD1FAE5),
-                    badgeTextColor: const Color(0xFF065F46),
-                    subtitle: 'Gelen Transfer • Dün, 19:15',
-                    amountText: '+₺850,00',
-                    isIncome: true,
-                    statusOrNoteText: 'Hesaba Geçti',
-                    icon: Icons.south_west_rounded,
-                    iconBgColor: Color(0xFFD1FAE5),
-                    iconColor: AppColors.primaryTeal,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 3. Jüri Sunumu Firestore Seed & Canlı Test Paneli Butonu
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.cloud_upload_outlined,
-                    color: AppColors.primaryTeal,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Kasım 2026 Verilerini Firestore\'a Bas',
-                          style: AppTextStyles.labelMedium.copyWith(
-                            color: AppColors.darkNavy,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Jüri sunumu için tüm koleksiyonları tek tıkla doldur veya Firebase konsolunu aç.',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: const Color(0xFF64748B),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.darkNavy,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    onPressed: () async {
-                      try {
-                        await FirestoreSeeder().seedAll();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              backgroundColor: AppColors.primaryGreen,
-                              content: Text(
-                                'Kasım 2026 Seed verileri Cloud Firestore\'a başarıyla basıldı!',
-                              ),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Yerel Mock veriler aktif ($e)'),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text(
-                      'Seed Bas',
-                      style: TextStyle(fontSize: 11.5),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  IconButton(
-                    tooltip: 'Firebase Test Konsolu',
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const HomeAndWalletEkrani(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.developer_mode_rounded,
-                      size: 20,
-                      color: AppColors.darkNavy,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _buildTransactionTile(TransactionModel tx) {
+    final bool isIncome = !tx.isExpense;
+    final String amountFormatted = isIncome
+        ? '+${_formatKurus(tx.amount, '₺')}'
+        : '-${_formatKurus(tx.amount, '₺')}';
+
+    return TransactionListTileWidget(
+      title:
+          tx.title.isNotEmpty ? tx.title : (tx.targetIban ?? 'FAST Transferi'),
+      badgeText: tx.type.toUpperCase(),
+      badgeBgColor:
+          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFE0F2FE),
+      badgeTextColor:
+          isIncome ? const Color(0xFF065F46) : const Color(0xFF0369A1),
+      subtitle:
+          '${tx.category} • ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
+      amountText: amountFormatted,
+      isIncome: isIncome,
+      statusOrNoteText: tx.status,
+      icon: isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
+      iconBgColor:
+          isIncome ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9),
+      iconColor: isIncome ? AppColors.primaryGreen : AppColors.darkNavy,
+      onTap: () => context.push('/home/transfer/receipt/${tx.txId}'),
     );
   }
 

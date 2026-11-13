@@ -1,6 +1,8 @@
 class AuthErrorMessages {
   AuthErrorMessages._();
 
+  static String fromCode(String code) => fromFirebaseCode(code);
+
   static String fromFirebaseCode(String code) {
     switch (code) {
       case 'user-not-found':

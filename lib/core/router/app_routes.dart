@@ -1,6 +1,13 @@
 class AppRoutes {
   const AppRoutes._();
 
+  // Açılış ve Karşılama Ekranı
+  static const String splash = '/splash';
+
+  // Kimlik Doğrulama Rotaları
+  static const String login = '/login';
+  static const String register = '/register';
+
   // Bireysel Cüzdan (B2C) Ana Sekmeleri
   static const String home = '/home';
   static const String qr = '/qr';

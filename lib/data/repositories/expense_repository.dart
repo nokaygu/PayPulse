@@ -5,6 +5,8 @@ import '../../domain/repositories/i_expense_repository.dart';
 import '../datasources/remote/firebase_firestore_datasource.dart';
 import '../models/expense_model.dart';
 
+/// Clean Architecture Data Katmanı: Personel Masraf Yönetim Deposu (ExpenseRepository)
+/// Çalışanların masraf taleplerini, onay/red döngülerini ve muhasebe kayıtlarını yönetir.
 class ExpenseRepository implements IExpenseRepository {
   final FirebaseFirestoreDatasource _firestoreDatasource;
   final FirebaseFirestore _firestore;
@@ -12,10 +14,11 @@ class ExpenseRepository implements IExpenseRepository {
   ExpenseRepository({
     FirebaseFirestoreDatasource? firestoreDatasource,
     FirebaseFirestore? firestore,
-  }) : _firestoreDatasource =
-           firestoreDatasource ?? FirebaseFirestoreDatasource(),
-       _firestore = firestore ?? FirebaseFirestore.instance;
+  })  : _firestoreDatasource =
+            firestoreDatasource ?? FirebaseFirestoreDatasource(),
+        _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Sistemdeki tüm masraf kayıtlarını listeler
   @override
   Future<List<ExpenseModel?>> getAllExpenses() async {
     try {
@@ -30,6 +33,7 @@ class ExpenseRepository implements IExpenseRepository {
     }
   }
 
+  /// Masraf ID'sine göre fiş, tutar, KDV ve onay durumunu getirir
   @override
   Future<ExpenseModel?> getExpenseById(String expenseId) async {
     try {

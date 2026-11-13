@@ -413,4 +413,52 @@ erDiagram
 - **Demo Day (13 Kasım):** Canlı emülatör/cihaz sunumu ve jüri değerlendirmesi.
 
 ---
+
+## 💻 4. macOS & Jüri Sunumu Kurulum Kılavuzu (Mac Quickstart)
+
+Projeyi herhangi bir macOS bilgisayarda jüri sunumu veya geliştirme amacıyla sorunsuz çalıştırmak için aşağıdaki adımları sırasıyla uygulayınız:
+
+### 4.1. Önkoşullar
+- **macOS:** macOS Sonoma veya Sequoia
+- **Flutter SDK:** 3.24.x veya üzeri (önerilen: 3.27.x)
+- **Xcode:** Xcode 15+ ve Xcode Command Line Tools (`xcode-select --install`)
+- **CocoaPods:** `brew install cocoapods` veya `sudo gem install cocoapods`
+- **Git**
+
+### 4.2. Adım Adım Kurulum
+
+1. **Projeyi Çekin ve Dizinine Geçin:**
+   ```bash
+   git clone https://github.com/nokaygu/PayPulse.git
+   cd PayPulse
+   ```
+
+2. **Flutter Bağımlılıklarını İndirin:**
+   ```bash
+   flutter pub get
+   ```
+
+3. **macOS Pod Bağımlılıklarını Kurun:**
+   ```bash
+   cd macos
+   pod install
+   cd ..
+   ```
+
+4. **Uygulamayı macOS Desktop Üzerinde Çalıştırın:**
+   ```bash
+   flutter run -d macos
+   ```
+
+5. **Android Emülatör Üzerinde Çalıştırmak İçin:**
+   ```bash
+   flutter run -d android
+   ```
+
+### 4.3. Sunum & Jüri Notları
+- **Apple Developer & APNs Koruması:** Projede Apple Developer lisansı bulunmadığından, macOS ve iOS üzerinde push bildirim servisleri (`APNs`) kod seviyesinde güvenle pasife alınmıştır; uygulamanın açılışını veya Firebase Auth/Firestore işlemlerini kesinlikle engellemez.
+- **Android FCM Bildirimleri:** Push bildirimleri gerçek Android cihaz ve emülatöründe Google Play Services ile tam aktif çalışmaktadır.
+- **Firebase Test Konsolu (Workbench):** Jüri sunumu sırasında canlı Firebase Firestore işlemlerini (gerçek atomik FAST transferi, bakiye sorgulama, masraf onaylama ve canlı Stream'ler) tek ekranda göstermek için Ana Ekranın sağ üst köşesindeki **Geliştirici İkonuna (`Icons.developer_mode_rounded`)** tıklayabilirsiniz.
+
+---
 *Belge Oluşturuldu: 2026-11-09 — Antigravity E-Mektep & SoftITO Mobil Büyük Teslim Projeleri Sistemi*

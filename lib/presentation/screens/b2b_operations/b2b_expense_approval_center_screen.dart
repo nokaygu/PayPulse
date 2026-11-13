@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/models/expense_model.dart';
+import '../auth/bloc/auth_bloc.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
 /// Görsel 8: Personel Masraf Onay Merkezi Ekranı
@@ -19,6 +23,113 @@ class _B2bExpenseApprovalCenterScreenState
     extends State<B2bExpenseApprovalCenterScreen> {
   int _selectedTab =
       0; // 0: Bekleyenler 3, 1: Onaylananlar (18), 2: Reddedilenler
+  final FirebaseFirestoreDatasource _firestoreDatasource =
+      FirebaseFirestoreDatasource();
+
+  void _showRejectDialog(
+    BuildContext context,
+    String expenseId,
+    String employeeName,
+  ) {
+    final controller = TextEditingController(
+      text: 'Şirket harcama politikasına uygun olmayan harcama kalemi.',
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          '$employeeName - Masraf Reddi',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Lütfen çalışana iletilecek resmi red gerekçesini yazınız:',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Red gerekçesi...',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expenseRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await _firestoreDatasource.rejectExpense(
+                  expenseId: expenseId,
+                  reason: controller.text.trim(),
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '$employeeName masraf talebi gerekçesiyle reddedildi.',
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Hata: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Reddet'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleApprove(
+    BuildContext context,
+    String expenseId,
+    String employeeName,
+    String amount,
+  ) async {
+    try {
+      await _firestoreDatasource.approveExpense(expenseId: expenseId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryGreen,
+            content: Text(
+              '$employeeName ($amount) masrafı onaylandı ve cüzdanına iade edildi!',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.expenseRed,
+            content: Text('Onay başarısız: $e'),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -345,67 +456,237 @@ class _B2bExpenseApprovalCenterScreenState
             ),
             const SizedBox(height: 12),
 
-            // 1. Kart: Ahmet Yılmaz (BiTaksi ₺450,00)
-            _buildExpenseReviewCard(
-              context: context,
-              initials: 'AY',
-              employeeName: 'Ahmet Yılmaz',
-              roleDept: 'Frontend Lead • Operasyon',
-              amount: '₺450,00',
-              vatText: 'KDV %20 (₺75,00)',
-              categoryLine: '🚖 Taksi / Şehir İçi Ulaşım • Bugün, 08:40',
-              descLine: 'Müşteri Toplantısı (Akbank Genel Müdürlük / Levent)',
-              cardAndReceiptNo:
-                  '💳 Nova Business Kart •••• 4120   Fiş No: BT-889104',
-              ocrTitle: '⚡ AI-OCR %98 Doğrulandı',
-              ocrSubtitle: 'BiTaksi E-Fiş Entegrasyonu',
-              ocrActionText: 'Fişi Gör ↗',
-              policyText:
-                  '✓ Harcama Politikasına Uygun (Günlük Ulaşım Limiti Altında)',
-              isPolicyWarning: false,
-            ),
-            const SizedBox(height: 14),
+            // StreamBuilder ile Canlı Firestore Masrafları (Giriş yapan şirkete göre dinamik)
+            Builder(
+              builder: (context) {
+                final activeCompanyId =
+                    context.watch<AuthBloc>().state.user?.companyId;
 
-            // 2. Kart: Elif Demir (Midpoint ₺1.980,50)
-            _buildExpenseReviewCard(
-              context: context,
-              initials: 'ED',
-              employeeName: 'Elif Demir',
-              roleDept: 'Ürün Tasarımcısı • Tasarım',
-              amount: '₺1.980,50',
-              vatText: 'KDV %10 (₺180,05)',
-              categoryLine: '🍴 Müşteri Akşam Yemeği / Temsil • Dün, 19:15',
-              descLine: '🏪 Midpoint Levent Şubesi • Fiş No: 004819',
-              quoteNote: '"Fintech mobil uygulama lansman toplantısı müşteri ağırlama masrafı."',
-              cardAndReceiptNo: 'Kart: Nova Business •••• 8831',
-              ocrTitle: '🧾 Fiş Görseli Eklendi (PNG)',
-              ocrSubtitle: 'Kart: Nova Business •••• 8831',
-              ocrActionText: 'İncele 🔍',
-              policyText:
-                  '⚠️ Departman Temsil Limiti (₺2.000) Sınırında (%99 Doluluk)',
-              isPolicyWarning: true,
-            ),
-            const SizedBox(height: 14),
+                if (activeCompanyId == null || activeCompanyId.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.business_center_outlined,
+                          color: Color(0xFFDC2626),
+                          size: 36,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Şirket Kaydı Bulunamadı',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF991B1B),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Bu ekranı görüntülemek için kurumsal bir şirkete bağlı olmanız gerekmektedir.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-            // 3. Kart: Caner Kılıç (IKEA ₺1.460,00)
-            _buildExpenseReviewCard(
-              context: context,
-              initials: 'CK',
-              employeeName: 'Caner Kılıç',
-              roleDept: 'DevOps Uzmanı • Teknoloji',
-              amount: '₺1.460,00',
-              vatText: 'KDV %20 (₺243,33)',
-              categoryLine: '💻 Ofis & Donanım / Ergonomi • 09 Kas, 11:20',
-              descLine: '🏪 IKEA Maslak • E-Arşiv Fatura (#E-2026-9921)',
-              quoteNote: '"Çift monitör kolu ve kablo omurgası (Ergonomik çalışma alanı düzeni)."',
-              cardAndReceiptNo: '',
-              ocrTitle: '',
-              ocrSubtitle: '',
-              ocrActionText: '',
-              policyText: '✓ Ön Onaylı Talep (#ON-2026-88)   |   CTO İmzalı',
-              isPolicyWarning: false,
-            ),
-            const SizedBox(height: 16),
+                return StreamBuilder<List<ExpenseModel>>(
+                  stream: _firestoreDatasource.watchCompanyExpenses(activeCompanyId),
+                  builder: (context, snapshot) {
+                final allExpenses = snapshot.data ?? [];
+                final filteredExpenses = allExpenses.where((e) {
+                  if (_selectedTab == 0) {
+                    return e.status == 'pending' || e.status == 'ONAY_BEKLIYOR';
+                  } else if (_selectedTab == 1) {
+                    return e.status == 'approved' || e.status == 'ONAYLANDI';
+                  } else {
+                    return e.status == 'rejected' || e.status == 'REDDEDILDI';
+                  }
+                }).toList();
+
+                if (filteredExpenses.isNotEmpty) {
+                  return Column(
+                    children: [
+                      for (final exp in filteredExpenses) ...[
+                        _buildExpenseReviewCard(
+                          context: context,
+                          initials: exp.employeeName.isNotEmpty
+                              ? exp.employeeName
+                                  .split(' ')
+                                  .map((n) => n.isNotEmpty ? n[0] : '')
+                                  .take(2)
+                                  .join()
+                              : 'PR',
+                          employeeName: exp.employeeName.isNotEmpty
+                              ? exp.employeeName
+                              : 'Şirket Çalışanı',
+                          roleDept:
+                              '${exp.category} • ${exp.accountingCode}',
+                          amount:
+                              '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                          vatText:
+                              'KDV (₺${(exp.vatAmount / 100.0).toStringAsFixed(2).replaceAll('.', ',')})',
+                          categoryLine:
+                              '${exp.merchantTitle} • ${exp.date.day}.${exp.date.month}.${exp.date.year}',
+                          descLine:
+                              'Masraf Kaydı #${exp.expenseId.substring(0, exp.expenseId.length > 8 ? 8 : exp.expenseId.length)}',
+                          cardAndReceiptNo: exp.receiptImageUrl.isNotEmpty
+                              ? 'Belge: ${exp.receiptImageUrl}'
+                              : 'Yerel fiş belgesi eklenmiş',
+                          ocrTitle: '⚡ AI-OCR Doğrulandı',
+                          ocrSubtitle: exp.merchantTitle,
+                          ocrActionText: 'İncele 🔍',
+                          policyText: exp.status == 'approved'
+                              ? '✓ Yönetici Tarafından Onaylandı'
+                              : (exp.status == 'rejected'
+                                  ? '✕ Reddedildi (${exp.rejectReason ?? 'Gerekçeli'})'
+                                  : '● İnceleme Bekliyor'),
+                          isPolicyWarning: exp.status == 'rejected',
+                          onApprove: exp.status == 'pending' ||
+                                  exp.status == 'ONAY_BEKLIYOR'
+                              ? () => _handleApprove(
+                                    context,
+                                    exp.expenseId,
+                                    exp.employeeName,
+                                    '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
+                                  )
+                              : null,
+                          onReject: exp.status == 'pending' ||
+                                  exp.status == 'ONAY_BEKLIYOR'
+                              ? () => _showRejectDialog(
+                                    context,
+                                    exp.expenseId,
+                                    exp.employeeName,
+                                  )
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                    ],
+                  );
+                }
+
+                // Canlı Firestore kaydı henüz yoksa veya boşsa önceden tanımlı demo kartları göster
+                return Column(
+                  children: [
+                    // 1. Kart: Ahmet Yılmaz (BiTaksi ₺450,00)
+                    _buildExpenseReviewCard(
+                      context: context,
+                      initials: 'AY',
+                      employeeName: 'Ahmet Yılmaz',
+                      roleDept: 'Frontend Lead • Operasyon',
+                      amount: '₺450,00',
+                      vatText: 'KDV %20 (₺75,00)',
+                      categoryLine:
+                          '🚖 Taksi / Şehir İçi Ulaşım • Bugün, 08:40',
+                      descLine:
+                          'Müşteri Toplantısı (Akbank Genel Müdürlük / Levent)',
+                      cardAndReceiptNo:
+                          '💳 Nova Business Kart •••• 4120   Fiş No: BT-889104',
+                      ocrTitle: '⚡ AI-OCR %98 Doğrulandı',
+                      ocrSubtitle: 'BiTaksi E-Fiş Entegrasyonu',
+                      ocrActionText: 'Fişi Gör ↗',
+                      policyText:
+                          '✓ Harcama Politikasına Uygun (Günlük Ulaşım Limiti Altında)',
+                      isPolicyWarning: false,
+                      onApprove: () => _handleApprove(
+                        context,
+                        'exp_001',
+                        'Ahmet Yılmaz',
+                        '₺450,00',
+                      ),
+                      onReject: () => _showRejectDialog(
+                        context,
+                        'exp_001',
+                        'Ahmet Yılmaz',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 2. Kart: Elif Demir (Midpoint ₺1.980,50)
+                    _buildExpenseReviewCard(
+                      context: context,
+                      initials: 'ED',
+                      employeeName: 'Elif Demir',
+                      roleDept: 'Ürün Tasarımcısı • Tasarım',
+                      amount: '₺1.980,50',
+                      vatText: 'KDV %10 (₺180,05)',
+                      categoryLine:
+                          '🍴 Müşteri Akşam Yemeği / Temsil • Dün, 19:15',
+                      descLine: '🏪 Midpoint Levent Şubesi • Fiş No: 004819',
+                      quoteNote:
+                          '"Fintech mobil uygulama lansman toplantısı müşteri ağırlama masrafı."',
+                      cardAndReceiptNo: 'Kart: Nova Business •••• 8831',
+                      ocrTitle: '🧾 Fiş Görseli Eklendi (PNG)',
+                      ocrSubtitle: 'Kart: Nova Business •••• 8831',
+                      ocrActionText: 'İncele 🔍',
+                      policyText:
+                          '⚠️ Departman Temsil Limiti (₺2.000) Sınırında (%99 Doluluk)',
+                      isPolicyWarning: true,
+                      onApprove: () => _handleApprove(
+                        context,
+                        'exp_002',
+                        'Elif Demir',
+                        '₺1.980,50',
+                      ),
+                      onReject: () => _showRejectDialog(
+                        context,
+                        'exp_002',
+                        'Elif Demir',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 3. Kart: Caner Kılıç (IKEA ₺1.460,00)
+                    _buildExpenseReviewCard(
+                      context: context,
+                      initials: 'CK',
+                      employeeName: 'Caner Kılıç',
+                      roleDept: 'DevOps Uzmanı • Teknoloji',
+                      amount: '₺1.460,00',
+                      vatText: 'KDV %20 (₺243,33)',
+                      categoryLine:
+                          '💻 Ofis & Donanım / Ergonomi • 09 Kas, 11:20',
+                      descLine: '🏪 IKEA Maslak • E-Arşiv Fatura (#E-2026-9921)',
+                      quoteNote:
+                          '"Çift monitör kolu ve kablo omurgası (Ergonomik çalışma alanı düzeni)."',
+                      cardAndReceiptNo: '',
+                      ocrTitle: '',
+                      ocrSubtitle: '',
+                      ocrActionText: '',
+                      policyText:
+                          '✓ Ön Onaylı Talep (#ON-2026-88)   |   CTO İmzalı',
+                      isPolicyWarning: false,
+                      onApprove: () => _handleApprove(
+                        context,
+                        'exp_003',
+                        'Caner Kılıç',
+                        '₺1.460,00',
+                      ),
+                      onReject: () => _showRejectDialog(
+                        context,
+                        'exp_003',
+                        'Caner Kılıç',
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 16),
 
             // Otomatik Muhasebe & ERP Senkronizasyonu Kartı
             Container(
@@ -496,6 +777,8 @@ class _B2bExpenseApprovalCenterScreenState
     required String ocrActionText,
     required String policyText,
     required bool isPolicyWarning,
+    VoidCallback? onApprove,
+    VoidCallback? onReject,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -717,15 +1000,16 @@ class _B2bExpenseApprovalCenterScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '$employeeName masraf talebi reddedildi.',
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: onReject ??
+                      () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '$employeeName masraf talebi reddedildi.',
+                            ),
+                          ),
+                        );
+                      },
                   child: const Text(
                     '✕ Reddet',
                     style: TextStyle(
@@ -747,16 +1031,17 @@ class _B2bExpenseApprovalCenterScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: AppColors.primaryGreen,
-                        content: Text(
-                          '$employeeName ($amount) masrafı onaylandı ve cüzdanına iade edildi!',
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: onApprove ??
+                      () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.primaryGreen,
+                            content: Text(
+                              '$employeeName ($amount) masrafı onaylandı ve cüzdanına iade edildi!',
+                            ),
+                          ),
+                        );
+                      },
                   child: Text(
                     '✓ Onayla ($amount)',
                     style: const TextStyle(

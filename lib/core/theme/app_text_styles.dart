@@ -16,6 +16,13 @@ class AppTextStyles {
     letterSpacing: -0.8,
   );
 
+  static TextStyle get displaySmallMobile => GoogleFonts.plusJakartaSans(
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
+    height: 1.2,
+    letterSpacing: -0.5,
+  );
+
   static TextStyle get headlineLarge => GoogleFonts.plusJakartaSans(
     fontSize: 28,
     fontWeight: FontWeight.w700,

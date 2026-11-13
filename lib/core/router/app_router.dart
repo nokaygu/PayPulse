@@ -7,11 +7,14 @@ import '../../presentation/screens/analytics_and_reports/budget_analytics_screen
 import '../../presentation/screens/analytics_and_reports/tax_and_vat_report_screen.dart';
 import '../../presentation/screens/analytics_and_reports/transaction_history_screen.dart';
 import '../../presentation/screens/auth/bloc/auth_bloc.dart';
+import '../../presentation/screens/auth/login_screen.dart';
+import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/b2b_operations/b2b_expense_approval_center_screen.dart';
 import '../../presentation/screens/b2b_operations/bulk_expense_erp_receipt_screen.dart';
 import '../../presentation/screens/b2b_operations/virtual_pos_terminal_screen.dart';
 import '../../presentation/screens/home_wallet_and_safe/home_screen.dart';
 import '../../presentation/screens/profile_and_cards/profile_settings_screen.dart';
+import '../../presentation/screens/splash_and_onboarding/splash_screen.dart';
 import '../../presentation/screens/qr_and_ocr/e_invoice_gib_list_screen.dart';
 import '../../presentation/screens/qr_and_ocr/ocr_camera_scanner_screen.dart';
 import '../../presentation/screens/qr_and_ocr/qr_payment_center_screen.dart';
@@ -26,10 +29,37 @@ class AppRouter {
 
   AppRouter({required this.authBloc}) {
     router = GoRouter(
-      initialLocation: AppRoutes.home,
+      initialLocation: AppRoutes.splash,
       refreshListenable: GoRouterRefreshStream(authBloc.stream),
       redirect: _handleRedirect,
       routes: [
+        // ================= AÇILIŞ / KARŞILAMA EKRANI (TAM EKRAN) =================
+        GoRoute(
+          path: AppRoutes.splash,
+          builder: (context, state) => SplashScreen(
+            onInitializationComplete: () {
+              final authState = authBloc.state;
+              if (authState.isAuthenticated) {
+                if (authState.role == 'admin') {
+                  router.go(AppRoutes.businessOverview);
+                } else {
+                  router.go(AppRoutes.home);
+                }
+              } else {
+                router.go(AppRoutes.login);
+              }
+            },
+          ),
+        ),
+        // ================= KİMLİK DOĞRULAMA (SHELL DIŞINDA) =================
+        GoRoute(
+          path: AppRoutes.login,
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.register,
+          builder: (context, state) => const RegisterScreen(),
+        ),
         ShellRoute(
           builder: (context, state, child) {
             return MainShellWrapperScreen(child: child);
@@ -127,17 +157,37 @@ class AppRouter {
     final location = state.matchedLocation;
 
     if (location == '/') {
-      return AppRoutes.home;
+      return AppRoutes.splash;
+    }
+
+    // Splash ekranındayken yönlendirmeyi kesme
+    if (location == AppRoutes.splash) {
+      return null;
+    }
+
+    final isAuthRoute =
+        location == AppRoutes.login || location == AppRoutes.register;
+
+    // 1. GİRİŞ KONTROLÜ: Oturumu kapalı kullanıcılar auth rotaları harici yerlerden login'e yönlendirilir
+    if (!authState.isAuthenticated) {
+      return isAuthRoute ? null : AppRoutes.login;
+    }
+
+    // 2. OTURUM AÇIK: Giriş yapmış kullanıcı login/register ekranına giderse ana ekrana yönlendirilir
+    if (isAuthRoute) {
+      return authState.role == 'admin'
+          ? AppRoutes.businessOverview
+          : AppRoutes.home;
     }
 
     final isBusinessRoute = location.startsWith('/business');
 
-    // 1. KALKAN: 'b2c' (Bireysel) kullanıcı İşletme Paneli rotalarına giremez.
+    // 3. KALKAN: 'b2c' (Bireysel) kullanıcı İşletme Paneli rotalarına giremez.
     if (isBusinessRoute && !authState.canAccessBusinessPanel) {
       return AppRoutes.home;
     }
 
-    // 2. KALKAN: Sadece 'admin' rolüne açık olan kritik finansal rotalar:
+    // 4. KALKAN: Sadece 'admin' rolüne açık olan kritik finansal rotalar:
     final isAdminOnlyRoute =
         location == AppRoutes.businessReports ||
         location == AppRoutes.businessBatchApproval;

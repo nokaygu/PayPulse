@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/models/transaction_model.dart';
 import '../../widgets/receipt_summary_card_widget.dart';
 import '../../widgets/role_switch_app_bar.dart';
 
@@ -23,36 +25,58 @@ class TransferReceiptScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ReceiptSummaryCardWidget(
-              title: 'FAST Transferi Tamamlandı!',
-              amountText: '₺1.500,00',
-              badgeLabel: '✓ TCMB FAST • 1.2 Saniyede İletildi',
-              details: {
-                'Sorgu / Dekont No': txId,
-                'Gönderen': 'Deniz Aksoy (PP-849201)',
-                'Alıcı Ad Soyad': 'Zeynep Kaya',
-                'Alıcı Banka / IBAN': 'Garanti BBVA • TR34 •••• 6789 01',
-                'İşlem Tarihi': '11 Kasım 2026, 15:42',
-                'İşlem Ücreti': '₺0,00 (Ücretsiz)',
-                'Açıklama': 'Hafta sonu kahvaltı payı 🥐',
-              },
-              onDownloadPdf: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('$txId numaralı PDF dekont indirildi.'),
-                  ),
-                );
-              },
-              onShare: () {},
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => context.go(AppRoutes.home),
-              child: const Text('Ana Sayfaya Dön'),
-            ),
-          ],
+        child: FutureBuilder<TransactionModel?>(
+          future: FirebaseFirestoreDatasource().getTransaction(txId),
+          builder: (context, snapshot) {
+            final tx = snapshot.data;
+            final String amountFormatted = tx != null
+                ? '₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}'
+                : '₺1.500,00';
+            final String senderStr = tx != null && tx.senderId.isNotEmpty
+                ? 'Cüzdan (${tx.senderId})'
+                : 'Deniz Aksoy (PP-849201)';
+            final String recipientStr = tx != null && tx.title.isNotEmpty
+                ? tx.title
+                : 'Zeynep Kaya';
+            final String ibanStr =
+                tx?.targetIban ?? 'Garanti BBVA • TR34 •••• 6789 01';
+            final String dateStr = tx != null
+                ? '${tx.timestamp.day} Kasım ${tx.timestamp.year}, ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}'
+                : '11 Kasım 2026, 15:42';
+
+            return Column(
+              children: [
+                ReceiptSummaryCardWidget(
+                  title: 'FAST Transferi Tamamlandı!',
+                  amountText: amountFormatted,
+                  badgeLabel:
+                      '✓ TCMB FAST • 1.2 Saniyede İletildi (Eğitim Amaçlı FAST Simülasyonu)',
+                  details: {
+                    'Sorgu / Dekont No': txId,
+                    'Gönderen': senderStr,
+                    'Alıcı Ad Soyad': recipientStr,
+                    'Alıcı Banka / IBAN': ibanStr,
+                    'İşlem Tarihi': dateStr,
+                    'İşlem Ücreti': '₺0,00 (Ücretsiz)',
+                    'Açıklama': tx?.category ?? 'Hafta sonu kahvaltı payı 🥐',
+                  },
+                  onDownloadPdf: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$txId numaralı PDF dekont indirildi.'),
+                      ),
+                    );
+                  },
+                  onShare: () {},
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => context.go(AppRoutes.home),
+                  child: const Text('Ana Sayfaya Dön'),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
