@@ -7,76 +7,105 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/financial_amount.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/bloc/auth_event.dart';
+import '../auth/bloc/auth_state.dart';
+import 'bloc/profile_settings_cubit.dart';
 
-/// Profil ve Ayarlar Ekranı (Tüm Butonlar, Hesap/Kart Geçişi ve Koyu Tema Aktif)
-class ProfileSettingsScreen extends StatefulWidget {
+/// Profil ve Ayarlar Ekranı (Stateless + ProfileSettingsCubit + AuthBloc).
+class ProfileSettingsScreen extends StatelessWidget {
   const ProfileSettingsScreen({super.key});
 
   @override
-  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
+  Widget build(BuildContext context) {
+    final initialUser = context.read<AuthBloc>().state.user;
+    return BlocProvider<ProfileSettingsCubit>(
+      create: (_) => ProfileSettingsCubit(initialUser: initialUser),
+      child: const _ProfileSettingsView(),
+    );
+  }
 }
 
-class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
-  // Profil Durumu (Düzenlenebilir)
-  String _userName = 'Deniz Aksoy';
-  String _userPhone = '+90 532 555 45 45';
-  String _userEmail = 'deniz.aksoy@paypulse.me';
-  final String _customerNo = 'PP-849201';
-  final String _fastIban = 'TR34 0006 2000 0001 2345 6789 01';
-
-  // Ayar Değerleri
-  bool _biometricEnabled = true;
-  bool _twoFactorEnabled = true;
-  String _sessionTimeout = '5 Dakika';
-  String _currency = '🇹🇷 TRY (₺)';
-  String _theme = 'Açık Tema';
-  final String _language = 'Türkçe (TR)';
-
-  // Bildirim Ayarları
-  bool _pushNotifications = true;
-  bool _smsNotifications = true;
-  bool _campaignNotifications = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final mode = AppTheme.themeModeNotifier.value;
-    if (mode == ThemeMode.dark) {
-      _theme = 'Koyu Tema';
-    } else if (mode == ThemeMode.light) {
-      _theme = 'Açık Tema';
-    } else {
-      _theme = 'Sistem Varsayılanı';
-    }
-  }
+class _ProfileSettingsView extends StatelessWidget {
+  const _ProfileSettingsView();
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scaffoldBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+    final scaffoldBg =
+        isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
     final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final cardBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
     final primaryTextColor = isDark ? Colors.white : AppColors.darkNavy;
-    final secondaryTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final secondaryTextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final circleBtnBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final circleBtnBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final backBtnBg = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final circleBtnBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final backBtnBg =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-    return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: const RoleSwitchAppBar(isBusinessMode: false),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Üst Başlık Satırı
-            Row(
-              children: [
+    final authState = context.watch<AuthBloc>().state;
+
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listenWhen: (prev, curr) =>
+              prev.user != curr.user ||
+              (prev.errorMessage != curr.errorMessage &&
+                  curr.errorMessage != null),
+          listener: (ctx, state) {
+            ctx.read<ProfileSettingsCubit>().syncUser(state.user);
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage!),
+                  backgroundColor: const Color(0xFFDC2626),
+                ),
+              );
+              ctx.read<AuthBloc>().add(const AuthErrorCleared());
+            }
+          },
+        ),
+        BlocListener<ProfileSettingsCubit, ProfileSettingsState>(
+          listenWhen: (prev, curr) =>
+              prev.feedbackMessage != curr.feedbackMessage &&
+              curr.feedbackMessage != null,
+          listener: (ctx, state) {
+            final msg = state.feedbackMessage!;
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              SnackBar(
+                content: Text(msg),
+                duration: const Duration(seconds: 2),
+                backgroundColor: state.isErrorFeedback
+                    ? const Color(0xFFDC2626)
+                    : null,
+              ),
+            );
+            ctx.read<ProfileSettingsCubit>().clearFeedback();
+          },
+        ),
+      ],
+      child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+        builder: (context, settingsState) {
+          final cubit = context.read<ProfileSettingsCubit>();
+          final authBloc = context.read<AuthBloc>();
+
+          return Scaffold(
+            backgroundColor: scaffoldBg,
+            appBar: RoleSwitchAppBar(
+              isBusinessMode: authState.isBusinessMode,
+            ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
                 InkWell(
                   borderRadius: BorderRadius.circular(50),
                   onTap: () {
@@ -124,7 +153,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Profil Düzenle (Kalem İkonu)
                 InkWell(
                   borderRadius: BorderRadius.circular(50),
-                  onTap: _showEditProfileSheet,
+                  onTap: () {
+                    cubit.prepareEditProfile();
+                    _showEditProfileSheet(context, cubit, authBloc);
+                  },
                   child: Container(
                     width: 38,
                     height: 38,
@@ -144,7 +176,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Daha Fazla Seçenek (Üç Nokta İkonu)
                 InkWell(
                   borderRadius: BorderRadius.circular(50),
-                  onTap: _showMoreOptionsSheet,
+                  onTap: () => _showMoreOptionsSheet(context, settingsState),
                   child: Container(
                     width: 38,
                     height: 38,
@@ -164,7 +196,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 1. Deniz Aksoy Profil Kartı (PP-849201)
+            // 1. Dinamik Kullanıcı Profil Kartı
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
@@ -206,7 +238,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             right: 0,
                             bottom: 0,
                             child: GestureDetector(
-                              onTap: _showAvatarOptionsSheet,
+                              onTap: () => _showAvatarOptionsSheet(context),
                               child: Container(
                                 width: 24,
                                 height: 24,
@@ -234,7 +266,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _userName,
+                              settingsState.displayName,
                               style: AppTextStyles.headlineSmall.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
@@ -247,7 +279,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryGreen.withValues(alpha: 0.18),
+                                color: AppColors.primaryGreen.withValues(
+                                  alpha: 0.18,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -260,7 +294,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Onaylı Hesap (Seviye 2)',
+                                    'Onaylı Hesap (Seviye ${settingsState.verificationLevel})',
                                     style: AppTextStyles.labelSmall.copyWith(
                                       color: AppColors.primaryGreen,
                                       fontSize: 10,
@@ -271,14 +305,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              _userPhone,
+                              settingsState.phone,
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: const Color(0xFF94A3B8),
                                 fontSize: 11.5,
                               ),
                             ),
                             Text(
-                              _userEmail,
+                              settingsState.displayEmail,
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: const Color(0xFF94A3B8),
                                 fontSize: 11.5,
@@ -290,7 +324,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
+                  Divider(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    height: 1,
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -303,7 +340,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           children: [
                             const TextSpan(text: 'Müşteri No:  '),
                             TextSpan(
-                              text: _customerNo,
+                              text: settingsState.displayCustomerNo,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
@@ -315,15 +352,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       InkWell(
                         onTap: () {
                           Clipboard.setData(
-                            ClipboardData(text: _customerNo),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Müşteri No ($_customerNo) kopyalandı.',
-                              ),
-                              duration: const Duration(seconds: 2),
+                            ClipboardData(
+                              text: settingsState.displayCustomerNo,
                             ),
+                          );
+                          cubit.emitFeedback(
+                            'Müşteri No (${settingsState.displayCustomerNo}) kopyalandı.',
                           );
                         },
                         child: Container(
@@ -332,7 +366,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryTeal.withValues(alpha: 0.25),
+                            color: AppColors.primaryTeal.withValues(
+                              alpha: 0.25,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -384,14 +420,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       ),
                       Row(
                         children: [
-                          // Büyüyen QR Kodu Butonu
                           InkWell(
                             borderRadius: BorderRadius.circular(8),
-                            onTap: () => _showQrCodeDialog(_fastIban),
+                            onTap: () => _showQrCodeDialog(
+                              context,
+                              settingsState,
+                              settingsState.displayIban,
+                            ),
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                                color: isDark
+                                    ? const Color(0xFF334155)
+                                    : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -402,24 +443,22 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // IBAN Kopyalama Butonu
                           InkWell(
                             borderRadius: BorderRadius.circular(8),
                             onTap: () {
                               Clipboard.setData(
-                                ClipboardData(text: _fastIban),
+                                ClipboardData(text: settingsState.displayIban),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('FAST IBAN panoya kopyalandı.'),
-                                  duration: Duration(seconds: 2),
-                                ),
+                              cubit.emitFeedback(
+                                'FAST IBAN panoya kopyalandı.',
                               );
                             },
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                                color: isDark
+                                    ? const Color(0xFF334155)
+                                    : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -440,7 +479,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      color: isDark
+                          ? const Color(0xFF0F172A)
+                          : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: cardBorder),
                     ),
@@ -449,7 +490,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            _fastIban,
+                            settingsState.displayIban,
                             style: AppTextStyles.labelMedium.copyWith(
                               color: primaryTextColor,
                               fontWeight: FontWeight.w800,
@@ -481,14 +522,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Kalan Aylık Transfer Limiti',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: secondaryTextColor,
+                      Expanded(
+                        child: Text(
+                          'Kalan Aylık Transfer Limiti',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: secondaryTextColor,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       InkWell(
-                        onTap: _showLimitIncreaseSheet,
+                        onTap: () => _showLimitIncreaseSheet(
+                          context,
+                          cubit,
+                          settingsState,
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 4,
@@ -509,9 +559,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
                     child: LinearProgressIndicator(
-                      value: 0.57,
+                      value: settingsState.limitUsageRatio,
                       minHeight: 7,
-                      backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      backgroundColor: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         AppColors.primaryTeal,
                       ),
@@ -521,15 +573,21 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '₺142.500 / ₺250.000',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: secondaryTextColor,
-                          fontSize: 11,
+                      Expanded(
+                        child: Text(
+                          '${FinancialAmount.format((settingsState.spentThisMonth * 100).round())} / '
+                          '${FinancialAmount.format((settingsState.monthlyLimit * 100).round())}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: secondaryTextColor,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        '%57 kullanıldı',
+                        '%${(settingsState.limitUsageRatio * 100).round()} kullanıldı',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: secondaryTextColor,
                           fontSize: 11,
@@ -550,7 +608,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 icon: Icons.badge_outlined,
                 title: 'Kimlik ve İletişim Bilgileri',
                 subtitle: 'TCKN, Adres, Doğum Tarihi',
-                onTap: _showPersonalInfoSheet,
+                onTap: () => _showPersonalInfoSheet(
+                  context,
+                  cubit,
+                  settingsState,
+                  authBloc,
+                ),
                 isDark: isDark,
               ),
               _buildSettingTile(
@@ -565,9 +628,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               _buildSettingTile(
                 icon: Icons.alternate_email_rounded,
                 title: 'Kolay Adres (KOLAS) Tanımları',
-                subtitle: 'Telefon Numarası Eşli',
+                subtitle: settingsState.kolasEmailLinked
+                    ? 'Telefon ve E-posta Eşli'
+                    : 'Telefon Numarası Eşli',
                 showDivider: false,
-                onTap: _showKolasSheet,
+                onTap: () => _showKolasSheet(context, cubit, settingsState),
                 isDark: isDark,
               ),
             ], isDark: isDark),
@@ -620,57 +685,55 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       ),
                     ),
                     Switch(
-                      value: _biometricEnabled,
-                      activeColor: Colors.white,
+                      value: settingsState.biometricEnabled,
+                      activeThumbColor: Colors.white,
                       activeTrackColor: AppColors.primaryTeal,
-                      onChanged: (v) {
-                        setState(() => _biometricEnabled = v);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              v
-                                  ? 'Biyometrik giriş başarıyla etkinleştirildi.'
-                                  : 'Biyometrik giriş devre dışı bırakıldı.',
-                            ),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onChanged: cubit.toggleBiometric,
                     ),
                   ],
                 ),
               ),
-              Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+              Divider(
+                height: 1,
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFF1F5F9),
+              ),
               _buildSettingTile(
                 icon: Icons.pin_outlined,
                 title: 'Cüzdan PIN Kodunu Değiştir',
                 subtitle: 'Son değişim: 3 ay önce',
-                onTap: _showChangePinSheet,
+                onTap: () {
+                  cubit.prepareChangePin();
+                  _showChangePinSheet(context, cubit);
+                },
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.shield_outlined,
                 title: 'İki Adımlı Doğrulama (2FA)',
                 subtitle: 'SMS ve Authenticator koruması',
-                trailingBadge: _twoFactorEnabled ? 'Etkin' : 'Pasif',
-                badgeIsSuccess: _twoFactorEnabled,
-                onTap: _showTwoFactorSheet,
+                trailingBadge: settingsState.twoFactorEnabled
+                    ? 'Etkin'
+                    : 'Pasif',
+                badgeIsSuccess: settingsState.twoFactorEnabled,
+                onTap: () => _showTwoFactorSheet(context, cubit),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.devices_rounded,
                 title: 'Güvenilir Cihazlar',
                 subtitle: 'iPhone 15 Pro (Bu Cihaz)',
-                onTap: _showTrustedDevicesSheet,
+                onTap: () => _showTrustedDevicesSheet(context),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.timer_outlined,
                 title: 'Oturum Zaman Aşımı',
                 subtitle: 'Uygulama arka plandayken',
-                trailingText: _sessionTimeout,
+                trailingText: settingsState.sessionTimeout,
                 showDivider: false,
-                onTap: _showSessionTimeoutSheet,
+                onTap: () => _showSessionTimeoutSheet(context, cubit),
                 isDark: isDark,
               ),
             ], isDark: isDark),
@@ -684,34 +747,36 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 icon: Icons.notifications_active_outlined,
                 title: 'Bildirim Tercihleri',
                 subtitle: 'Anlık FAST, Bütçe ve Kampanyalar',
-                onTap: _showNotificationPreferencesSheet,
+                onTap: () =>
+                    _showNotificationPreferencesSheet(context, cubit),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.payments_outlined,
                 title: 'Ana Para Birimi',
                 subtitle: 'Gösterge bakiyesi',
-                trailingText: _currency,
-                onTap: _showCurrencyPickerSheet,
+                trailingText: settingsState.currency,
+                onTap: () => _showCurrencyPickerSheet(context, cubit),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.palette_outlined,
                 title: 'Görünüm ve Tema',
                 subtitle: 'Açık / Koyu Tema Geçişi',
-                trailingText: _theme,
-                trailingBadge: _theme == 'Koyu Tema' ? 'Koyu' : 'Açık',
-                badgeIsSuccess: _theme == 'Koyu Tema',
-                onTap: _showThemePickerSheet,
+                trailingText: settingsState.themeLabel,
+                trailingBadge:
+                    settingsState.themeLabel == 'Koyu Tema' ? 'Koyu' : 'Açık',
+                badgeIsSuccess: settingsState.themeLabel == 'Koyu Tema',
+                onTap: () => _showThemePickerSheet(context, cubit),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.translate_rounded,
                 title: 'Uygulama Dili / Language',
                 subtitle: 'Yalnızca Türkçe (TR) desteklenir',
-                trailingText: _language,
+                trailingText: settingsState.language,
                 showDivider: false,
-                onTap: _showLanguagePickerSheet,
+                onTap: () => _showLanguagePickerSheet(context),
                 isDark: isDark,
               ),
             ], isDark: isDark),
@@ -726,21 +791,21 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 title: 'Yardım & Canlı Destek',
                 subtitle: '7/24 Kesintisiz Asistan',
                 subtitleColor: AppColors.primaryTeal,
-                onTap: _showSupportSheet,
+                onTap: () => _showSupportSheet(context),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.quiz_outlined,
                 title: 'Sıkça Sorulan Sorular (SSS)',
                 subtitle: 'İşlem limitleri, FAST kuralları',
-                onTap: _showFaqSheet,
+                onTap: () => _showFaqSheet(context),
                 isDark: isDark,
               ),
               _buildSettingTile(
                 icon: Icons.description_outlined,
                 title: 'Sözleşmeler ve KVKK Metni',
                 subtitle: 'Açık rıza ve gizlilik koşulları',
-                onTap: _showLegalContractsSheet,
+                onTap: () => _showLegalContractsSheet(context),
                 isDark: isDark,
               ),
               _buildSettingTile(
@@ -748,7 +813,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 title: 'Güvenlik ve Lisans Bilgileri',
                 subtitle: 'TCMB & BDDK mevzuat uyumu',
                 showDivider: false,
-                onTap: _showComplianceSheet,
+                onTap: () => _showComplianceSheet(context),
                 isDark: isDark,
               ),
             ], isDark: isDark),
@@ -767,7 +832,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: _showLogoutConfirmationDialog,
+                onPressed: () => _showLogoutConfirmationDialog(context),
                 icon: const Icon(Icons.logout_rounded, size: 18),
                 label: const Text(
                   'Güvenli Çıkış Yap',
@@ -790,10 +855,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         color: AppColors.primaryTeal,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'TCMB Lisanslı Ödeme ve Elektronik Para Hizmeti',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: secondaryTextColor,
+                      Flexible(
+                        child: Text(
+                          'TCMB Lisanslı Ödeme ve Elektronik Para Hizmeti',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: secondaryTextColor,
+                          ),
                         ),
                       ),
                     ],
@@ -813,13 +881,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ],
         ),
       ),
+          );
+        },
+      ),
     );
   }
 
   // ==================== BÜYÜYEN QR KOD DİYALOĞU ====================
-  void _showQrCodeDialog(String iban) {
+  void _showQrCodeDialog(
+    BuildContext context,
+    ProfileSettingsState settingsState,
+    String iban,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogCtx) {
         return Dialog(
@@ -858,13 +933,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                               style: AppTextStyles.headlineSmall.copyWith(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: isDark ? Colors.white : AppColors.darkNavy,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.darkNavy,
                               ),
                             ),
                             Text(
                               'PayPulse TRY FAST',
                               style: AppTextStyles.bodySmall.copyWith(
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                color: isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                                 fontSize: 11,
                               ),
                             ),
@@ -873,19 +952,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       ],
                     ),
                     IconButton(
-                      icon: Icon(Icons.close_rounded, color: isDark ? Colors.white : const Color(0xFF64748B)),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF64748B),
+                      ),
                       onPressed: () => Navigator.of(dialogCtx).pop(),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                // Büyütülmüş QR Kod Görünümü
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1.5,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.06),
@@ -895,7 +981,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ],
                   ),
                   child: QrImageView(
-                    data: 'iban:$iban;name:$_userName;service:FAST',
+                    data:
+                        'iban:$iban;name:${settingsState.displayName};service:FAST',
                     version: QrVersions.auto,
                     size: 200.0,
                     gapless: true,
@@ -903,7 +990,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _userName,
+                  settingsState.displayName,
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : AppColors.darkNavy,
@@ -911,11 +998,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    color: isDark
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -941,7 +1037,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: BorderSide(color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1)),
+                          side: BorderSide(
+                            color: isDark
+                                ? const Color(0xFF475569)
+                                : const Color(0xFFCBD5E1),
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -956,8 +1056,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             ),
                           );
                         },
-                        icon: Icon(Icons.copy_rounded, size: 16, color: isDark ? Colors.white : AppColors.darkNavy),
-                        label: Text('IBAN Kopyala', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+                        icon: Icon(
+                          Icons.copy_rounded,
+                          size: 16,
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                        label: Text(
+                          'IBAN Kopyala',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : AppColors.darkNavy,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -976,7 +1085,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           Navigator.of(dialogCtx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('QR Kod paylaşım bağlantısı hazırlandı.'),
+                              content: Text(
+                                'QR Kod paylaşım bağlantısı hazırlandı.',
+                              ),
                               duration: Duration(seconds: 2),
                             ),
                           );
@@ -996,13 +1107,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== PROFİLİ DÜZENLE (KALEM İKONU) ====================
-  void _showEditProfileSheet() {
+  void _showEditProfileSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+    AuthBloc authBloc,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final nameController = TextEditingController(text: _userName);
-    final phoneController = TextEditingController(text: _userPhone);
-    final emailController = TextEditingController(text: _userEmail);
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -1017,86 +1129,106 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             top: 20,
             bottom: MediaQuery.of(bottomCtx).viewInsets.bottom + 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Profili Düzenle',
-                    style: AppTextStyles.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
+          child: Form(
+            key: cubit.editProfileFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Profili Düzenle',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.darkNavy,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white : const Color(0xFF64748B)),
-                    onPressed: () => Navigator.of(bottomCtx).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: 'Ad Soyad',
-                  prefixIcon: const Icon(Icons.person_outline_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF64748B),
+                      ),
+                      onPressed: () => Navigator.of(bottomCtx).pop(),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                decoration: InputDecoration(
-                  labelText: 'Cep Telefonu',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'E-posta Adresi',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryTeal,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: cubit.nameController,
+                  validator: (v) =>
+                      (v == null || v.trim().length < 2)
+                          ? 'Ad soyad en az 2 karakter olmalıdır.'
+                          : null,
+                  decoration: InputDecoration(
+                    labelText: 'Ad Soyad',
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _userName = nameController.text.trim();
-                      _userPhone = phoneController.text.trim();
-                      _userEmail = emailController.text.trim();
-                    });
-                    Navigator.of(bottomCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Profil bilgileri başarıyla güncellendi.'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Değişiklikleri Kaydet',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: cubit.phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Cep Telefonu',
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: cubit.emailController,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: 'E-posta Adresi',
+                    helperText: 'Hesap e-postası güvenlik nedeniyle sabittir.',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryTeal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      final isValid =
+                          cubit.editProfileFormKey.currentState?.validate() ??
+                              true;
+                      if (!isValid) return;
+
+                      final newName = cubit.nameController.text.trim();
+                      authBloc.add(AuthProfileUpdated(name: newName));
+                      cubit.savePhoneAndNotify(
+                        phone: cubit.phoneController.text,
+                      );
+                      Navigator.of(bottomCtx).pop();
+                    },
+                    child: const Text(
+                      'Değişiklikleri Kaydet',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1104,9 +1236,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== DAHA FAZLA SEÇENEK (ÜST ÜSTE NOKTA) ====================
-  void _showMoreOptionsSheet() {
+  void _showMoreOptionsSheet(
+    BuildContext context,
+    ProfileSettingsState settingsState,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -1130,33 +1265,52 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: const Icon(Icons.share_rounded, color: AppColors.primaryTeal),
+                  leading: const Icon(
+                    Icons.share_rounded,
+                    color: AppColors.primaryTeal,
+                  ),
                   title: Text(
                     'Profili & FAST IBAN Paylaş',
-                    style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                    ),
                   ),
-                  subtitle: const Text('Hesap bilgilerini mesaj veya PDF ile ilet'),
+                  subtitle: const Text(
+                    'Hesap bilgilerini mesaj veya PDF ile ilet',
+                  ),
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
                     Clipboard.setData(
                       ClipboardData(
-                        text: 'PayPulse Hesabı: $_userName\nIBAN: $_fastIban\nMüşteri No: $_customerNo',
+                        text:
+                            'PayPulse Hesabı: ${settingsState.displayName}\n'
+                            'IBAN: ${settingsState.displayIban}\n'
+                            'Müşteri No: ${settingsState.displayCustomerNo}',
                       ),
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Hesap bilgileri panoya kopyalandı ve paylaşıma hazır.'),
+                        content: Text(
+                          'Hesap bilgileri panoya kopyalandı ve paylaşıma hazır.',
+                        ),
                       ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.receipt_long_rounded, color: isDark ? Colors.white : AppColors.darkNavy),
+                  leading: Icon(
+                    Icons.receipt_long_rounded,
+                    color: isDark ? Colors.white : AppColors.darkNavy,
+                  ),
                   title: Text(
                     'Aylık Hesap Özeti İndir (PDF)',
-                    style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                    ),
                   ),
-                  subtitle: const Text('Son aya ait resmi mühürlü hesap ekstresi'),
+                  subtitle: const Text(
+                    'Son aya ait resmi mühürlü hesap ekstresi',
+                  ),
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1167,28 +1321,49 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primaryTeal),
+                  leading: const Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: AppColors.primaryTeal,
+                  ),
                   title: Text(
                     'FAST QR Kodunu Göster',
-                    style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                    ),
                   ),
                   subtitle: const Text('Tahsilat için büyütülmüş QR kod'),
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
-                    _showQrCodeDialog(_fastIban);
+                    _showQrCodeDialog(
+                      context,
+                      settingsState,
+                      settingsState.displayIban,
+                    );
                   },
                 ),
-                Divider(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                Divider(
+                  color: isDark
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFE2E8F0),
+                ),
                 ListTile(
-                  leading: const Icon(Icons.lock_clock_rounded, color: Color(0xFFDC2626)),
+                  leading: const Icon(
+                    Icons.lock_clock_rounded,
+                    color: Color(0xFFDC2626),
+                  ),
                   title: const Text(
                     'Hesabı Geçici Olarak Dondur',
-                    style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: Color(0xFFDC2626),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  subtitle: const Text('Tüm kart ve transfer işlemlerini anında askıya al'),
+                  subtitle: const Text(
+                    'Tüm kart ve transfer işlemlerini anında askıya al',
+                  ),
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
-                    _showFreezeAccountDialog();
+                    _showFreezeAccountDialog(context);
                   },
                 ),
               ],
@@ -1200,9 +1375,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== PROFİL FOTOĞRAFI SEÇENEKLERİ ====================
-  void _showAvatarOptionsSheet() {
+  void _showAvatarOptionsSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
@@ -1225,27 +1400,50 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primaryTeal),
-                  title: Text('Kamerayı Aç', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+                  leading: const Icon(
+                    Icons.camera_alt_outlined,
+                    color: AppColors.primaryTeal,
+                  ),
+                  title: Text(
+                    'Kamerayı Aç',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                    ),
+                  ),
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Kamera erişimi başlatılıyor...')),
+                      const SnackBar(
+                        content: Text('Kamera erişimi başlatılıyor...'),
+                      ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.photo_library_outlined, color: isDark ? Colors.white : AppColors.darkNavy),
-                  title: Text('Galeriden Fotoğraf Seç', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+                  leading: Icon(
+                    Icons.photo_library_outlined,
+                    color: isDark ? Colors.white : AppColors.darkNavy,
+                  ),
+                  title: Text(
+                    'Galeriden Fotoğraf Seç',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.darkNavy,
+                    ),
+                  ),
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Fotoğraf galerisi açılıyor...')),
+                      const SnackBar(
+                        content: Text('Fotoğraf galerisi açılıyor...'),
+                      ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+                  leading: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFDC2626),
+                  ),
                   title: const Text(
                     'Mevcut Fotoğrafı Kaldır',
                     style: TextStyle(color: Color(0xFFDC2626)),
@@ -1253,7 +1451,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   onTap: () {
                     Navigator.of(bottomCtx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Profil fotoğrafı varsayılana sıfırlandı.')),
+                      const SnackBar(
+                        content: Text(
+                          'Profil fotoğrafı varsayılana sıfırlandı.',
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -1266,9 +1468,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== KİMLİK VE İLETİŞİM BİLGİLERİ ====================
-  void _showPersonalInfoSheet() {
+  void _showPersonalInfoSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+    ProfileSettingsState settingsState,
+    AuthBloc authBloc,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -1293,19 +1500,34 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white : const Color(0xFF64748B)),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? Colors.white : const Color(0xFF64748B),
+                    ),
                     onPressed: () => Navigator.of(bottomCtx).pop(),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              _buildInfoRow('Ad Soyad', _userName, isDark),
-              _buildInfoRow('T.C. Kimlik No', '284******** (Doğrulandı)', isDark),
+              _buildInfoRow('Ad Soyad', settingsState.displayName, isDark),
+              _buildInfoRow(
+                'T.C. Kimlik No',
+                '284******** (Doğrulandı)',
+                isDark,
+              ),
               _buildInfoRow('Doğum Tarihi', '14.06.1994', isDark),
-              _buildInfoRow('Cep Telefonu', _userPhone, isDark),
-              _buildInfoRow('E-posta', _userEmail, isDark),
-              _buildInfoRow('Kayıtlı İkametgah', 'Levent Mah. Cömert Sk. No: 1 Beşiktaş / İstanbul', isDark),
-              _buildInfoRow('Müşteri Statüsü', 'Bireysel - Onaylı Seviye 2', isDark),
+              _buildInfoRow('Cep Telefonu', settingsState.phone, isDark),
+              _buildInfoRow('E-posta', settingsState.displayEmail, isDark),
+              _buildInfoRow(
+                'Kayıtlı İkametgah',
+                'Levent Mah. Cömert Sk. No: 1 Beşiktaş / İstanbul',
+                isDark,
+              ),
+              _buildInfoRow(
+                'Müşteri Statüsü',
+                'Onaylı Seviye ${settingsState.verificationLevel}',
+                isDark,
+              ),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -1320,7 +1542,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(bottomCtx).pop();
-                    _showEditProfileSheet();
+                    cubit.prepareEditProfile();
+                    _showEditProfileSheet(context, cubit, authBloc);
                   },
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: const Text('Bilgileri Düzenle / Güncelle'),
@@ -1354,91 +1577,144 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          Divider(height: 12, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+          Divider(
+            height: 12,
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+          ),
         ],
       ),
     );
   }
 
   // ==================== KOLAY ADRES (KOLAS) TANIMLARI ====================
-  void _showKolasSheet() {
+  void _showKolasSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+    ProfileSettingsState settingsState,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomCtx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Kolay Adres (KOLAS) Tanımları',
-                    style: AppTextStyles.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
+        return BlocProvider<ProfileSettingsCubit>.value(
+          value: cubit,
+          child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+            builder: (sheetCtx, state) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Kolay Adres (KOLAS) Tanımları',
+                          style: AppTextStyles.headlineSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : AppColors.darkNavy,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF64748B),
+                          ),
+                          onPressed: () => Navigator.of(bottomCtx).pop(),
+                        ),
+                      ],
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white : const Color(0xFF64748B)),
-                    onPressed: () => Navigator.of(bottomCtx).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'IBAN girmeden, telefon veya e-posta ile anında para transferi alın.',
-                style: AppTextStyles.bodySmall.copyWith(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1FAE5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.phone_iphone_rounded, color: AppColors.primaryTeal),
+                    const SizedBox(height: 8),
+                    Text(
+                      'IBAN girmeden, telefon veya e-posta ile anında para transferi alın.',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD1FAE5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.phone_iphone_rounded,
+                          color: AppColors.primaryTeal,
+                        ),
+                      ),
+                      title: Text(
+                        'Telefon Numarası',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: Text(state.phone),
+                      trailing: const Chip(
+                        label: Text('Varsayılan'),
+                        backgroundColor: Color(0xFFD1FAE5),
+                        labelStyle: TextStyle(
+                          color: Color(0xFF065F46),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    Divider(
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFF1F5F9),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.email_outlined,
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      title: Text(
+                        'E-posta Adresi',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: Text(state.displayEmail),
+                      trailing: state.kolasEmailLinked
+                          ? const Chip(
+                              label: Text('Eşleştirildi'),
+                              backgroundColor: Color(0xFFD1FAE5),
+                              labelStyle: TextStyle(
+                                color: Color(0xFF065F46),
+                                fontSize: 11,
+                              ),
+                            )
+                          : TextButton(
+                              onPressed: cubit.linkKolasEmail,
+                              child: const Text('Eşleştir'),
+                            ),
+                    ),
+                  ],
                 ),
-                title: Text('Telefon Numarası', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
-                subtitle: Text(_userPhone),
-                trailing: const Chip(
-                  label: Text('Varsayılan'),
-                  backgroundColor: Color(0xFFD1FAE5),
-                  labelStyle: TextStyle(color: Color(0xFF065F46), fontSize: 11),
-                ),
-              ),
-              Divider(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.email_outlined, color: isDark ? Colors.white : AppColors.darkNavy),
-                ),
-                title: Text('E-posta Adresi', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
-                subtitle: Text(_userEmail),
-                trailing: TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('E-posta KOLAS adresi olarak eşleştirildi.')),
-                    );
-                  },
-                  child: const Text('Eşleştir'),
-                ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
@@ -1446,13 +1722,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== CÜZDAN PIN KODUNU DEĞİŞTİR ====================
-  void _showChangePinSheet() {
+  void _showChangePinSheet(BuildContext context, ProfileSettingsCubit cubit) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final oldPinController = TextEditingController();
-    final newPinController = TextEditingController();
-    final confirmPinController = TextEditingController();
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -1467,92 +1740,96 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             top: 20,
             bottom: MediaQuery.of(bottomCtx).viewInsets.bottom + 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Cüzdan PIN Kodunu Değiştir',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.darkNavy,
+          child: Form(
+            key: cubit.changePinFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cüzdan PIN Kodunu Değiştir',
+                  style: AppTextStyles.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.darkNavy,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '6 haneli güvenlik PIN kodunuzu girin.',
-                style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: oldPinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: 'Mevcut PIN Kodu',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 6),
+                Text(
+                  '6 haneli güvenlik PIN kodunuzu girin.',
+                  style: TextStyle(
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B),
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: newPinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: 'Yeni PIN Kodu',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: confirmPinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: 'Yeni PIN Kodu (Tekrar)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryTeal,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: cubit.oldPinController,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'Mevcut PIN Kodu',
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    if (newPinController.text.length < 4) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('PIN kodu en az 4 veya 6 haneli olmalıdır.')),
-                      );
-                      return;
-                    }
-                    if (newPinController.text != confirmPinController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Yeni PIN kodları birbiriyle uyuşmuyor.')),
-                      );
-                      return;
-                    }
-                    Navigator.of(bottomCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Cüzdan PIN kodu başarıyla güncellendi.'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  child: const Text('PIN Kodunu Güncelle', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: cubit.newPinController,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'Yeni PIN Kodu',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: cubit.confirmPinController,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'Yeni PIN Kodu (Tekrar)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryTeal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (cubit.submitPinChange()) {
+                        Navigator.of(bottomCtx).pop();
+                      }
+                    },
+                    child: const Text(
+                      'PIN Kodunu Güncelle',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1560,72 +1837,94 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== İKİ ADIMLI DOĞRULAMA (2FA) ====================
-  void _showTwoFactorSheet() {
+  void _showTwoFactorSheet(BuildContext context, ProfileSettingsCubit cubit) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomCtx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'İki Adımlı Doğrulama (2FA)',
-                    style: AppTextStyles.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Hesabınıza her girişte ve yüksek tutarlı transferlerde çift katmanlı koruma.',
-                    style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: Text(
-                      '2FA Korumasını Aç / Kapat',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
+        return BlocProvider<ProfileSettingsCubit>.value(
+          value: cubit,
+          child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+            builder: (sheetCtx, state) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'İki Adımlı Doğrulama (2FA)',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : AppColors.darkNavy,
                       ),
                     ),
-                    subtitle: const Text('SMS ve Authenticator Uygulaması'),
-                    value: _twoFactorEnabled,
-                    activeColor: AppColors.primaryTeal,
-                    onChanged: (val) {
-                      setModalState(() => _twoFactorEnabled = val);
-                      setState(() => _twoFactorEnabled = val);
-                    },
-                  ),
-                  Divider(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
-                  ListTile(
-                    leading: Icon(Icons.sms_outlined, color: isDark ? Colors.white : AppColors.darkNavy),
-                    title: Text('SMS Doğrulama', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
-                    subtitle: Text('$_userPhone numarasına kod gönderilir'),
-                    trailing: const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen),
-                  ),
-                ],
-              ),
-            );
-          },
+                    const SizedBox(height: 6),
+                    Text(
+                      'Hesabınıza her girişte ve yüksek tutarlı transferlerde çift katmanlı koruma.',
+                      style: TextStyle(
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: Text(
+                        '2FA Korumasını Aç / Kapat',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: const Text('SMS ve Authenticator Uygulaması'),
+                      value: state.twoFactorEnabled,
+                      activeThumbColor: AppColors.primaryTeal,
+                      onChanged: cubit.toggleTwoFactor,
+                    ),
+                    Divider(
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFF1F5F9),
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        Icons.sms_outlined,
+                        color: isDark ? Colors.white : AppColors.darkNavy,
+                      ),
+                      title: Text(
+                        'SMS Doğrulama',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${state.phone} numarasına kod gönderilir',
+                      ),
+                      trailing: const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     );
   }
 
   // ==================== GÜVENİLİR CİHAZLAR ====================
-  void _showTrustedDevicesSheet() {
+  void _showTrustedDevicesSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
@@ -1648,12 +1947,25 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               const SizedBox(height: 6),
               Text(
                 'Hesabınıza giriş yapılmış cihazlar ve aktif oturumlar.',
-                style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
+                style: TextStyle(
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.phone_iphone_rounded, color: AppColors.primaryTeal),
-                title: Text('iPhone 15 Pro (Bu Cihaz)', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+                leading: const Icon(
+                  Icons.phone_iphone_rounded,
+                  color: AppColors.primaryTeal,
+                ),
+                title: Text(
+                  'iPhone 15 Pro (Bu Cihaz)',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : AppColors.darkNavy,
+                  ),
+                ),
                 subtitle: const Text('İstanbul, Türkiye • Aktif Oturum'),
                 trailing: const Chip(
                   label: Text('Bu Cihaz'),
@@ -1661,16 +1973,33 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   labelStyle: TextStyle(color: Color(0xFF065F46), fontSize: 11),
                 ),
               ),
-              Divider(color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+              Divider(
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFF1F5F9),
+              ),
               ListTile(
-                leading: Icon(Icons.laptop_mac_rounded, color: isDark ? Colors.white : AppColors.darkNavy),
-                title: Text('MacBook Pro 16"', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+                leading: Icon(
+                  Icons.laptop_mac_rounded,
+                  color: isDark ? Colors.white : AppColors.darkNavy,
+                ),
+                title: Text(
+                  'MacBook Pro 16"',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : AppColors.darkNavy,
+                  ),
+                ),
                 subtitle: const Text('Chrome Web • Son giriş: Dün 14:32'),
                 trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFDC2626),
+                  ),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('MacBook Pro oturumu sonlandırıldı.')),
+                      const SnackBar(
+                        content: Text('MacBook Pro oturumu sonlandırıldı.'),
+                      ),
                     );
                   },
                 ),
@@ -1690,7 +2019,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   onPressed: () {
                     Navigator.of(bottomCtx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bu cihaz haricindeki tüm oturumlar kapatıldı.')),
+                      const SnackBar(
+                        content: Text(
+                          'Bu cihaz haricindeki tüm oturumlar kapatıldı.',
+                        ),
+                      ),
                     );
                   },
                   child: const Text('Tüm Diğer Oturumları Kapat'),
@@ -1704,56 +2037,75 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== OTURUM ZAMAN AŞIMI ====================
-  void _showSessionTimeoutSheet() {
+  void _showSessionTimeoutSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final durations = ['1 Dakika', '5 Dakika', '15 Dakika', '30 Dakika'];
-    showModalBottomSheet(
+    const durations = ['1 Dakika', '5 Dakika', '15 Dakika', '30 Dakika'];
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomCtx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Oturum Zaman Aşımı',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.darkNavy,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Uygulama arka plandayken ne kadar süre sonra PIN istenmeli?',
-                style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
-              ),
-              const SizedBox(height: 14),
-              ...durations.map((duration) {
-                final isSelected = _sessionTimeout == duration;
-                return ListTile(
-                  title: Text(
-                    duration,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
+        return BlocProvider<ProfileSettingsCubit>.value(
+          value: cubit,
+          child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+            builder: (sheetCtx, state) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Oturum Zaman Aşımı',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.darkNavy,
+                      ),
                     ),
-                  ),
-                  trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primaryTeal) : null,
-                  onTap: () {
-                    setState(() => _sessionTimeout = duration);
-                    Navigator.of(bottomCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Oturum süresi $duration olarak güncellendi.')),
-                    );
-                  },
-                );
-              }),
-            ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'Uygulama arka plandayken ne kadar süre sonra PIN istenmeli?',
+                      style: TextStyle(
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ...durations.map((duration) {
+                      final isSelected = state.sessionTimeout == duration;
+                      return ListTile(
+                        title: Text(
+                          duration,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w500,
+                            color: isDark ? Colors.white : AppColors.darkNavy,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AppColors.primaryTeal,
+                              )
+                            : null,
+                        onTap: () {
+                          cubit.setSessionTimeout(duration);
+                          Navigator.of(bottomCtx).pop();
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
@@ -1761,9 +2113,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== TRANSFER LİMİTİ ARTIR ====================
-  void _showLimitIncreaseSheet() {
+  void _showLimitIncreaseSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+    ProfileSettingsState settingsState,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    final formattedCurrentLimit = FinancialAmount.format(
+      (settingsState.monthlyLimit * 100).round(),
+    );
+
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
@@ -1785,32 +2145,65 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Mevcut Seviye 2 limitiniz aylık ₺250.000 TL\'dir.',
-                style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
+                'Mevcut Seviye ${settingsState.verificationLevel} limitiniz aylık $formattedCurrentLimit\'dir.',
+                style: TextStyle(
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  color: isDark
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFE2E8F0),
+                  ),
                 ),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Mevcut Limit (Seviye 2):', style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
-                        Text('₺250.000 / Ay', style: TextStyle(fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppColors.darkNavy)),
+                        Text(
+                          'Mevcut Limit (Seviye ${settingsState.verificationLevel}):',
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          '$formattedCurrentLimit / Ay',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.darkNavy,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('Hedef Limit (Seviye 3 - VIP):', style: TextStyle(color: AppColors.primaryTeal)),
-                        Text('₺1.000.000 / Ay', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryTeal)),
+                      children: [
+                        Text(
+                          'Hedef Limit (Seviye 3 - VIP):',
+                          style: TextStyle(color: AppColors.primaryTeal),
+                        ),
+                        Text(
+                          '₺1.000.000,00 / Ay',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryTeal,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -1830,11 +2223,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(bottomCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Seviye 3 limit artırım başvurunuz alındı. 24 saat içinde incelenecektir.'),
-                        duration: Duration(seconds: 3),
-                      ),
+                    cubit.emitFeedback(
+                      'Seviye 3 limit artırım başvurunuz alındı. 24 saat içinde incelenecektir.',
                     );
                   },
                   icon: const Icon(Icons.verified_rounded, size: 18),
@@ -1849,116 +2239,151 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== BİLDİRİM TERCİHLERİ ====================
-  void _showNotificationPreferencesSheet() {
+  void _showNotificationPreferencesSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomCtx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Bildirim Tercihleri',
-                    style: AppTextStyles.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
+        return BlocProvider<ProfileSettingsCubit>.value(
+          value: cubit,
+          child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+            builder: (sheetCtx, state) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bildirim Tercihleri',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.darkNavy,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: Text('FAST & Para Transferi Bildirimleri', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
-                    subtitle: const Text('Para geldiğinde ve gittiğinde anlık push iletisi'),
-                    value: _pushNotifications,
-                    activeColor: AppColors.primaryTeal,
-                    onChanged: (v) {
-                      setModalState(() => _pushNotifications = v);
-                      setState(() => _pushNotifications = v);
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text('SMS Güvenlik Kodları', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
-                    subtitle: const Text('Oturum ve işlem onay SMS\'leri'),
-                    value: _smsNotifications,
-                    activeColor: AppColors.primaryTeal,
-                    onChanged: (v) {
-                      setModalState(() => _smsNotifications = v);
-                      setState(() => _smsNotifications = v);
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text('Kampanya ve Nakit İade Fırsatları', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
-                    subtitle: const Text('İş ortağı indirimleri ve cashback duyuruları'),
-                    value: _campaignNotifications,
-                    activeColor: AppColors.primaryTeal,
-                    onChanged: (v) {
-                      setModalState(() => _campaignNotifications = v);
-                      setState(() => _campaignNotifications = v);
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: Text(
+                        'FAST & Para Transferi Bildirimleri',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Para geldiğinde ve gittiğinde anlık push iletisi',
+                      ),
+                      value: state.pushNotifications,
+                      activeThumbColor: AppColors.primaryTeal,
+                      onChanged: cubit.togglePushNotifications,
+                    ),
+                    SwitchListTile(
+                      title: Text(
+                        'SMS Güvenlik Kodları',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: const Text('Oturum ve işlem onay SMS\'leri'),
+                      value: state.smsNotifications,
+                      activeThumbColor: AppColors.primaryTeal,
+                      onChanged: cubit.toggleSmsNotifications,
+                    ),
+                    SwitchListTile(
+                      title: Text(
+                        'Kampanya ve Nakit İade Fırsatları',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.darkNavy,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'İş ortağı indirimleri ve cashback duyuruları',
+                      ),
+                      value: state.campaignNotifications,
+                      activeThumbColor: AppColors.primaryTeal,
+                      onChanged: cubit.toggleCampaignNotifications,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     );
   }
 
   // ==================== PARA BİRİMİ SEÇİCİ ====================
-  void _showCurrencyPickerSheet() {
+  void _showCurrencyPickerSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currencies = ['🇹🇷 TRY (₺)', '🇺🇸 USD (\$)', '🇪🇺 EUR (€)', '🇬🇧 GBP (£)'];
-    showModalBottomSheet(
+    const currencies = [
+      '🇹🇷 TRY (₺)',
+      '🇺🇸 USD (\$)',
+      '🇪🇺 EUR (€)',
+      '🇬🇧 GBP (£)',
+    ];
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomCtx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ana Gösterge Para Birimi',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.darkNavy,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...currencies.map((curr) {
-                final isSelected = _currency == curr;
-                return ListTile(
-                  title: Text(
-                    curr,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
+        return BlocProvider<ProfileSettingsCubit>.value(
+          value: cubit,
+          child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+            builder: (sheetCtx, state) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ana Gösterge Para Birimi',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.darkNavy,
+                      ),
                     ),
-                  ),
-                  trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primaryTeal) : null,
-                  onTap: () {
-                    setState(() => _currency = curr);
-                    Navigator.of(bottomCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ana para birimi $curr olarak seçildi.')),
-                    );
-                  },
-                );
-              }),
-            ],
+                    const SizedBox(height: 12),
+                    ...currencies.map((curr) {
+                      final isSelected = state.currency == curr;
+                      return ListTile(
+                        title: Text(
+                          curr,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w500,
+                            color: isDark ? Colors.white : AppColors.darkNavy,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AppColors.primaryTeal,
+                              )
+                            : null,
+                        onTap: () {
+                          cubit.setCurrency(curr);
+                          Navigator.of(bottomCtx).pop();
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
@@ -1966,68 +2391,75 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== TEMA SEÇİCİ (KOYU / AÇIK TEMA) ====================
-  void _showThemePickerSheet() {
+  void _showThemePickerSheet(
+    BuildContext context,
+    ProfileSettingsCubit cubit,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final themes = ['Açık Tema', 'Koyu Tema', 'Sistem Varsayılanı'];
-    showModalBottomSheet(
+    const themes = ['Açık Tema', 'Koyu Tema', 'Sistem Varsayılanı'];
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomCtx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Görünüm ve Tema',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.darkNavy,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Koyu tema ve açık tema arasında geçiş yapın.',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...themes.map((t) {
-                final isSelected = _theme == t;
-                return ListTile(
-                  title: Text(
-                    t,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color: isDark ? Colors.white : AppColors.darkNavy,
+        return BlocProvider<ProfileSettingsCubit>.value(
+          value: cubit,
+          child: BlocBuilder<ProfileSettingsCubit, ProfileSettingsState>(
+            builder: (sheetCtx, state) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Görünüm ve Tema',
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.darkNavy,
+                      ),
                     ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_rounded, color: AppColors.primaryTeal)
-                      : null,
-                  onTap: () {
-                    setState(() => _theme = t);
-                    if (t == 'Koyu Tema') {
-                      AppTheme.setThemeMode(ThemeMode.dark);
-                    } else if (t == 'Açık Tema') {
-                      AppTheme.setThemeMode(ThemeMode.light);
-                    } else {
-                      AppTheme.setThemeMode(ThemeMode.system);
-                    }
-                    Navigator.of(bottomCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Tema: $t olarak ayarlandı.')),
-                    );
-                  },
-                );
-              }),
-            ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'Koyu tema ve açık tema arasında geçiş yapın.',
+                      style: TextStyle(
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...themes.map((t) {
+                      final isSelected = state.themeLabel == t;
+                      return ListTile(
+                        title: Text(
+                          t,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w500,
+                            color: isDark ? Colors.white : AppColors.darkNavy,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AppColors.primaryTeal,
+                              )
+                            : null,
+                        onTap: () {
+                          cubit.setThemeLabel(t);
+                          Navigator.of(bottomCtx).pop();
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
@@ -2035,9 +2467,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== DİL SEÇİCİ (SADECE TÜRKÇE) ====================
-  void _showLanguagePickerSheet() {
+  void _showLanguagePickerSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: const RoundedRectangleBorder(
@@ -2061,7 +2493,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               Text(
                 'PayPulse, BDDK ve TCMB mevzuat lisans koşulları gereği şu anda yalnızca Türkçe (TR) olarak hizmet vermektedir.',
                 style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
                   fontSize: 12,
                 ),
               ),
@@ -2085,7 +2519,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     'Aktif Sistem Dili (Resmi Dil)',
                     style: TextStyle(color: AppColors.primaryTeal, fontSize: 11),
                   ),
-                  trailing: const Icon(Icons.check_circle_rounded, color: AppColors.primaryTeal),
+                  trailing: const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.primaryTeal,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -2111,7 +2548,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== YARDIM & CANLI DESTEK ====================
-  void _showSupportSheet() {
+  void _showSupportSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -2185,7 +2622,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== SSS (SIKÇA SORULAN SORULAR) ====================
-  void _showFaqSheet() {
+  void _showFaqSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -2267,7 +2704,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== SÖZLEŞMELER VE KVKK METNİ ====================
-  void _showLegalContractsSheet() {
+  void _showLegalContractsSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -2338,6 +2775,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () {
                     _showDocumentDetailSheet(
+                      context,
                       title: 'Kullanıcı Çerçeve Sözleşmesi',
                       lastUpdated: '01.01.2025 (v2.4)',
                       sections: [
@@ -2398,6 +2836,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () {
                     _showDocumentDetailSheet(
+                      context,
                       title: 'KVKK Aydınlatma ve Açık Rıza Metni',
                       lastUpdated: '15.01.2025 (v1.8)',
                       sections: [
@@ -2458,6 +2897,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () {
                     _showDocumentDetailSheet(
+                      context,
                       title: 'Çerez ve Gizlilik Politikası',
                       lastUpdated: '10.02.2025 (v3.1)',
                       sections: [
@@ -2494,7 +2934,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== YASAL METİN DETAY GÖRÜNTÜLEYİCİ ====================
-  void _showDocumentDetailSheet({
+  void _showDocumentDetailSheet(
+    BuildContext context, {
     required String title,
     required String lastUpdated,
     required List<Map<String, String>> sections,
@@ -2655,7 +3096,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== GÜVENLİK VE LİSANS BİLGİLERİ ====================
-  void _showComplianceSheet() {
+  void _showComplianceSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -2739,18 +3180,29 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== HESAP DONDURMA DİYALOĞU ====================
-  void _showFreezeAccountDialog() {
+  void _showFreezeAccountDialog(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+    final authBloc = context.read<AuthBloc>();
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog<void>(
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
           backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Text('Hesabı Dondur', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Hesabı Dondur',
+            style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy),
+          ),
           content: Text(
             'Hesabınızı geçici olarak dondurduğunuzda tüm kartlarınız ve para transferleriniz durdurulacaktır. Tekrar giriş yaptığınızda hesabınız yeniden aktifleşecektir.',
-            style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
           ),
           actions: [
             TextButton(
@@ -2764,9 +3216,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               onPressed: () {
                 Navigator.of(dialogCtx).pop();
-                context.read<AuthBloc>().add(const AuthLogoutRequested());
-                context.go(AppRoutes.login);
-                ScaffoldMessenger.of(context).showSnackBar(
+                authBloc.add(const AuthLogoutRequested());
+                router.go(AppRoutes.login);
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Hesabınız güvenle donduruldu.')),
                 );
               },
@@ -2779,18 +3231,29 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   // ==================== GÜVENLİ ÇIKIŞ ONAY DİYALOĞU ====================
-  void _showLogoutConfirmationDialog() {
+  void _showLogoutConfirmationDialog(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+    final authBloc = context.read<AuthBloc>();
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog<void>(
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
           backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Text('Güvenli Çıkış', style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Güvenli Çıkış',
+            style: TextStyle(color: isDark ? Colors.white : AppColors.darkNavy),
+          ),
           content: Text(
             'PayPulse oturumunuzu sonlandırmak istediğinize emin misiniz?',
-            style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
           ),
           actions: [
             TextButton(
@@ -2804,9 +3267,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               onPressed: () {
                 Navigator.of(dialogCtx).pop();
-                context.read<AuthBloc>().add(const AuthLogoutRequested());
-                context.go(AppRoutes.login);
-                ScaffoldMessenger.of(context).showSnackBar(
+                authBloc.add(const AuthLogoutRequested());
+                router.go(AppRoutes.login);
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Oturum güvenle sonlandırıldı.'),
                   ),

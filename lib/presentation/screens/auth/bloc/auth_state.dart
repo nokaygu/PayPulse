@@ -1,50 +1,66 @@
-import '../../../../data/models/user_model.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/equatable.dart';
+import '../../../../domain/entities/user_entity.dart';
 
+/// Uygulamanın aktif kimlik doğrulama yaşam döngüsü durumu.
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
-class AuthState {
+/// AuthBloc tarafından yönetilen değişmez (immutable) kimlik ve rol durumu.
+class AuthState extends Equatable {
   final AuthStatus status;
-  final UserModel? user;
-  final String role; // 'b2c', 'employee', 'admin'
+  final UserEntity? user;
+  final String role;
   final bool isBusinessMode;
+  final bool isSubmitting;
+  final String? errorMessage;
 
   const AuthState({
     this.status = AuthStatus.unknown,
     this.user,
-    this.role = 'b2c',
+    this.role = AppStrings.roleB2C,
     this.isBusinessMode = false,
+    this.isSubmitting = false,
+    this.errorMessage,
   });
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
 
-  /// İşletme paneline sadece 'admin' ve 'employee' rolleri erişebilir.
-  bool get canAccessBusinessPanel => role == 'admin' || role == 'employee';
+  bool get isAdmin => role == AppStrings.roleAdmin;
 
-  /// Toplu masraf onayı ve vergi/KDV raporlarına sadece 'admin' erişebilir.
-  bool get isAdmin => role == 'admin';
+  bool get isEmployee => role == AppStrings.roleEmployee;
 
-  /// Masraf onay yetkisi (admin rolü)
+  bool get canAccessBusinessPanel =>
+      isAdmin || isEmployee || (user?.canAccessBusinessPanel ?? false);
+
   bool get canApproveExpenses => isAdmin;
-
-  bool get isEmployee => role == 'employee';
 
   AuthState copyWith({
     AuthStatus? status,
-    UserModel? user,
+    UserEntity? user,
+    bool clearUser = false,
     String? role,
     bool? isBusinessMode,
-    bool clearUser = false,
+    bool? isSubmitting,
+    String? errorMessage,
+    bool clearError = false,
   }) {
-    final nextRole = role ?? this.role;
-    final canUseBusiness = nextRole == 'admin' || nextRole == 'employee';
-
     return AuthState(
       status: status ?? this.status,
       user: clearUser ? null : (user ?? this.user),
-      role: nextRole,
-      isBusinessMode: canUseBusiness
-          ? (isBusinessMode ?? this.isBusinessMode)
-          : false,
+      role: role ?? this.role,
+      isBusinessMode: isBusinessMode ?? this.isBusinessMode,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
+
+  @override
+  List<Object?> get props => [
+    status,
+    user,
+    role,
+    isBusinessMode,
+    isSubmitting,
+    errorMessage,
+  ];
 }

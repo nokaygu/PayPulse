@@ -45,6 +45,8 @@ class FirebaseNotificationDatasource {
     if (kIsWeb || !Platform.isAndroid) return null;
 
     try {
+      // FCM cihaz token backend uyumluluğu için korunuyor (firebase_messaging 17 FID API'ye geçiş öncesi).
+      // ignore: deprecated_member_use
       final token = await _messaging.getToken();
       debugPrint('FCM Token: $token');
       return token;
@@ -132,6 +134,8 @@ class FirebaseNotificationDatasource {
     if (user == null) return;
 
     try {
+      // FCM cihaz token backend uyumluluğu için korunuyor (firebase_messaging 17 FID API'ye geçiş öncesi).
+      // ignore: deprecated_member_use
       final token = await _messaging.getToken();
       if (token == null) return;
 
@@ -161,6 +165,8 @@ class FirebaseNotificationDatasource {
   void listenTokenRefresh() {
     if (kIsWeb || !Platform.isAndroid) return;
 
+    // FCM cihaz token yenileme akışı backend uyumluluğu için korunuyor.
+    // ignore: deprecated_member_use
     _messaging.onTokenRefresh.listen((newToken) async {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;

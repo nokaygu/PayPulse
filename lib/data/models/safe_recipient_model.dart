@@ -1,3 +1,5 @@
+import '../../domain/entities/safe_recipient_entity.dart';
+
 /// KVKK / Veri minimizasyonu prensibi uyarınca, FAST transferi öncesinde
 /// karşı tarafın hassas bilgilerini (bakiye, e-posta, telefon vb.) ifşa etmeden
 /// yalnızca teyit amaçlı maskelenmiş isim ve IBAN döndüren güvenli alıcı modeli.
@@ -22,5 +24,21 @@ class SafeRecipientModel {
 
   Map<String, dynamic> toJson() {
     return {'userId': userId, 'maskedName': maskedName, 'iban': iban};
+  }
+
+  SafeRecipientEntity toEntity() {
+    return SafeRecipientEntity(
+      userId: userId,
+      maskedName: maskedName,
+      iban: iban,
+    );
+  }
+
+  factory SafeRecipientModel.fromEntity(SafeRecipientEntity entity) {
+    return SafeRecipientModel(
+      userId: entity.userId,
+      maskedName: entity.maskedName,
+      iban: entity.iban,
+    );
   }
 }

@@ -1,80 +1,109 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/models/transaction_model.dart';
+import '../../../core/utils/financial_amount.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
+import '../../widgets/four_state_view.dart';
 import '../../widgets/receipt_summary_card_widget.dart';
 import '../../widgets/role_switch_app_bar.dart';
+import 'bloc/transfer_cubits.dart';
 
-/// FAST Para Transferi Adım 4/4: Resmi İşlem Dekontu Ekranı
 class TransferReceiptScreen extends StatelessWidget {
   final String txId;
 
-  const TransferReceiptScreen({super.key, required this.txId});
+  const TransferReceiptScreen({super.key, this.txId = 'FAST-2026-88412'});
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<TransferReceiptCubit>(
+      create: (ctx) => TransferReceiptCubit(
+        transactionRepository: ctx.read<ITransactionRepository>(),
+      )..loadTransaction(txId),
+      child: _TransferReceiptView(txId: txId),
+    );
+  }
+}
+
+class _TransferReceiptView extends StatelessWidget {
+  final String txId;
+
+  const _TransferReceiptView({required this.txId});
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<TransferReceiptCubit>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: const RoleSwitchAppBar(
-        isBusinessMode: false,
+        customTitle: 'İşlem Dekontu (4/4)',
         showBackButton: true,
-        customTitle: 'TCMB FAST İşlem Dekontu',
-        customSubtitle: 'Adım 4/4 • İşlem Başarıyla Tamamlandı',
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: FutureBuilder<TransactionModel?>(
-          future: FirebaseFirestoreDatasource().getTransaction(txId),
-          builder: (context, snapshot) {
-            final tx = snapshot.data;
-            final String amountFormatted = tx != null
-                ? '₺${(tx.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}'
-                : '₺1.500,00';
-            final String senderStr = tx != null && tx.senderId.isNotEmpty
-                ? 'Cüzdan (${tx.senderId})'
-                : 'Deniz Aksoy (PP-849201)';
-            final String recipientStr = tx != null && tx.title.isNotEmpty
-                ? tx.title
-                : 'Zeynep Kaya';
-            final String ibanStr =
-                tx?.targetIban ?? 'Garanti BBVA • TR34 •••• 6789 01';
-            final String dateStr = tx != null
-                ? '${tx.timestamp.day} Kasım ${tx.timestamp.year}, ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}'
-                : '11 Kasım 2026, 15:42';
+        padding: const EdgeInsets.all(20),
+        child: BlocBuilder<TransferReceiptCubit, TransferReceiptState>(
+          builder: (context, state) {
+            return FourStateView(
+              status: state.status,
+              errorMessage: state.errorMessage ?? 'Dekont yüklenemedi.',
+              emptyMessage: 'Dekont kaydı bulunamadı ($txId).',
+              onRetry: () => cubit.loadTransaction(txId),
+              child: Builder(
+                builder: (context) {
+                  final tx = state.transaction;
+                  if (tx == null) return const SizedBox.shrink();
 
-            return Column(
-              children: [
-                ReceiptSummaryCardWidget(
-                  title: 'FAST Transferi Tamamlandı!',
-                  amountText: amountFormatted,
-                  badgeLabel:
-                      '✓ TCMB FAST • 1.2 Saniyede İletildi (Eğitim Amaçlı FAST Simülasyonu)',
-                  details: {
-                    'Sorgu / Dekont No': txId,
-                    'Gönderen': senderStr,
-                    'Alıcı Ad Soyad': recipientStr,
-                    'Alıcı Banka / IBAN': ibanStr,
-                    'İşlem Tarihi': dateStr,
-                    'İşlem Ücreti': '₺0,00 (Ücretsiz)',
-                    'Açıklama': tx?.category ?? 'Hafta sonu kahvaltı payı 🥐',
-                  },
-                  onDownloadPdf: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('$txId numaralı PDF dekont indirildi.'),
+                  final String amountFormatted = FinancialAmount.format(
+                    tx.amount,
+                  );
+                  final String senderStr = tx.senderId.isNotEmpty
+                      ? 'Cüzdan (${tx.senderId})'
+                      : 'PayPulse Cüzdanı';
+                  final String recipientStr = tx.title.isNotEmpty
+                      ? tx.title
+                      : 'Alıcı';
+                  final String ibanStr =
+                      tx.targetIban ?? 'PayPulse FAST Transferi';
+                  final String dateStr =
+                      '${tx.timestamp.day}.${tx.timestamp.month.toString().padLeft(2, '0')}.${tx.timestamp.year}, '
+                      '${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}';
+
+                  return Column(
+                    children: [
+                      ReceiptSummaryCardWidget(
+                        title: 'FAST Transferi Tamamlandı!',
+                        amountText: amountFormatted,
+                        badgeLabel: '✓ TCMB FAST • Anında İletildi',
+                        details: {
+                          'Sorgu / Dekont No': txId,
+                          'Gönderen': senderStr,
+                          'Alıcı Ad Soyad': recipientStr,
+                          'Alıcı Banka / IBAN': ibanStr,
+                          'İşlem Tarihi': dateStr,
+                          'İşlem Ücreti': '₺0,00 (Ücretsiz)',
+                          'Açıklama': tx.category,
+                        },
+                        onDownloadPdf: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '$txId numaralı PDF dekont hazırlandı.',
+                              ),
+                            ),
+                          );
+                        },
+                        onShare: () {},
                       ),
-                    );
-                  },
-                  onShare: () {},
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.go(AppRoutes.home),
-                  child: const Text('Ana Sayfaya Dön'),
-                ),
-              ],
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () => context.go(AppRoutes.home),
+                        child: const Text('Ana Sayfaya Dön'),
+                      ),
+                    ],
+                  );
+                },
+              ),
             );
           },
         ),

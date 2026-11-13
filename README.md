@@ -1,464 +1,323 @@
----
-proje: egitim
-tur: 6sarli_teslim_projesi
-grup: "3. Grup"
-proje_adi: "PayPulse — Yeni Nesil Dijital Cüzdan, Masraf Yönetimi ve B2B/B2C Tahsilat Portalı"
-sektor: "FinTech, Kurumsal Masraf & Yeni Nesil Ticaret"
-teslim_tarihi: 2026-11-13
-durum: aktif_gelistirme
-uye_sayisi: 6
-tags:
-  - proje/egitim
-  - teslim_projesi
-  - buyuk_grup
-  - flutter
-  - softito
-  - firebase
----
+# PayPulse — Yeni Nesil Dijital Cüzdan, Kurumsal Masraf ve B2B/B2C Tahsilat Platformu
 
-# 🚀 SoftITO 4. Dönem Mobil — 3. Grup Büyük Teslim Projesi
-
-> **Grup Adı:** **3. Grup (6 Kişilik Büyük Teslim Proje Takımı)**  
-> **Ekip Üyeleri:** Eren Türkmen, Shahd Mohamed Ragab (Shad), Betül Zağlı, Berat Atmaca, Abdullah Belli, Hasbiyenur Çoban  
-> **Proje Başlığı:** **PayPulse — Yeni Nesil Dijital Cüzdan, Masraf Yönetimi ve B2B/B2C Tahsilat Portalı**  
-> **Sektörel Alan:** `FinTech, Kurumsal Masraf & Yeni Nesil Ticaret`  
-> **Mimari Standart:** Flutter SDK & Clean Architecture + Full Firebase Entegrasyonu  
-> **Çift Yönlü Rol Modeli:** Zorunlu (Rol 1: Kullanıcı Portalı vs Rol 2: Yönetici/Sağlayıcı Portalı)  
-> **Büyük Teslim & Demo Day:** 13 Kasım 2026 Cuma (Canlı Jüri Sunumu)
+> **Çift Yönlü FinTech Ekosistemi:** Bireysel dijital cüzdan, 7/24 FAST para transferi ve akıllı bütçe yönetimini; KOBİ'ler için Sanal POS tahsilatı, GİB e-fatura takibi, OCR destekli personel masraf onayı ve KDV-1 vergi analitiğiyle tek çatı altında birleştiren **Flutter + Firebase + Clean Architecture** uygulamasıdır.
 
 ---
 
-## 🧭 Hızlı Navigasyon & Bağlantılar
-- 📋 **Büyük Teslim Grupları Komuta Paneli:** [[02_PROJELER/egitim/ogrenci_projeleri/6sarli_teslim_projeleri/README|🚀 4 Büyük Teslim Grubu Komuta Merkezi]]
-- 👥 **Öğrenci Takip Paneli:** [[02_PROJELER/egitim/ogrenciler|👥 SoftITO Öğrenci Listesi]]
-- 🎓 **22 Bireysel Bitirme Projeleri:** [[02_PROJELER/egitim/ogrenci_projeleri/bireysel_bitirme_projeleri/README|🎓 Bireysel Bitirme Projeleri]]
-- ⚡ **Eğitim Master Context:** [[02_PROJELER/egitim/egitim|⚡ Eğitim Master Context]]
+## İçindekiler
+
+1. [Projenin Amacı ve Çözdüğü Problem](#-1-projenin-amacı-ve-çözdüğü-problem)
+2. [Çift Yönlü Rol Modeli ve Temel İş Kuralları](#-2-çift-yönlü-rol-modeli-ve-temel-iş-kuralları)
+3. [Kullanılan Teknolojiler ve Paket Ekosistemi](#-3-kullanılan-teknolojiler-ve-paket-ekosistemi)
+4. [Proje Mimarisi (Clean Architecture + BLoC + GoRouter)](#-4-proje-mimarisi-clean-architecture--bloc--gorouter)
+5. [Bütüncül Klasör ve Modül Yapısı](#-5-bütüncül-klasör-ve-modül-yapısı)
+6. [Veri Modeli, Firestore Şeması ve Güvenlik Kuralları](#-6-veri-modeli-firestore-şeması-ve-güvenlik-kuralları)
+7. [Kurulum ve Çalıştırma (Demo & Live Mod)](#-7-kurulum-ve-çalıştırma-demo--live-mod)
+8. [Sunum Rehberi (Jüri & Demo Day Akışı)](#-8-sunum-rehberi-jüri--demo-day-akışı)
+9. [Test ve Kalite Doğrulama](#-9-test-ve-kalite-doğrulama)
+10. [Ekip ve Sorumluluk Dağılımı](#-10-ekip-ve-sorumluluk-dağılımı)
 
 ---
 
-## 🎯 1. Proje Açıklaması & Kapsamı
+## 🎯 1. Projenin Amacı ve Çözdüğü Problem
 
-### 🌟 Projenin Amacı ve Vizyonu
-Bireysel kullanıcılar ve şirket personelleri için çok para birimli dijital cüzdan, 7/24 FAST transferi ve akıllı masraf fişi takibi sunan; KOBİ ve işletmeler için ise sanal POS, anlık tahsilat, personel harcama onay mekanizması ve finansal raporlama sağlayan çift yönlü FinTech ekosistemi.
+### Problem
+Günlük finansal hayatta bireysel kullanıcılar, saha/ofis çalışanları ve şirket finans yöneticileri parçalı bir araç yığınıyla karşı karşıyadır:
+- Bireysel cüzdan, FAST transferi ve bütçe takibi bir uygulamada;
+- Çalışanların fiş toplama, KDV ayrıştırma ve masraf avans talepleri kağıt/e-posta süreçlerinde;
+- KOBİ'lerin Sanal POS tahsilatları, e-fatura ödemeleri ve muhasebe onay akışları ise ayrı ERP panellerinde yürütülmektedir.
 
-Bu proje; 6 kişilik bir yazılım mühendisliği ekibinin 1 hafta boyunca tam zamanlı çalışarak uçtan uca, store kalitesinde, kurumsal mimariyle ve çift taraflı rol yönetimiyle geliştireceği büyük ölçekli bir bitirme ürünüdür.
-
----
-
-### 🎭 Çift Yönlü Rol Modeli (Role-Based Dual Mode)
-
-Uygulama iki farklı kullanıcı tipine hizmet verecek şekilde tasarlanacaktır. Giriş yapan kullanıcının rolüne göre arayüz, yetkiler ve dashboard dinamik olarak değişecektir:
-
-#### 👤 1. Modül: Bireysel Kullanıcı & Şirket Çalışanı Cüzdanı (B2C Portalı)
-- **Çoklu Para Birimli Ana Cüzdan:** TL, USD, EUR bakiye kartları, bakiye gizleme (Göz ikonu), son finansal hareketler dökümü.
-- **7/24 FAST / Kolay Adres Para Transferi:** Telefon numarası veya IBAN ile diğer kullanıcılara anında bakiye gönderme, işlem açıklaması ve komisyonsuz transfer.
-- **Dinamik QR Kod ile Öde & Tahsil Et:** Kasa önünde kasaya gösterilecek geri sayımlı QR kod üretimi veya arkadaştan para isteme QR'ı.
-- **Şirket Masraf & Fiş Yönetimi Masası:** Şirket adına yapılan harcamanın (Yemek, Taksi, Otel, Yakıt) fiş fotoğrafını çekip Storage'a yükleme, KDV/Tutar girişi ve yöneticiye masraf onay talebi iletme.
-- **Kategorize Bütçe & Harcama Grafikleri:** Ay içindeki harcamaların sektör bazlı pasta grafik dökümü ve limit aşım alarmları.
-
-#### 🏢 2. Modül: KOBİ / Üye İşyeri & Şirket Finans Yöneticisi Portalı (B2B Paneli)
-- **İşletme Kasası & Sanal POS Terminali:** Kasadan müşteriden kredi kartı veya PayPulse QR ile ödeme alma, başarılı işlem slip simülatörü.
-- **Personel Masraf Onay Masası:** Şirket çalışanlarının yüklediği fişleri, KDV tutarlarını ve fatura fotoğraflarını inceleme; tek tıkla 'Onayla / Reddet (Gerekçeli)' aksiyonu ve muhasebe kodu atama.
-- **Gün Sonu Kapanışı (Z-Raporu) & Ciro Raporu:** Günlük, haftalık, aylık net tahsilat, iade edilen işlemler ve komisyon kesintisi analitiği.
-- **Dinamik Fatura & Ödeme Linki Üretme:** Müşteriye SMS/WhatsApp ile gönderilebilecek ödeme linki simülasyonu.
-- **Fraud / Şüpheli İşlem Alarmları (FCM Push):** Kısa sürede yapılan yüksek tutarlı veya olağandışı transferlerde yöneticiye anlık push güvenlik onayı bildirimi.
+### PayPulse Çözümü
+PayPulse, **tek kimlik ve rol tabanlı mimari** üzerinden üç farklı kullanıcı profilini (`b2c`, `employee`, `admin`) kesintisiz bir FinTech deneyiminde birleştirir:
+- **Bireysel Cüzdan (B2C):** Çoklu para birimli (`TRY`, `USD`, `EUR`) cüzdan, bakiye gizleme, 4 adımlı FAST transferi, QR ile öde/tahsil et, Luhn/SKT doğrulamalı sanal & metal kart yönetimi ve kategori bazlı bütçe/birikim hedefi takibi.
+- **Personel Masraf Akışı (Employee):** Kamera/galeri üzerinden fiş tarama, OCR veri doğrulama (`OcrCameraScannerScreen` → `OcrDataVerificationScreen`), KDV/tutar kontrolü ile yönetici onayına masraf iletme.
+- **Yönetici / Üye İşyeri Portalı (Admin B2B):** İşletme kasası ve haftalık nakit akışı (`BusinessSafeOverviewScreen`), taksitli Sanal POS terminali ve komisyon hesabı (`VirtualPosTerminalScreen`), tekli ve toplu Personel Masraf Onay Masası + ERP dekontu, GİB e-fatura listesi ve dinamik KDV-1 Vergi Raporu (`TaxAndVatReportScreen`).
 
 ---
 
-### ⚙️ Temel İş Kuralları & Kritik Mantık Akışları (Business Rules)
-6 kişilik ekibin 1 hafta boyunca kodlayacağı kritik iş mantıkları şunlardır:
+## 🎭 2. Çift Yönlü Rol Modeli ve Temel İş Kuralları
 
-1. **Atomik Transfer Mimarisi (Firestore Transaction):** A hesabından B hesabına para aktarılırken, A'dan düşme ve B'ye ekleme işlemi tek bir atomik Transaction içinde yapılmalıdır. Bakiye yetersizse işlem kesinlikle hata fırlatmalıdır.
-2. **Bakiye Negatife Düşemez:** Kullanıcı hesabında bulunan tutardan 1 kuruş fazla transfer veya harcama yapamaz.
-3. **Masraf Yaşam Döngüsü:** Personel fiş yükler -> Durum: `ONAY_BEKLIYOR`. Yönetici onaylarsa -> Durum: `ONAYLANDI` ve onaylanan tutar personelin ana cüzdanına avans/masraf iadesi olarak otomatik yansır. Reddedilirse gerekçe metni personelin bildirim ekranına düşer.
-4. **Finansal Maskeleme & Validasyon:** Kredi kartı numarası 16 hane Luhn algoritması, IBAN 'TR' ile başlayan 26 karakter kontrolü ve CVV gizleme standarttır.
-5. **Kuruş ve Yuvarlama Hassasiyeti:** Finansal hesaplamalarda kuruş kaybı olmamalıdır; hesaplamalar `intl` NumberFormat ve 2 basamaklı hassasiyetle yönetilir.
+### Rol Yetki Matrisi
 
----
+| Özellik / Modül | Bireysel (`b2c`) | Çalışan (`employee`) | Yönetici (`admin`) |
+| :--- | :---: | :---: | :---: |
+| Bireysel Cüzdan, FAST Transfer & Kart Yönetimi | ✅ | ✅ | ✅ |
+| Dinamik QR Kod Üretme & Okutma / Deep Link Ödeme | ✅ | ✅ | ✅ |
+| Bütçe Analitiği & İşlem Geçmişi | ✅ | ✅ | ✅ |
+| B2B ↔ B2C Üst Bar Mod Geçişi (`AuthPanelModeToggled`) | ❌ | ✅ | ✅ |
+| Şirket Kasa Özeti & OCR Masraf Girişi | ❌ | ✅ | ✅ |
+| Masraf Listesi Görüntüleme (Onay/Ret Butonları Kilitli) | ❌ | 👁️ Salt Okunur | ✅ Tam Yetki |
+| Sanal POS Tahsilatı & E-Fatura Ödeme | ❌ | ✅ | ✅ |
+| Toplu Masraf ERP Dekontu & KDV-1 Vergi Raporları | ❌ (Kalkan 3) | ❌ (Kalkan 4) | ✅ |
 
-## 🛠️ 2. İstediğim Teknolojiler & Mimari Standartlar
+### FinTech ve Güvenlik İş Kuralları
 
-Projede derste kapsamlı olarak işlediğimiz kurumsal mobil geliştirme teknolojileri ve standartları eksiksiz kullanılacaktır:
-
-- **Mobil Framework & Dil:** Flutter SDK (En güncel kararlı sürüm) & Dart (Strict Type Safety, Null Safety)
-- **Mimari Disiplin:** Kurumsal Clean Architecture (`core`, `data`, `domain`, `presentation`) & Katmanlı Klasör Düzeni
-- **Kimlik Doğrulama (Auth):** Firebase Authentication (Email/Şifre, opsiyonel Google Sign-In, Rol tabanlı Custom Claims / Profil eşleme)
-- **Veritabanı & Canlı Veri:** Cloud Firestore (NoSQL, Realtime Streams, Subcollections, Composite Queries, Atomik Transactions & Batch Writes)
-- **Medya & Belge Saklama:** Firebase Storage (Profil fotoğrafları, makbuz/fiş/rapor/ödev dosyaları, ImagePicker, Yükleme Stream'i & İlerleme Barı)
-- **Push Bildirimleri & Uyarılar:** Firebase Cloud Messaging (FCM) & `flutter_local_notifications` (Ön plan, arka plan, topic tabanlı toplu duyurular)
-- **Hata Takibi & Analitik:** Firebase Crashlytics & Firebase Analytics (Kritik kullanıcı aksiyonları, özel event logları)
-- **State Management:** BLoC / Cubit veya Provider / Riverpod (Tek bir kurumsal standart seçilmeli, spagetti setState yasaktır)
-- **Navigasyon Mimarisi:** GoRouter (ShellRoute ile kalıcı BottomNavigationBar, Deep Linking, Rol bazlı Route Guards / Yönlendirme Kalkanı)
-- **Yerel Depolama (Offline Cache):** SharedPreferences veya Hive / SQLite (Oturum token'ı, çevrimdışı taslaklar, tema tercihleri)
-- **Tasarım Sistemi & UI/UX:** Material 3 (ColorScheme.fromSeed, Açık ve Koyu Tema, Akıcı Mikro Animasyonlar, Hero, CustomPainter grafikler)
-- **Form & Validasyon Güvencesi:** `Form` & `GlobalKey<FormState>`, Regex validatörleri, InputFormatters, TextEditingController yaşam döngüsü (`dispose`)
-- **Kalite & Güvenilirlik:** Sıfır `RenderFlex overflow` (sarı-siyah taşma) kuralı, asenkron `mounted` kontrolleri, Unit & Widget testleri
-- **Versiyon Kontrol & Git-Flow:** `main` (Stabil), `develop` (Entegrasyon) ve `feat/<isim>-<modul>` feature branch'leri, PR (Pull Request) onay mekanizması
+1. **Sıfır Kuruş Kaybı (`int` Kuruş Hassasiyeti):** Tüm para, KDV, limit ve işlem tutarları `double` yuvarlama hatalarını önlemek için tamsayı **kuruş (`int`)** olarak saklanır (Örn: `1.500,25 TL` → `150025` kuruş). Biçimlendirme ve ayrıştırma [financial_amount.dart](lib/core/utils/financial_amount.dart) üzerinden yönetilir.
+2. **Negatif Bakiye Yasağı ve Atomik Çift Taraflı Transfer:** Kullanıcı veya işletme kasası bakiyesinin 1 kuruş üstüne çıkamaz. Firestore tarafında gönderenden düşme, alıcıya ekleme ve işlem kaydı tek atomik transaction içinde gerçekleştirilir.
+3. **Fraud Alarm Kalkanı (`50.000,00 TL` Eşiği):** [app_limits.dart](lib/core/constants/app_limits.dart) içinde tanımlı `AppLimits.fraudLimitInKurus` (`5000000` kuruş) ve üzeri transferler `ExecuteFastTransferUseCase` tarafından ek güvenlik onayı (`fraudConfirmed`) olmadan engellenir.
+4. **Sanal POS Komisyon Standardı:** [app_limits.dart](lib/core/constants/app_limits.dart) üzerindeki `AppLimits.posCommissionBps = 139` (`%1,39`) baz puan kuralı ile brüt, komisyon ve net tahsilat `FinancialAmount.posCommission` üzerinden hesaplanır (`1, 3, 6` taksit seçenekleri desteklenir).
+5. **İdempotent Masraf Onayı & Gerekçeli Ret:** `ApproveOrRejectExpenseUseCase` aynı masrafın iki kez onaylanmasını/işlenmesini engeller (`status == 'pending' || 'ONAY_BEKLIYOR'`), çalışan rolünün onay vermesini reddeder ve ret işleminde gerekçe metnini zorunlu kılar.
+6. **Finansal Doğrulama & Maskeleme:** Kredi kartları **16 hane + Luhn algoritması** (`FinancialValidators.cardNumber`), IBAN'lar **`TR` + 26 karakter + MOD-97 kontrolü** (`FinancialValidators.iban`), son kullanma tarihleri güncel ay/yıl (`FinancialValidators.expiry`) kurallarıyla doğrulanır.
+7. **KVKK Veri Minimizasyonu:** Alıcı doğrulamada karşı tarafın tam profili veya bakiyesi paylaşılmaz; `recipients` dizininden yalnızca maskelenmiş ad (`A*** Y*****`) ve IBAN taşınır (`SafeRecipientEntity`).
+8. **Değiştirilemez Finansal Defter (Append-Only Ledger):** `transactions` belgeleri oluşturulduktan sonra güncellenemez ve silinemez (`firestore.rules`).
 
 ---
 
-## 📋 3. Ekip Tarafından Tamamlanacak Çalışma Alanı
+## 🛠️ 3. Kullanılan Teknolojiler ve Paket Ekosistemi
 
-> [!NOTE]
-> Bu bölüm projenin teknik şartnamesi doğrultusunda **6 kişilik öğrenci ekibi tarafından** doldurulmuş; mimari kararlar, ekran tasarımları, DTO modelleri ve GitHub repo ilerlemeleri burada belgelenmiştir.
+Altyapı [pubspec.yaml](pubspec.yaml) ve [analysis_options.yaml](analysis_options.yaml) standartlarına göre yapılandırılmıştır:
 
-### 👥 3.1. Takım İçi 6 Kişilik Görev Dağılımı ve Sorumluluk Matrisi
+| Kategori | Teknoloji / Paket | Sürüm | Projedeki Kullanım Yeri |
+| :--- | :--- | :---: | :--- |
+| **Framework & Dil** | Flutter SDK & Dart | `3.47.7` / `3.13.5` | Çapraz platform (`macOS`, `Android`, `iOS`, `Web`) UI ve iş mantığı |
+| **State Management** | `flutter_bloc` | `^9.1.1` | `AuthBloc` + 22 özelliğe/akışa özel `Cubit` sınıfı (`StatelessWidget` UI disiplini) |
+| **Eşitlik Kontrolü** | Dahili `Equatable` | — | Harici bağımlılık olmadan immutable `Entity`/`State` karşılaştırması ([equatable.dart](lib/core/utils/equatable.dart)) |
+| **Navigasyon & Deep Link** | `go_router` | `^18.1.3` | `ShellRoute` alt bar, `/pay/:requestId` deep link, 4 kalkanlı RBAC `redirect` |
+| **Kimlik Doğrulama** | `firebase_auth` | `^7.0.1` | E-posta/şifre girişi, kayıt ve canlı kullanıcı akışı |
+| **Veritabanı** | `cloud_firestore` | `^7.1.0` | Reaktif `snapshots()`, atomik `runTransaction`, koleksiyon indeksleri |
+| **Dosya Depolama** | `firebase_storage` | `^14.0.1` | Personel harcama fişi görsellerinin buluta yüklenmesi |
+| **Bildirim Altyapısı** | `firebase_messaging` & `flutter_local_notifications` | `^17.0.1` / `^23.0.1` | Android canlı FCM token senkronizasyonu, ön/arka plan push bildirimleri |
+| **Telemetri & Kararlılık** | `firebase_analytics` & `firebase_crashlytics` | `^13.0.1` / `^6.0.1` | KVKK uyumlu event kayıtları ve ölümcül hata yakalama ([app_analytics_service.dart](lib/core/analytics_and_crashlytics/app_analytics_service.dart)) |
+| **Medya & QR** | `image_picker`, `qr_flutter`, `mobile_scanner` | `^1.2.4` / `^4.1.0` / `^7.5.0` | Fiş fotoğrafı seçimi/çekimi, dinamik QR karekod üretimi ve kamera QR tarama |
+| **Tasarım & Formatlama** | `google_fonts`, `intl`, Material 3 | `^9.0.0` / `^0.20.3` | `Plus Jakarta Sans` tipografisi, Açık/Koyu tema (`AppTheme`), `tr_TR` biçimlendirme |
+| **Yerel Tercih & Test** | `shared_preferences`, `flutter_lints`, `flutter_test` | `^2.5.6` / `^6.0.0` | Statik analiz, birim/widget testleri |
 
-- [x] **[Berat Atmaca] Geliştirici 1 (Team Lead & Core Architecture):** Core katmanı, Base sınıflar, Git branch kuralları, GoRouter Role Guards & Shell Navigation.
-- [x] **[Shahd Mohamed Ragab] Geliştirici 2 (UI / UX & Design System Lead):** Material 3 teması, Renk paleti (`#0D1F2D` $\rightarrow$ `#12353C`, `#10B981`), Custom Widgets, Grafikler (`BudgetDonutChart`, `WeeklyBarChart`), Bütçe, Profil ve KDV Raporu ekranları.
-- [x] **[Abdullah Belli] Geliştirici 3 (Network, API & Firebase Lead):** Firebase Auth, Firestore servisleri, Storage bağlantısı, FCM altyapısı ve atomik transfer işlemleri.
-- [x] **[Betül Zağlı] Geliştirici 4 (Data Models & DTO Lead):** 7 temel Entity ve DTO modelleri (`fromJson`, `toJson`, `copyWith`, `Equatable`), `firestore_collections.dart`, `FirestoreSeeder` servisi, İşlem Geçmişi ve E-Fatura & E-Arşiv ekranları.
-- [x] **[Eren Türkmen] Geliştirici 5 (State Management & Logic Lead):** BLoC / Cubit akışları, Event/State sınıfları, Reaktif dinleyiciler.
-- [x] **[Hasbiyenur Çoban] Geliştirici 6 (Feature Screens & QA / Test Lead):** Form validasyonları, 4 durum yönetimi (`FourStateView`), POS, Masraf Onay ve Transfer ekranları.
+---
 
-### 📱 3.2. Ekran Listesi ve Kullanıcı Akış Şeması
+## 🏗️ 4. Proje Mimarisi (Clean Architecture + BLoC + GoRouter)
 
-```text
-lib/presentation/
-├── widgets/                                  # Tüm ekibin kullandığı ortak widget'lar
-│   ├── dark_gradient_hero_card.dart
-│   ├── status_badge_widget.dart
-│   ├── budget_donut_chart.dart
-│   ├── weekly_bar_chart.dart
-│   ├── transaction_list_tile_widget.dart
-│   ├── custom_numpad_widget.dart
-│   ├── receipt_summary_card_widget.dart
-│   └── role_switch_app_bar.dart
-├── shell_navigation/                         # 5'li BottomNavBar + B2B->B2C Switch
-│   └── main_shell_wrapper_screen.dart
-└── screens/
-    ├── splash_and_onboarding/ (splash_screen.dart)
-    ├── auth/ (login_screen.dart, register_screen.dart, bloc/)
-    ├── home_wallet_and_safe/ (home_screen.dart — B2C Cüzdan & B2B İşletme Kasası)
-    ├── transfer/ (4 Adımlı FAST: recipient, amount, summary, receipt)
-    ├── qr_and_ocr/ (qr_payment_center, ocr_camera_scanner, ocr_data_verification, e_invoice_gib_list)
-    ├── b2b_operations/ (virtual_pos_terminal, b2b_expense_approval_center, bulk_expense_erp_receipt)
-    ├── analytics_and_reports/ (budget_analytics, tax_and_vat_report, transaction_history)
-    └── profile_and_cards/ (profile_settings, cards_management)
+PayPulse, **bağımlılıkların içe doğru aktığı** sıkı bir Clean Architecture yapısına sahiptir. `presentation` katmanı yalnızca `domain` sözleşmeleri (`I*Repository`, `Entity`, `UseCase`) ve `core` yardımcılarıyla konuşur; `data` modellerine veya Firebase SDK'sına doğrudan bağımlı değildir *(istisna: geliştirici test konsolu `home.dart` / `DevConsoleCubit`)*.
+
+### Katmanlı Bağımlılık ve DI Akışı
+
+```mermaid
+flowchart LR
+    UI["Presentation Layer\n(Stateless Screens & Widgets + BLoC/Cubit)"]
+    CORE["Core Layer\n(GoRouter, Theme, Validators, Formatters, Limits, AppMode)"]
+    DOM["Domain Layer\n(Pure Entities, Repository Interfaces, UseCases)"]
+    DATA["Data Layer\n(Repository Impl, DTO Models, Remote Datasources & LocalDemoDataService)"]
+    EXT["External Services\n(Firebase Auth / Firestore / Storage / FCM)"]
+
+    UI --> CORE
+    UI --> DOM
+    DATA --> DOM
+    DATA --> CORE
+    DATA --> EXT
 ```
 
-### 🗄️ 3.3. Cloud Firestore Veri Şeması (Koleksiyon & Döküman Tasarımı)
+### Öne Çıkan Mimari Tasarım Kararları
 
-#### 📋 Hızlı Koleksiyon Özeti
-- `users`: `{ uid, name, email, role, companyId, customerNo, verificationLevel, iban, monthlyLimit, spentThisMonth, hasB2BAccess }`
-- `wallets`: `{ walletId, ownerId, balances: { TRY, USD, EUR }, updatedAt }`
-- `transactions`: `{ txId, senderId, receiverId, title, category, amount (kuruş), currency, timestamp, type, targetIban, isExpense, dateGroup, status }`
-- `budget_categories`: `{ categoryId, title, spentAmount, allocatedAmount, percentage, colorHex, iconName }`
-- `savings_goals`: `{ id, title, targetAmount, currentAmount, deadline, iconName }`
-- `expenses`: `{ expenseId, employeeId, employeeName, merchantTitle, category, companyId, amount, vatAmount, receiptImageUrl, status, accountingCode, date }`
-- `invoices`: `{ invoiceId, companyId, gibInvoiceNo, counterpartyName, isIncoming, documentType, totalAmount, vatAmount, withholdingRate, badgeText, isPaid, canPayWithFast, issueDate }`
-- `pos_transactions`: `{ posTxId, terminalId, customerName, grossAmount, commissionRate, commissionAmount, netAmount, timestamp, cardMasked, status }`
+- **Merkezi Dependency Injection (`lib/main.dart`):** `PayPulseApplication` kökünde `MultiRepositoryProvider` ile 9 domain repository sözleşmesi (`IUserRepository`, `IWalletRepository`, `ITransactionRepository`, `IExpenseRepository`, `ICompanyRepository`, `INotificationRepository`, `IPaymentRequestRepository`, `IBudgetRepository`, `IInvoiceRepository`) bağlanır. `_PayPulseRouterHost` üzerinde `AuthBloc`, `NotificationCubit` ve `AppRouter` başlatılır.
+- **Tamamen `StatelessWidget` Ekranlar:** Kullanıcı ekranlarının tamamı (`21` ekran dosyası / `22` public `StatelessWidget` ekran sınıfı) `StatelessWidget` olarak tasarlanmıştır. Tüm ekran durumları, `Timer`'lar, `PageController`'lar ve `TextEditingController`'lar ilgili ekranın `bloc/` altındaki Cubit/BLoC sınıfında yönetilip `close()` içinde temizlenir.
+- **Dual Environment (`AppMode`):** [app_mode.dart](lib/core/config/app_mode.dart) çalışma ortamını otomatik algılar:
+  - `macOS` / `Web` → **`EnvironmentMode.localDemo`**: Apple Developer sertifikası / Keychain gerekmeden [local_demo_data_service.dart](lib/data/datasources/remote/local_demo_data_service.dart) üzerinden tam reaktif `Stream` simülasyonu ile demo çalışır.
+  - `Android` / `iOS` → **`EnvironmentMode.liveFirebase`**: Gerçek Firebase Auth, Cloud Firestore, Firebase Storage ve FCM çalışır.
+- **4 Durum Yönetimi (`FourStateView`):** Liste ve veri yükleyen ekranlar `ViewStatus` (`loading`, `empty`, `error`, `success`) durumlarını ortak [four_state_view.dart](lib/presentation/widgets/four_state_view.dart) bileşeniyle standart şekilde yönetir.
 
-PayPulse NoSQL Cloud Firestore mimarisi; çift yönlü rol yapısını (B2C & B2B), kuruş hassasiyetinde atomik finansal güvenliği ve KVKK veri minimizasyonu prensiplerini destekleyecek şekilde tasarlanmıştır.
+### 4 Katmanlı GoRouter RBAC Yönlendirme Kalkanı (`AppRouter`)
 
-#### 📌 3.3.1. Temel Mimari Prensipler
-1. **Kuruş Hassasiyeti (Zero Floating-Point Error):** Tüm parasal değerler (`balanceTl`, `amount`, `vatAmount`) ondalıklı (double/float) yerine tamsayı (`int`) kuruş cinsinden saklanır (Örn: `150.50 ₺` ➡️ `15050`).
-2. **Değiştirilemez Finansal Kayıt (Append-Only Ledger):** `transactions` koleksiyonundaki belgeler atomik transaction ile oluşturulur; güncelleme (`update`) veya silme (`delete`) Firestore güvenlik kurallarıyla kesinlikle yasaklanmıştır.
-3. **KVKK & Veri Minimizasyonu (`recipients` Rehberi):** Para transferi sırasında karşı tarafın bakiye veya e-posta gibi hassas verilerini açığa çıkarmamak için yalnızca maskelenmiş ad ve IBAN tutan genel dizin koleksiyonu kullanılır.
-4. **Çapraz Platform Canlı Bildirimler (`notifications`):** FCM push bildirimlerine ek olarak, masaüstü (macOS/Web) ve cihaz içi anlık bildirimler için Firestore `snapshots()` tabanlı reaktif koleksiyon yapısı işletilir.
+[app_router.dart](lib/core/router/app_router.dart) içindeki `_handleRedirect` her rota değişiminde `AuthBloc` durumunu dinler (`GoRouterRefreshStream`):
+
+1. **Kalkan 1 (Oturum Koruması):** Oturumu kapalı kullanıcı yalnızca `/splash`, `/login` ve `/register` rotalarına erişebilir; diğer tüm rotalar (ör. `/home`, `/pay/:requestId`, `/business/*`) `/login` ekranına yönlendirilir.
+2. **Kalkan 2 (Auth Yönlendirmesi):** Oturum açıkken `/login` veya `/register` açılmak istenirse `admin` kullanıcılar `/business/overview`, diğer roller `/home` rotasına yönlendirilir.
+3. **Kalkan 3 (B2B Erişim Kalkanı):** `b2c` rolündeki bireysel kullanıcılar `/business/*` rotalarının hiçbirine giremez (`!authState.canAccessBusinessPanel` → `/home`).
+4. **Kalkan 4 (Yönetici / Admin İzolasyonu):** `employee` rolü işletme genel bakışını ve masraf ekranını görebilse de yalnızca `admin` rolüne açık olan **KDV/Vergi Raporları** (`/business/reports`) ve **Toplu Masraf ERP Dekontu** (`/business/expenses/batch-approval`) rotalarına giremez (`!authState.canApproveExpenses` → `/business/overview`). Ayrıca masraf merkezinde onay/red kontrolleri rol bazlı kilitlenir.
 
 ---
 
-#### 🗺️ 3.3.2. Varlık İlişki Şeması (Entity-Relationship Diagram)
+## 📁 5. Bütüncül Klasör ve Modül Yapısı
+
+### Kök Dizin
+
+```text
+PayPulse/
+├── lib/                        # Uygulama kaynak kodları (Clean Architecture)
+├── test/                       # Unit, BLoC/Cubit, Repository ve Widget testleri
+├── assets/images/              # Marka logoları (paypulse_logo*.png)
+├── firestore.rules             # Sunucu tarafı Cloud Firestore güvenlik & atomiklik kuralları
+├── firestore.indexes.json      # Bileşik Firestore sorgu indeksleri
+├── firebase.json               # Firebase CLI & Emülatör yapılandırması
+├── test_security_rules.js      # Firestore Emulator üzerinde güvenlik kurallarını doğrulayan JS suite
+├── analysis_options.yaml       # Dart statik analiz ve lint kuralları
+└── pubspec.yaml                # Bağımlılıklar ve asset bildirimleri
+```
+
+### `lib/` Katmanları ve Klasör Görevleri
+
+```text
+lib/
+├── main.dart                               # Uygulama girişi, Firebase init (Live mod) ve MultiRepositoryProvider DI kökü
+├── firebase_options.dart                   # FlutterFire platform yapılandırma sabitleri
+│
+├── core/                                   # Tüm katmanların paylaştığı altyapı, sabitler ve yardımcılar
+│   ├── analytics_and_crashlytics/          # Firebase Analytics & Crashlytics sarmalayıcısı (PII filtrelenmiş)
+│   ├── config/                             # AppMode (macOS/Web -> localDemo, Android/iOS -> liveFirebase)
+│   ├── constants/                          # AppLimits (fraud eşiği, QR süre, POS komisyon), AppStrings, FirestoreCollections
+│   ├── errors/                             # AppException & Türkçe AuthErrorMessages haritalayıcısı
+│   ├── firebase_configuration/             # FirebaseCore başlatıcı (FirebaseConfigure)
+│   ├── formatters/                         # EmailInputFormatter, CardNumberInputFormatter, ExpiryDateInputFormatter, TurkishCurrencyInputFormatter
+│   ├── router/                             # AppRoutes sabitleri & AppRouter (ShellRoute + 4 RBAC Kalkanı + Deep Link)
+│   ├── theme/                              # AppColors (Light/Dark + Hero gradient), AppTextStyles, AppTheme (tema bildirimcisi)
+│   ├── utils/                              # Equatable, FinancialAmount (kuruş/yazı/komisyon), IbanGenerator, FirestoreSeeder
+│   └── validators/                         # AuthValidator (e-posta/şifre) & FinancialValidators (Luhn, MOD-97 IBAN, SKT, CVV, tutar)
+│
+├── domain/                                 # Saf Dart iş mantığı katmanı (Flutter/Firebase bağımlılığı YOKTUR)
+│   ├── entities/                           # 13 immutable iş nesnesi (11 dosya): User, Wallet, Transaction, Expense, Invoice,
+│   │                                       # PosTransaction, Company, Notification, PaymentRequest, SafeRecipient, Budget, BudgetCategory, SavingsGoal
+│   ├── repositories/                       # 9 soyut repository sözleşmesi (IUserRepository ... IBudgetRepository)
+│   └── use_cases/                          # 6 çekirdek iş kuralı: CalculateVatSummary, SubmitExpense, ApproveOrRejectExpense,
+│                                           # ExecuteFastTransfer, ExecutePosPayment, PayPaymentRequest
+│
+├── data/                                   # Veri erişimi, DTO dönüşümü ve platform kaynakları
+│   ├── datasources/remote/                 # FirebaseAuthDatasource, FirebaseFirestoreDatasource, FirebaseNotificationDatasource,
+│   │                                       # LocalDemoDataService (reaktif in-memory finansal simülatör)
+│   ├── models/                             # Firestore JSON <-> Domain Entity dönüşümü yapan 12 DTO sınıfı
+│   └── repositories/                       # I*Repository arayüzlerinin gerçek implementasyonları (toEntity / AppMode uyumlu)
+│
+└── presentation/                           # Stateless UI ekranları, paylaşılan bileşenler ve BLoC/Cubit durum yönetimi
+    ├── shell_navigation/                   # MainShellWrapperScreen: Konuma/role uygun 5'li alt navigasyon barı (B2C & B2B sekmeleri)
+    ├── widgets/                            # Ortak UI bileşenleri ve bildirim durumu
+    │   ├── bloc/                           # NotificationCubit (okunmamış sayaç ve canlı bildirim akışı)
+    │   └── *.dart                          # DarkGradientHeroCard, FourStateView, RoleSwitchAppBar (AuthPanelModeToggled + Demo Switch), WeeklyBarChart,
+    │                                       # BudgetDonutChart, CustomNumpadWidget, StatusBadgeWidget, ReceiptSummaryCardWidget, TransactionListTileWidget
+    └── screens/                            # Özellik bazlı ekran modülleri (her biri kendi bloc/ klasörüne sahiptir)
+        ├── splash_and_onboarding/          # SplashScreen & SplashCubit (animasyonlu açılış ve rota karar verici)
+        ├── auth/                           # LoginScreen, RegisterScreen, AuthBloc (Event/State), LoginFormCubit/RegisterFormCubit
+        ├── home_wallet_and_safe/           # HomeScreen (B2C cüzdan), BusinessSafeOverviewScreen (B2B kasa) + HomeWalletCubit, BusinessOverviewCubit
+        │                                   # home.dart & DevConsoleCubit (/developer-console Firebase Test Tezgahı)
+        ├── transfer/                       # 4 adımlı FAST akışı (Recipient -> Amount -> Summary / PayLink -> Receipt) + TransferCubit'ler
+        ├── qr_and_ocr/                     # QrPaymentCenterScreen, OcrCameraScannerScreen, OcrDataVerificationScreen, EInvoiceGibListScreen + Cubit'ler
+        ├── b2b_operations/                 # VirtualPosTerminalScreen, B2bExpenseApprovalCenterScreen, BulkExpenseErpReceiptScreen + Cubit'ler
+        ├── analytics_and_reports/          # TransactionHistoryScreen, BudgetAnalyticsScreen, TaxAndVatReportScreen + Cubit'ler
+        └── profile_and_cards/              # ProfileSettingsScreen, CardsManagementScreen + ProfileSettingsCubit, CardsManagementCubit
+```
+
+---
+
+## 🗄️ 6. Veri Modeli, Firestore Şeması ve Güvenlik Kuralları
+
+### Varlık İlişki Diyagramı
 
 ```mermaid
 erDiagram
-    USERS ||--|| WALLETS : "sahiptir (1:1)"
-    USERS }o--o| COMPANIES : "çalışanıdır (N:1)"
-    COMPANIES ||--|{ WALLETS : "şirket cüzdanı (1:1)"
-    COMPANIES ||--o{ EXPENSES : "masraf talepleri (1:N)"
-    USERS ||--o{ EXPENSES : "masraf oluşturur (1:N)"
-    USERS ||--o{ TRANSACTIONS : "gönderen / alıcı (1:N)"
-    COMPANIES ||--o{ PAYMENT_REQUESTS : "tahsilat talebi üretir (1:N)"
-    USERS ||--o{ NOTIFICATIONS : "bildirim alır (1:N)"
-    USERS ||--o| RECIPIENTS : "güvenli alıcı kaydı (1:1)"
+    USERS ||--|| WALLETS : "bireysel cuzdan"
+    USERS }o--o| COMPANIES : "calisani veya yoneticisi"
+    COMPANIES ||--|| WALLETS : "sirket kasasi"
+    COMPANIES ||--o{ EXPENSES : "masraf talepleri"
+    USERS ||--o{ EXPENSES : "fis yukler"
+    USERS ||--o{ TRANSACTIONS : "gonderen / alici"
+    COMPANIES ||--o{ PAYMENT_REQUESTS : "tahsilat linki / QR"
+    COMPANIES ||--o{ INVOICES : "e-fatura / e-arsiv"
+    COMPANIES ||--o{ POS_TRANSACTIONS : "sanal POS slipleri"
+    USERS ||--o{ NOTIFICATIONS : "bildirimler"
+    USERS ||--o| RECIPIENTS : "KVKK maskeli rehber"
+```
+
+### Firestore Koleksiyon Özeti (`FirestoreCollections`)
+
+| Koleksiyon | Amaç | Kritik Alanlar |
+| :--- | :--- | :--- |
+| `users` | Kullanıcı profilleri & rol yetkileri | `uid`, `name`, `email`, `role`, `companyId`, `customerNo`, `verificationLevel`, `iban`, `monthlyLimit`, `spentThisMonth`, `hasB2BAccess` |
+| `wallets` | Çoklu para birimli bakiyeler (`wallet_{ownerId}`) | `walletId`, `ownerId`, `balanceTl`, `balanceUsd`, `balanceEur` *(kuruş/cent `int`)*, `iban` |
+| `transactions` | Değiştirilemez finansal hareket defteri | `txId`, `senderId`, `receiverId`, `amount`, `currency`, `type`, `targetIban`, `isExpense`, `status`, `relatedId` |
+| `expenses` | Personel masraf fişleri ve onay süreci | `expenseId`, `employeeId`, `companyId`, `merchantTitle`, `category`, `amount`, `vatAmount`, `receiptImageUrl`, `status`, `rejectReason`, `accountingCode` |
+| `companies` | Tüzel kişi ve yönetici yetki listesi | `companyId`, `name`, `taxNumber`, `corporateIban`, `adminIds` |
+| `payment_requests` | QR / Ödeme linki (`/pay/:requestId`) talepleri | `requestId`, `merchantId`, `amount`, `currency`, `status`, `description`, `payerId`, `txId` |
+| `invoices` | GİB E-Fatura, E-Arşiv ve E-SMM kayıtları | `invoiceId`, `companyId`, `gibInvoiceNo`, `counterpartyName`, `isIncoming`, `documentType`, `totalAmount`, `vatAmount`, `withholdingRate`, `canPayWithFast` |
+| `pos_transactions` | Sanal POS tahsilat ve komisyon slipleri | `posTxId`, `terminalId`, `customerName`, `grossAmount`, `commissionRate`, `commissionAmount`, `netAmount`, `cardMasked` |
+| `budget_categories` | Kategori bazlı bütçe & kota hedefleri | `categoryId`, `title`, `spentAmount`, `allocatedAmount`, `percentage`, `colorHex`, `iconName` |
+| `savings_goals` | Kişisel birikim hedefleri | `id`, `title`, `targetAmount`, `currentAmount`, `deadline`, `iconName` |
+| `notifications` | Uygulama içi gerçek zamanlı bildirimler | `notificationId`, `userId`, `title`, `body`, `type`, `isRead`, `createdAt`, `relatedId` |
+| `recipients` | KVKK maskeli IBAN rehberi (`iban` ID) | `iban`, `userId`, `maskedName` |
+
+> **Sunucu Güvenliği (`firestore.rules`):** `wallets` güncellemelerinde negatif bakiye ve yetkisiz alan değişikliği engellenir; `expenses` onayı yalnızca ilgili şirketin `adminIds` listesinde bulunan kullanıcılara açıktır ve `walletChange` + `expenseLink` atomik bütünlüğü kural seviyesinde doğrulanır.
+
+---
+
+## 💻 7. Kurulum ve Çalıştırma (Demo & Live Mod)
+
+### Önkoşullar
+- **Flutter SDK:** `3.24+` *(doğrulanmış ortam: Flutter `3.47.7` / Dart `3.13.5`)*
+- **macOS Sunumu için:** macOS + Xcode Command Line Tools + CocoaPods
+- **Android Canlı Firebase için:** Android SDK / Emülatör + Google Play Services
+
+### Adım Adım Başlatma
+
+```bash
+# 1. Depoyu klonlayın
+git clone https://github.com/nokaygu/PayPulse.git
+cd PayPulse
+
+# 2. Paketleri indirin
+flutter pub get
+
+# 3. macOS Masaüstü (Local Demo Modu — APNs/Keychain gerekmeden anında sunum)
+flutter run -d macos
+
+# 4. Android Emülatör veya Cihaz (Live Firebase + FCM Modu)
+flutter run -d android
 ```
 
 ---
 
-#### 📂 3.3.3. Koleksiyon & Belge Detayları
+## 🎤 8. Sunum Rehberi (Jüri & Demo Day Akışı)
 
-##### 1. `users` (Kullanıcı Profilleri)
-* **Döküman ID:** `userId` (Firebase Auth UID)
-* **Açıklama:** Kullanıcının temel profilini, rolünü (`b2c`, `employee`, `admin`) ve varsa bağlı olduğu şirketi tutar.
+Sunum yapan kişi aşağıdaki hazır demo rollerini ve senaryo adımlarını takip ederek tüm sistemi **5 dakika içinde** uçtan uca gösterebilir:
 
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `uid` | `String` | Evet | Firebase Auth benzersiz kullanıcı kimliği (`"usr_12345"`) |
-| `name` | `String` | Evet | Kullanıcı tam adı (`"Ahmet Yılmaz"`) |
-| `email` | `String` | Evet | Kayıtlı e-posta adresi (`"ahmet@example.com"`) |
-| `role` | `String` | Evet | Kullanıcı rolü: `'b2c'` \| `'employee'` \| `'admin'` |
-| `companyId` | `String?` | Hayır | Bağlı olunan şirket kimliği (`"comp_softito"`). Yalnızca `employee`/`admin` için doludur. |
-| `fcmToken` | `String?` | Hayır | Cihaz push bildirim token'ı (Android FCM) |
-| `updatedAt` | `Timestamp?` | Hayır | Son profil güncellenme zamanı |
+### Hazır Demo Kullanıcıları (macOS / Web Demo Modu)
 
-```json
-{
-  "uid": "wJ27XkL998Z",
-  "name": "Ahmet Yılmaz",
-  "email": "ahmet.yilmaz@softito.com",
-  "role": "employee",
-  "companyId": "comp_tech_as",
-  "fcmToken": "fcm_token_device_abc123"
-}
+Giriş ekranındaki (`LoginScreen`) hızlı demo kartlarıyla tek tıkla oturum açılabilir veya oturum açıldıktan sonra üst bardaki ([role_switch_app_bar.dart](lib/presentation/widgets/role_switch_app_bar.dart)) rol değiştiriciden geçiş yapılabilir:
+
+| Demo Kartı | Rol | Başlangıç Bakiyesi | Öne Çıkan Akış |
+| :--- | :--- | :--- | :--- |
+| **Deniz Aksoy** | `b2c` (Bireysel) | `₺12.500,00` (`+ 500 USD`, `300 EUR`) | Çoklu döviz, FAST Transfer, QR, Kartlar, Bütçe |
+| **Ahmet Yılmaz** | `employee` (Çalışan) | `₺5.000,00` (Kişisel) | Fiş tarama/OCR gönderme, B2B salt okunur sınır kontrolü |
+| **Ali Yılmaz** | `admin` (Yönetici) | `₺10.000,00` Kişisel / `₺245.800,00` Şirket Kasası | Sanal POS, Masraf Onay/Ret, ERP Dekontu, E-Fatura, KDV-1 Raporu |
+
+> **Önerilen 4 Adımlı Canlı Demo Senaryosu:**
+> 1. **Açılış & B2C (`Deniz Aksoy`):** Splash geçişini gösterin → Ana sayfada `TRY/USD/EUR` sekme geçişi ve bakiye gizlemeyi gösterin → *Para Gönder* üzerinden **4 adımlı FAST transferini** çalıştırın (isterseniz `50.000 TL` üzeri tutar yazarak **Fraud Kalkanı** uyarısını tetikleyin) → *Profil → Kartlarım* üzerinden Luhn + SKT doğrulamalı yeni sanal kart oluşturun.
+> 2. **Çalışan & Yetki Kalkanı (`Ahmet Yılmaz`):** Üst bardan `Ahmet Yılmaz` rolüne geçin → İşletme panelinde **OCR Fiş Tarama** (`ocr-scan` → `ocr-verify`) akışıyla yeni masraf talebi gönderin → **Raporlar** sekmesine dokunduğunuzda GoRouter **Kalkan 4**'ün yetkisiz erişimi otomatik engellediğini gösterin.
+> 3. **Yönetici B2B & Finans (`Ali Yılmaz`):** Üst bardan `Ali Yılmaz` rolüne geçin → **Sanal POS** ekranında taksitli kart tahsilatı yapıp komisyon hesaplamasını (`%1,39`) ve slibini gösterin → **Masraflar** merkezinde az önce girilen fişi tek tıkla veya toplu onaylayıp **Toplu ERP Dekontu** üretin → **Raporlar** sekmesinde **KDV-1 Matrah & Ödenecek/Devreden KDV** hesabını ve **GİB E-Fatura** ekranını sergileyin.
+> 4. **Geliştirici Test Tezgahı (`/developer-console`):** Canlı Firebase / CRUD doğrulamalarını tek ekranda göstermek için Ana Sayfa üst barındaki geliştirici ikonuna (`Icons.developer_mode_rounded`) tıklayın.
+
+---
+
+## ✅ 9. Test ve Kalite Doğrulama
+
+Projedeki `test/` dizini `core`, `data`, `domain` ve `presentation` katmanlarını kapsayan **14 test dosyasından** oluşur:
+
+| Katman | Test Dosyaları | Kapsam |
+| :--- | :--- | :--- |
+| **`test/core/`** | `auth_error_messages_test.dart`, `auth_input_formatters_test.dart`, `auth_validator_test.dart`, `currency_and_card_formatters_test.dart`, `financial_validators_test.dart` | Firebase hata çevirisi, e-posta/kart/SKT/tutar formatlayıcılar, Luhn & MOD-97 IBAN, kuruş aritmetiği |
+| **`test/domain/`** | `use_cases_test.dart` | 6 çekirdek `UseCase` (KDV-1 özeti, masraf gönderimi, idempotent onay/ret, FAST & fraud eşiği, POS, ödeme linki) |
+| **`test/data/`** | `firebase_models_and_iban_test.dart`, `local_demo_data_service_test.dart`, `security_and_financial_rules_test.dart` | DTO serialization, `LocalDemoDataService` simülasyonları, KVKK maskelemesi, para birimi eşlemeleri |
+| **`test/presentation/`** | `auth_bloc_demo_login_test.dart`, `cubits_and_repositories_test.dart`, `four_state_view_test.dart`, `router_and_screens_widget_test.dart` | `AuthBloc` RBAC güvenliği, tüm ekran `Cubit`'leri + `ExpenseRepository` mapping, `FourStateView`, `AppRouter` 4 kalkanı, `Stateless` ekran testleri |
+| **Kök / Emülatör** | `test/widget_test.dart`, `test_security_rules.js` | Temel widget duman testi ve Firestore Emulator güvenlik kuralları suite'i |
+
+### Doğrulama Komutları
+
+```bash
+# Statik kod analizi
+flutter analyze --no-pub
+
+# Tüm birim ve widget testleri
+flutter test --no-pub
+
+# (Opsiyonel) Firestore Emulator ile güvenlik kuralları testi
+node test_security_rules.js
 ```
 
----
-
-##### 2. `wallets` (Bireysel ve Kurumsal Cüzdanlar)
-* **Döküman ID:** `wallet_{userId}` veya `wallet_{companyId}`
-* **Açıklama:** Kullanıcıların ve üye işyerlerinin çoklu para birimi bakiyelerini kuruş cinsinden tutar.
-
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `walletId` | `String` | Evet | Cüzdan ID (`"wallet_wJ27XkL998Z"`) |
-| `ownerId` | `String` | Evet | Cüzdan sahibi: `userId` veya `companyId` |
-| `balanceTl` | `int` | Evet | TL Bakiyesi (Kuruş cinsinden, örn: `150000` = 1.500,00 ₺) |
-| `balanceUsd` | `int` | Evet | USD Bakiyesi (Cent cinsinden, örn: `25000` = 250.00 $) |
-| `balanceEur` | `int` | Evet | EUR Bakiyesi (Cent cinsinden, örn: `10000` = 100.00 €) |
-| `iban` | `String?` | Hayır | Cüzdana tanımlı sanal IBAN (`"TR330006100511123456789012"`) |
-| `lastTxId` | `String?` | Hayır | Bakiye güncelleyen son işlem referansı |
-
-```json
-{
-  "walletId": "wallet_wJ27XkL998Z",
-  "ownerId": "wJ27XkL998Z",
-  "balanceTl": 245000,
-  "balanceUsd": 12050,
-  "balanceEur": 5000,
-  "iban": "TR330006100511123456789012"
-}
-```
+*Son doğrulamada (`flutter analyze --no-pub` ve `flutter test --no-pub`) sıfır analiz uyarısı ve 87 testin tamamında `%100` başarı elde edilmiştir.*
 
 ---
 
-##### 3. `recipients` (Güvenli Alıcı Dizini - KVKK Kalkanı)
-* **Döküman ID:** `iban` (Standart IBAN formatı, boşluksuz)
-* **Açıklama:** Para transferi ekranında karşı tarafın kullanıcı veya cüzdan dökümanı ifşa edilmeden teyit amaçlı maskelenmiş isim sorgulanmasını sağlar.
+## 👥 10. Ekip ve Sorumluluk Dağılımı
 
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `iban` | `String` | Evet | Hedef hesap IBAN numarası (`"TR330006100511123456789012"`) |
-| `userId` | `String` | Evet | IBAN sahibinin UID değeri |
-| `maskedName` | `String` | Evet | Maskelenmiş isim ve soyisim (`"A*** Y*****"`) |
+**SoftITO 4. Dönem Mobil — 3. Grup (6 Kişilik Geliştirme Takımı):**
 
-```json
-{
-  "iban": "TR330006100511123456789012",
-  "userId": "wJ27XkL998Z",
-  "maskedName": "A*** Y*****"
-}
-```
-
----
-
-##### 4. `transactions` (İşlem Geçmişi & Finansal Hareket Defteri)
-* **Döküman ID:** `txId` (`tx_fast_{timestamp}_{random}` veya `tx_pos_{timestamp}`)
-* **Açıklama:** Gerçekleşen tüm bakiye transferlerinin, QR/POS tahsilatlarının ve avans iadelerinin silinemez audit trail defteridir.
-
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `txId` | `String` | Evet | Benzersiz işlem takip numarası |
-| `senderId` | `String` | Evet | Gönderen tarafın `userId` veya `companyId`'si |
-| `receiverId` | `String` | Evet | Alıcı tarafın `userId` veya `companyId`'si |
-| `amount` | `int` | Evet | Transfer tutarı (Kuruş cinsinden, örn: `35000` = 350.00 ₺) |
-| `currency` | `String` | Evet | Para birimi: `'TRY'` \| `'USD'` \| `'EUR'` |
-| `timestamp` | `String / Timestamp`| Evet | İşlemin yapıldığı an (ISO-8601 string veya Firestore Timestamp) |
-| `type` | `String` | Evet | İşlem türü: `'fast'`, `'pos_payment'`, `'payment_link'`, `'wallet_deposit'`, `'expense_reimbursement'` |
-| `targetIban` | `String?` | Hayır | Transfer hedef IBAN bilgisi |
-
-```json
-{
-  "txId": "tx_fast_1731435600000_482",
-  "senderId": "wJ27XkL998Z",
-  "receiverId": "comp_tech_as",
-  "amount": 45000,
-  "currency": "TRY",
-  "timestamp": "2026-11-12T18:20:00.000Z",
-  "type": "fast",
-  "targetIban": "TR120006100511987654321098"
-}
-```
-
----
-
-##### 5. `expenses` (Şirket Personel Masraf & Fiş Yönetimi)
-* **Döküman ID:** `expenseId` (`exp_{timestamp}_{random}`)
-* **Açıklama:** Çalışanların yüklediği harcama fişlerinin, KDV tutarlarının ve yönetici onay/red yaşam döngüsünün yönetildiği koleksiyon.
-
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `expenseId` | `String` | Evet | Benzersiz masraf fiş kimliği |
-| `employeeId`| `String` | Evet | Masrafı giren personelin UID'si |
-| `companyId` | `String` | Evet | Personelin bağlı olduğu şirket kimliği |
-| `amount` | `int` | Evet | Toplam masraf tutarı (Kuruş cinsinden) |
-| `vatAmount` | `int` | Evet | KDV tutarı (Kuruş cinsinden) |
-| `receiptImageUrl`| `String` | Evet | Firebase Storage'daki makbuz/fiş görsel URL'i |
-| `status` | `String` | Evet | Masraf durumu: `'pending'` \| `'approved'` \| `'rejected'` |
-| `rejectReason` | `String?` | Hayır | Yönetici reddetmişse açıklama metni |
-
-```json
-{
-  "expenseId": "exp_1731439200000_12",
-  "employeeId": "wJ27XkL998Z",
-  "companyId": "comp_tech_as",
-  "amount": 75000,
-  "vatAmount": 15000,
-  "receiptImageUrl": "https://firebasestorage.googleapis.com/.../receipt_789.jpg",
-  "status": "pending",
-  "rejectReason": null
-}
-```
-
----
-
-##### 6. `companies` (KOBİ / Üye İşyeri Kurumsal Bilgileri)
-* **Döküman ID:** `companyId` (Örn: `comp_tech_as`)
-* **Açıklama:** B2B modülü kapsamındaki tüzel kişilikler, vergi no, şirket IBAN'ı ve yönetim yetkisine sahip kullanıcı listesi.
-
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `companyId` | `String` | Evet | Şirket kimliği (`"comp_tech_as"`) |
-| `name` | `String` | Evet | Şirket ticari unvanı (`"Tech A.Ş."`) |
-| `taxNumber` | `String` | Evet | 10 haneli Vergi Kimlik Numarası (`"1234567890"`) |
-| `corporateIban` | `String` | Evet | Şirket ana ticari IBAN'ı |
-| `adminIds` | `List<String>` | Evet | Şirket adına onay ve yönetim yetkisi olan UID listesi |
-
-```json
-{
-  "companyId": "comp_tech_as",
-  "name": "SoftITO FinTech Çözümleri A.Ş.",
-  "taxNumber": "9876543210",
-  "corporateIban": "TR550006100511888888888888",
-  "adminIds": ["admin_uid_001", "admin_uid_002"]
-}
-```
-
----
-
-##### 7. `payment_requests` (Dinamik Tahsilat & Ödeme Linkleri / QR)
-* **Döküman ID:** `requestId` (`payreq_{timestamp}_{random}`)
-* **Açıklama:** Üye işyerinin sanal POS veya link ile tahsilat için ürettiği dinamik ödeme talepleri.
-
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `requestId` | `String` | Evet | Benzersiz ödeme talep kimliği |
-| `merchantId`| `String` | Evet | Tahsilatı talep eden işletme (`companyId`) |
-| `amount` | `int` | Evet | Talep edilen tahsilat tutarı (Kuruş cinsinden) |
-| `currency` | `String` | Evet | Para birimi (`'TRY'`) |
-| `status` | `String` | Evet | Talep durumu: `'pending'` \| `'completed'` \| `'cancelled'` |
-| `description`| `String` | Evet | Hizmet / ürün açıklaması (`"Yazılım Danışmanlık Bedeli"`) |
-| `payerId` | `String?` | Hayır | Ödemeyi tamamlayan kullanıcının UID'si |
-| `completedAt`| `Timestamp?` | Hayır | Ödemenin tamamlandığı zaman damgası |
-
-```json
-{
-  "requestId": "payreq_1731442800000_99",
-  "merchantId": "comp_tech_as",
-  "amount": 120000,
-  "currency": "TRY",
-  "status": "pending",
-  "description": "Kasım Ayı Sunucu Lisans Bedeli"
-}
-```
-
----
-
-##### 8. `notifications` (Uygulama İçi Canlı Bildirimler)
-* **Döküman ID:** `notificationId` (`notif_{type}_{relatedId}_{userId}`)
-* **Açıklama:** Çapraz platform uyumlu (macOS, iOS, Android, Web) gerçek zamanlı kullanıcı bildirimleri.
-
-| Alan Adı | Tip | Zorunlu? | Açıklama / Örnek Değer |
-| :--- | :--- | :---: | :--- |
-| `notificationId` | `String` | Evet | Deterministik bildirim kimliği (Mükerrer bildirimi önler) |
-| `userId` | `String` | Evet | Bildirimin muhatabı olan kullanıcının UID'si |
-| `title` | `String` | Evet | Bildirim başlığı (`"Para Transferi Geldi"`) |
-| `body` | `String` | Evet | Bildirim gövde metni (`"Ahmet Yılmaz size 450,00 ₺ gönderdi."`) |
-| `type` | `String` | Evet | Tür: `'transfer_received'`, `'expense_created'`, `'expense_approved'`, `'expense_rejected'`, `'fraud_alert'`, `'general'` |
-| `isRead` | `bool` | Evet | Okundu durumu (Varsayılan: `false`) |
-| `createdAt` | `Timestamp` | Evet | Bildirim oluşturulma zamanı |
-| `relatedId` | `String?` | Hayır | İlgili `txId`, `expenseId` veya `requestId` referansı |
-
-```json
-{
-  "notificationId": "notif_transfer_tx123_usr456",
-  "userId": "usr456",
-  "title": "FAST Transferi Geldi",
-  "body": "Ahmet Yılmaz hesabınıza 450,00 ₺ FAST transferi yaptı.",
-  "type": "transfer_received",
-  "isRead": false,
-  "createdAt": "2026-11-12T18:25:00.000Z",
-  "relatedId": "tx_fast_1731435600000_482"
-}
-```
-
----
-
-##### 9. `test_users` (Entegrasyon & Smoke Test Dökümanları)
-* **Döküman ID:** `uid` (Test kullanıcısı UID)
-* **Açıklama:** Otomasyon ve birim/entegrasyon testlerinin canlı prod verilerini kirletmeden çalıştığı izole test alanı.
-
----
-
-#### 🔒 3.3.4. Firestore Güvenlik Kuralları (Security Rules) Özeti
-* **Kişisel Veri İzolasyonu:** `users` dökümanları yalnızca belgenin sahibi olan `auth.uid` tarafından okunabilir. Başka kullanıcıların profil veya FCM token bilgileri sorgulanamaz.
-* **Bakiye Koruma ve Atomiklik:** Cüzdan bakiyeleri hiçbir koşulda negatife düşemez (`balance >= 0`). Para çıkışı yalnızca cüzdan sahibinin bakiyeyi azaltmasıyla; bakiye artışı ise yalnızca atomik transaction eşliğinde `lastTxId` doğrulamasıyla yapılabilir.
-* **Şirket Yetkilendirmesi:** `expenses` onayı ve `payment_requests` oluşturulması yalnızca `companies.adminIds` listesinde kayıtlı yöneticiler tarafından gerçekleştirilebilir. Çalışanlar onaylanmış veya bekleyen masraf tutarını sonradan değiştiremez.
-* **Denetim İzi (Audit Trail):** `transactions` koleksiyonuna sadece ekleme yapılabilir (`allow create`); finansal geçmiş üzerinde güncelleme veya silme işlemi kurallarla tamamen engellenmiştir (`allow update, delete: if false`).
-
-### 🔗 3.4. GitHub Repository & Sprint Takip Bilgileri
-- **GitHub Repo Linki:** `https://github.com/nokaygu/PayPulse`
-- **Sprint 1 (09 - 10 Kasım):** Mimari kurulum, modeller, auth ve temel ekran iskeletleri.
-- **Sprint 2 (11 - 12 Kasım):** Çift yönlü rollerin canlı bağlanması, Storage, FCM, 4 durum kalkanı ve testler.
-- **Demo Day (13 Kasım):** Canlı emülatör/cihaz sunumu ve jüri değerlendirmesi.
-
----
-
-## 💻 4. macOS & Jüri Sunumu Kurulum Kılavuzu (Mac Quickstart)
-
-Projeyi herhangi bir macOS bilgisayarda jüri sunumu veya geliştirme amacıyla sorunsuz çalıştırmak için aşağıdaki adımları sırasıyla uygulayınız:
-
-### 4.1. Önkoşullar
-- **macOS:** macOS Sonoma veya Sequoia
-- **Flutter SDK:** 3.24.x veya üzeri (önerilen: 3.27.x)
-- **Xcode:** Xcode 15+ ve Xcode Command Line Tools (`xcode-select --install`)
-- **CocoaPods:** `brew install cocoapods` veya `sudo gem install cocoapods`
-- **Git**
-
-### 4.2. Adım Adım Kurulum
-
-1. **Projeyi Çekin ve Dizinine Geçin:**
-   ```bash
-   git clone https://github.com/nokaygu/PayPulse.git
-   cd PayPulse
-   ```
-
-2. **Flutter Bağımlılıklarını İndirin:**
-   ```bash
-   flutter pub get
-   ```
-
-3. **macOS Pod Bağımlılıklarını Kurun:**
-   ```bash
-   cd macos
-   pod install
-   cd ..
-   ```
-
-4. **Uygulamayı macOS Desktop Üzerinde Çalıştırın:**
-   ```bash
-   flutter run -d macos
-   ```
-
-5. **Android Emülatör Üzerinde Çalıştırmak İçin:**
-   ```bash
-   flutter run -d android
-   ```
-
-### 4.3. Sunum & Jüri Notları
-- **Apple Developer & APNs Koruması:** Projede Apple Developer lisansı bulunmadığından, macOS ve iOS üzerinde push bildirim servisleri (`APNs`) kod seviyesinde güvenle pasife alınmıştır; uygulamanın açılışını veya Firebase Auth/Firestore işlemlerini kesinlikle engellemez.
-- **Android FCM Bildirimleri:** Push bildirimleri gerçek Android cihaz ve emülatöründe Google Play Services ile tam aktif çalışmaktadır.
-- **Firebase Test Konsolu (Workbench):** Jüri sunumu sırasında canlı Firebase Firestore işlemlerini (gerçek atomik FAST transferi, bakiye sorgulama, masraf onaylama ve canlı Stream'ler) tek ekranda göstermek için Ana Ekranın sağ üst köşesindeki **Geliştirici İkonuna (`Icons.developer_mode_rounded`)** tıklayabilirsiniz.
-
----
-*Belge Oluşturuldu: 2026-11-09 — Antigravity E-Mektep & SoftITO Mobil Büyük Teslim Projeleri Sistemi*
+- **Berat Atmaca** — *Team Lead & Core Architecture*: `core/` altyapısı, `GoRouter` Rol Kalkanları ve `ShellNavigation`.
+- **Shahd Mohamed Ragab** — *UI / UX & Design System Lead*: Material 3 tema sistemi (`#0D1F2D` → `#12353C`, `#10B981`), özel grafik widget'ları (`BudgetDonutChart`, `WeeklyBarChart`), Bütçe, Profil ve KDV Raporu arayüzleri.
+- **Abdullah Belli** — *Network, API & Firebase Lead*: Firebase Auth, Cloud Firestore atomik işlemleri, Firebase Storage ve Android FCM altyapısı.
+- **Betül Zağlı** — *Data Models & DTO Lead*: Domain Entity'ler, JSON/DTO modelleri (`toEntity`/`fromEntity`), `FirestoreCollections`, `FirestoreSeeder`, İşlem Geçmişi ve E-Fatura modülü.
+- **Eren Türkmen** — *State Management & Logic Lead*: `AuthBloc`, BLoC/Cubit akışları, `Domain UseCase` bağlantıları ve reaktif stream yönetimi.
+- **Hasbiyenur Çoban** — *Feature Screens & QA / Test Lead*: Form doğrulamaları, `FourStateView`, Sanal POS, Masraf Onay, Transfer ekranları ve test altyapısı.

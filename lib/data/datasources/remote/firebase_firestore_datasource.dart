@@ -3,16 +3,22 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/analytics_and_crashlytics/app_analytics_service.dart';
 import '../../../core/config/app_mode.dart';
 import '../../../core/constants/firestore_collections.dart';
+import '../../../core/utils/firestore_seeder.dart';
+import '../../models/budget_category_model.dart';
 import '../../models/company_model.dart';
+import '../../models/einvoice_model.dart';
 import '../../models/expense_model.dart';
 import '../../models/notification_model.dart';
 import '../../models/payment_request_model.dart';
+import '../../models/pos_transaction_model.dart';
 import '../../models/safe_recipient_model.dart';
+import '../../models/savings_goal_model.dart';
 import '../../models/transaction_model.dart';
 import '../../models/user_model.dart';
 import '../../models/wallet_model.dart';
@@ -64,10 +70,36 @@ class FirebaseFirestoreDatasource {
   // =========================================================================
 
   Future<void> createUserProfile(UserModel user) async {
+    if (AppMode.isDemoMode) {
+      LocalDemoDataService.instance.upsertUserProfile(user);
+      return;
+    }
+
     await _firestore
         .collection(FirestoreCollections.users)
         .doc(user.uid)
         .set(user.toJson());
+  }
+
+  Future<void> updateUserProfile(UserModel user) async {
+    if (AppMode.isDemoMode) {
+      LocalDemoDataService.instance.upsertUserProfile(user);
+      return;
+    }
+
+    await _firestore
+        .collection(FirestoreCollections.users)
+        .doc(user.uid)
+        .set(user.toJson(), SetOptions(merge: true));
+  }
+
+  Future<List<UserModel>> getAllUsers() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getAllUsers();
+    }
+
+    final snapshot = await _firestore.collection(FirestoreCollections.users).get();
+    return snapshot.docs.map((d) => UserModel.fromJson(d.data())).toList();
   }
 
   Future<UserModel?> getUserProfile(String uid) async {
@@ -129,10 +161,44 @@ class FirebaseFirestoreDatasource {
   // =========================================================================
 
   Future<void> createWallet(WalletModel wallet) async {
+    if (AppMode.isDemoMode) {
+      LocalDemoDataService.instance.createWallet(wallet);
+      return;
+    }
+
     await _firestore
         .collection(FirestoreCollections.wallets)
         .doc(wallet.walletId)
         .set(wallet.toJson());
+  }
+
+  Future<void> updateWallet(WalletModel wallet) async {
+    if (AppMode.isDemoMode) {
+      LocalDemoDataService.instance.updateWallet(wallet);
+      return;
+    }
+
+    await _firestore
+        .collection(FirestoreCollections.wallets)
+        .doc(wallet.walletId)
+        .set(wallet.toJson(), SetOptions(merge: true));
+  }
+
+  Future<List<WalletModel>> getAllWallets() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getAllWallets();
+    }
+
+    final snapshot =
+        await _firestore.collection(FirestoreCollections.wallets).get();
+    return snapshot.docs.map((d) => WalletModel.fromJson(d.data())).toList();
+  }
+
+  Future<WalletModel?> getUserWallet(String userId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getUserWallet(userId);
+    }
+    return getWallet('wallet_$userId');
   }
 
   Future<WalletModel?> getWallet(String walletId) async {
@@ -460,7 +526,23 @@ class FirebaseFirestoreDatasource {
     return TransactionModel.fromJson(document.data()!);
   }
 
+  Future<List<TransactionModel>> getAllTransactions() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getAllTransactions();
+    }
+
+    final snapshot =
+        await _firestore.collection(FirestoreCollections.transactions).get();
+    return snapshot.docs
+        .map((doc) => TransactionModel.fromJson(doc.data()))
+        .toList();
+  }
+
   Future<List<TransactionModel>> getSentTransactions(String userId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getSentTransactions(userId);
+    }
+
     final snapshot = await _firestore
         .collection(FirestoreCollections.transactions)
         .where('senderId', isEqualTo: userId)
@@ -468,6 +550,20 @@ class FirebaseFirestoreDatasource {
 
     return snapshot.docs
         .map((doc) => TransactionModel.fromJson(doc.data()))
+        .toList();
+  }
+
+  Future<List<SafeRecipientModel>> getSavedRecipients() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getSavedRecipients();
+    }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.recipients)
+        .limit(20)
+        .get();
+    return snapshot.docs
+        .map((doc) => SafeRecipientModel.fromJson(doc.data()))
         .toList();
   }
 
@@ -559,10 +655,20 @@ class FirebaseFirestoreDatasource {
       );
     }
 
+    var storedExpense = expense;
+    final imgPath = expense.receiptImageUrl.trim();
+    if (imgPath.isNotEmpty && !imgPath.startsWith('http')) {
+      final uploadedUrl = await uploadReceiptImage(
+        localFilePath: imgPath,
+        expenseId: expense.expenseId,
+      );
+      storedExpense = expense.copyWith(receiptImageUrl: uploadedUrl);
+    }
+
     await _firestore
         .collection(FirestoreCollections.expenses)
-        .doc(expense.expenseId)
-        .set(expense.toJson());
+        .doc(storedExpense.expenseId)
+        .set(storedExpense.toJson());
 
     // Şirket yöneticilerine yeni masraf bildirimi oluşturma (Deterministik ID)
     try {
@@ -594,6 +700,39 @@ class FirebaseFirestoreDatasource {
     } catch (e) {
       debugPrint('Masraf oluşturma bildirimi hatası: $e');
     }
+  }
+
+  Future<String> uploadReceiptImage({
+    required String localFilePath,
+    required String expenseId,
+  }) async {
+    if (AppMode.isDemoMode) {
+      return localFilePath;
+    }
+
+    try {
+      final file = File(localFilePath);
+      if (!await file.exists()) return localFilePath;
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('receipts')
+          .child('$expenseId.jpg');
+      await ref.putFile(file);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Fiş görseli Storage yüklemesi atlandı: $e');
+      return localFilePath;
+    }
+  }
+
+  Future<List<ExpenseModel>> getAllExpenses() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getAllExpenses();
+    }
+
+    final snapshot =
+        await _firestore.collection(FirestoreCollections.expenses).get();
+    return snapshot.docs.map((d) => ExpenseModel.fromJson(d.data())).toList();
   }
 
   Future<ExpenseModel?> getExpense(String expenseId) async {
@@ -903,10 +1042,25 @@ class FirebaseFirestoreDatasource {
   // =========================================================================
 
   Future<void> createCompany(CompanyModel company) async {
+    if (AppMode.isDemoMode) {
+      LocalDemoDataService.instance.createCompany(company);
+      return;
+    }
+
     await _firestore
         .collection(FirestoreCollections.companies)
         .doc(company.companyId)
         .set(company.toJson());
+  }
+
+  Future<List<CompanyModel>> getAllCompanies() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getAllCompanies();
+    }
+
+    final snapshot =
+        await _firestore.collection(FirestoreCollections.companies).get();
+    return snapshot.docs.map((d) => CompanyModel.fromJson(d.data())).toList();
   }
 
   Future<CompanyModel?> getCompany(String companyId) async {
@@ -942,6 +1096,15 @@ class FirebaseFirestoreDatasource {
     required int amountKurus,
     String currency = 'TRY',
   }) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.executeQrWalletPayment(
+        companyId: companyId,
+        payerUserId: payerUserId,
+        amountKurus: amountKurus,
+        currency: currency,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.uid != payerUserId) {
       throw StateError(
@@ -1080,14 +1243,50 @@ class FirebaseFirestoreDatasource {
     return record;
   }
 
+  Future<List<PosTransactionModel>> getPosTransactions(String companyId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getPosTransactions(companyId);
+    }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.posTransactions)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      return FirestoreSeeder.mockPosTransactions;
+    }
+    return snapshot.docs
+        .map((d) => PosTransactionModel.fromJson(d.data()))
+        .toList();
+  }
+
   Future<void> createPaymentRequest(PaymentRequestModel request) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.createPaymentRequest(request);
+    }
+
     await _firestore
         .collection(FirestoreCollections.paymentRequests)
         .doc(request.requestId)
         .set(request.toJson());
   }
 
+  Future<List<PaymentRequestModel>> getAllPaymentRequests() async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getAllPaymentRequests();
+    }
+
+    final snapshot =
+        await _firestore.collection(FirestoreCollections.paymentRequests).get();
+    return snapshot.docs
+        .map((d) => PaymentRequestModel.fromJson(d.data()))
+        .toList();
+  }
+
   Future<PaymentRequestModel?> getPaymentRequest(String requestId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getPaymentRequest(requestId);
+    }
+
     final document = await _firestore
         .collection(FirestoreCollections.paymentRequests)
         .doc(requestId)
@@ -1106,6 +1305,13 @@ class FirebaseFirestoreDatasource {
     required String requestId,
     required String payerUserId,
   }) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.completePaymentRequestWithWallet(
+        requestId: requestId,
+        payerUserId: payerUserId,
+      );
+    }
+
     final currentUser = _auth.currentUser;
     if (currentUser == null || currentUser.uid != payerUserId) {
       throw StateError(
@@ -1226,10 +1432,95 @@ class FirebaseFirestoreDatasource {
 
   /// Yeni bildirim oluşturur. Deterministik ID kullanımı sayesinde mükerrer bildirim engellenir.
   Future<void> createNotification(NotificationModel notification) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.createNotification(notification);
+    }
+
     await _firestore
         .collection(FirestoreCollections.notifications)
         .doc(notification.notificationId)
         .set(notification.toJson(), SetOptions(merge: true));
+  }
+
+  Future<void> markAllNotificationsAsRead(String userId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.markAllNotificationsAsRead(userId);
+    }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.notifications)
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .get();
+    final batch = _firestore.batch();
+    for (final doc in snapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
+  }
+
+  // =========================================================================
+  // 10. BÜTÇE, BİRİKİM HEDEFİ VE E-FATURA SORGULARI
+  // =========================================================================
+
+  Future<List<BudgetCategoryModel>> getBudgetCategories({
+    required String userId,
+    required String period,
+  }) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getBudgetCategories(period);
+    }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.budgetCategories)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      return LocalDemoDataService.instance.getBudgetCategories(period);
+    }
+    return snapshot.docs
+        .map((d) => BudgetCategoryModel.fromJson(d.data()))
+        .toList();
+  }
+
+  Future<SavingsGoalModel?> getSavingsGoal({required String userId}) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getSavingsGoal();
+    }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.savingsGoals)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      return FirestoreSeeder.mockSavingsGoal;
+    }
+    return SavingsGoalModel.fromJson(snapshot.docs.first.data());
+  }
+
+  Future<List<EInvoiceModel>> getInvoices({required String companyId}) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.getInvoices(companyId);
+    }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.invoices)
+        .where('companyId', isEqualTo: companyId)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      return FirestoreSeeder.mockInvoices;
+    }
+    return snapshot.docs.map((d) => EInvoiceModel.fromJson(d.data())).toList();
+  }
+
+  Future<void> markInvoicePaid(String invoiceId) async {
+    if (AppMode.isDemoMode) {
+      return LocalDemoDataService.instance.markInvoicePaid(invoiceId);
+    }
+
+    await _firestore
+        .collection(FirestoreCollections.invoices)
+        .doc(invoiceId)
+        .set({'isPaid': true, 'canPayWithFast': false}, SetOptions(merge: true));
   }
 
   /// Kullanıcının bildirimlerini gerçek zamanlı dinler (En yeniden en eskiye).

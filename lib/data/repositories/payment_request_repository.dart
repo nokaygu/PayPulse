@@ -1,41 +1,44 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-import '../../core/constants/firestore_collections.dart';
+import '../../domain/entities/payment_request_entity.dart';
+import '../../domain/entities/transaction_entity.dart';
 import '../../domain/repositories/i_payment_request_repository.dart';
 import '../datasources/remote/firebase_firestore_datasource.dart';
 import '../models/payment_request_model.dart';
 
 class PaymentRequestRepository implements IPaymentRequestRepository {
   final FirebaseFirestoreDatasource _firestoreDatasource;
-  final FirebaseFirestore _firestore;
 
-  PaymentRequestRepository({
-    FirebaseFirestoreDatasource? firestoreDatasource,
-    FirebaseFirestore? firestore,
-  }) : _firestoreDatasource =
-           firestoreDatasource ?? FirebaseFirestoreDatasource(),
-       _firestore = firestore ?? FirebaseFirestore.instance;
+  PaymentRequestRepository({FirebaseFirestoreDatasource? firestoreDatasource})
+    : _firestoreDatasource =
+          firestoreDatasource ?? FirebaseFirestoreDatasource();
 
   @override
-  Future<List<PaymentRequestModel?>> getAllPaymentRequest() async {
-    try {
-      final snapshot = await _firestore
-          .collection(FirestoreCollections.paymentRequests)
-          .get();
-      return snapshot.docs
-          .map((doc) => PaymentRequestModel.fromJson(doc.data()))
-          .toList();
-    } catch (_) {
-      rethrow;
-    }
+  Future<List<PaymentRequestEntity>> getAllPaymentRequests() async {
+    final list = await _firestoreDatasource.getAllPaymentRequests();
+    return list.map((r) => r.toEntity()).toList();
   }
 
   @override
-  Future<PaymentRequestModel?> getPaymentRequestById(String requestId) async {
-    try {
-      return await _firestoreDatasource.getPaymentRequest(requestId);
-    } catch (_) {
-      return null;
-    }
+  Future<PaymentRequestEntity?> getPaymentRequestById(String requestId) async {
+    final model = await _firestoreDatasource.getPaymentRequest(requestId);
+    return model?.toEntity();
+  }
+
+  @override
+  Future<void> createPaymentRequest(PaymentRequestEntity request) {
+    return _firestoreDatasource.createPaymentRequest(
+      PaymentRequestModel.fromEntity(request),
+    );
+  }
+
+  @override
+  Future<TransactionEntity> completePaymentRequestWithWallet({
+    required String requestId,
+    required String payerUserId,
+  }) async {
+    final tx = await _firestoreDatasource.completePaymentRequestWithWallet(
+      requestId: requestId,
+      payerUserId: payerUserId,
+    );
+    return tx.toEntity();
   }
 }

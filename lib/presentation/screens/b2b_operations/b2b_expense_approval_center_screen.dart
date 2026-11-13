@@ -2,50 +2,382 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/models/expense_model.dart';
-import '../auth/bloc/auth_bloc.dart';
+import '../../../core/utils/financial_amount.dart';
+import '../../../domain/entities/expense_entity.dart';
+import '../../../domain/repositories/i_expense_repository.dart';
+import '../../widgets/four_state_view.dart';
 import '../../widgets/role_switch_app_bar.dart';
+import '../auth/bloc/auth_bloc.dart';
+import '../auth/bloc/auth_state.dart';
+import 'bloc/expense_approval_cubit.dart';
+import 'bulk_expense_erp_receipt_screen.dart';
 
-/// Görsel 8: Personel Masraf Onay Merkezi Ekranı
-class B2bExpenseApprovalCenterScreen extends StatefulWidget {
+/// Personel Masraf Onay Merkezi Ekranı (Stateless + ExpenseApprovalCubit + ApproveOrRejectExpenseUseCase)
+class B2bExpenseApprovalCenterScreen extends StatelessWidget {
   const B2bExpenseApprovalCenterScreen({super.key});
 
   @override
-  State<B2bExpenseApprovalCenterScreen> createState() =>
-      _B2bExpenseApprovalCenterScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider<ExpenseApprovalCubit>(
+      create: (ctx) {
+        final companyId =
+            ctx.read<AuthBloc>().state.user?.companyId ??
+            AppStrings.defaultCompanyId;
+        return ExpenseApprovalCubit(
+          expenseRepository: ctx.read<IExpenseRepository>(),
+        )..watchCompany(companyId);
+      },
+      child: const _ExpenseApprovalBody(),
+    );
+  }
 }
 
-class _B2bExpenseApprovalCenterScreenState
-    extends State<B2bExpenseApprovalCenterScreen> {
-  int _selectedTab =
-      0; // 0: Bekleyenler, 1: Onaylananlar, 2: Reddedilenler
-  final FirebaseFirestoreDatasource _firestoreDatasource =
-      FirebaseFirestoreDatasource();
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String _selectedCategoryFilter = 'Tümü';
-  String _selectedSort = 'Tarih (En Yeni)';
+class _ExpenseApprovalBody extends StatelessWidget {
+  const _ExpenseApprovalBody();
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final cubit = context.read<ExpenseApprovalCubit>();
+
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listenWhen: (prev, curr) =>
+              prev.user?.companyId != curr.user?.companyId,
+          listener: (ctx, authState) {
+            ctx.read<ExpenseApprovalCubit>().watchCompany(
+              authState.user?.companyId ?? AppStrings.defaultCompanyId,
+            );
+          },
+        ),
+        BlocListener<ExpenseApprovalCubit, ExpenseApprovalState>(
+          listenWhen: (prev, curr) =>
+              prev.actionMessage != curr.actionMessage &&
+              curr.actionMessage != null,
+          listener: (ctx, state) {
+            final msg = state.actionMessage;
+            if (msg == null) return;
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              SnackBar(
+                content: Text(msg),
+                backgroundColor: state.isErrorAction
+                    ? AppColors.expenseRed
+                    : AppColors.primaryTeal,
+              ),
+            );
+            ctx.read<ExpenseApprovalCubit>().clearActionMessage();
+          },
+        ),
+      ],
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: const RoleSwitchAppBar(isBusinessMode: true),
+        body: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, authState) {
+            final canApprove = authState.canApproveExpenses;
+            final actorId = authState.user?.uid ?? '';
+            final actorName =
+                authState.user?.name ?? 'Şirket Finans Yöneticisi';
+
+            return BlocBuilder<ExpenseApprovalCubit, ExpenseApprovalState>(
+              builder: (context, state) {
+                return RefreshIndicator(
+                  onRefresh: cubit.refresh,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Başlık Satırı
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'KURUMSAL FİNANS',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: const Color(0xFF64748B),
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Masraf Onay Merkezi',
+                                  style: AppTextStyles.headlineMedium.copyWith(
+                                    color: AppColors.darkNavy,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: canApprove
+                                    ? const Color(0xFFD1FAE5)
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                canApprove
+                                    ? 'Onay Yetkili'
+                                    : 'Görüntüleme Modu',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: canApprove
+                                      ? const Color(0xFF065F46)
+                                      : const Color(0xFF64748B),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Sekme Çipleri (Bekleyenler | Onaylananlar | Reddedilenler)
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _TabPill(
+                                label:
+                                    'Bekleyenler (${state.pendingExpenses.length})',
+                                isSelected:
+                                    state.selectedTab ==
+                                    ExpenseTabFilter.pending,
+                                onTap: () =>
+                                    cubit.setTab(ExpenseTabFilter.pending),
+                              ),
+                              const SizedBox(width: 8),
+                              _TabPill(
+                                label:
+                                    'Onaylananlar (${state.approvedExpenses.length})',
+                                isSelected:
+                                    state.selectedTab ==
+                                    ExpenseTabFilter.approved,
+                                onTap: () =>
+                                    cubit.setTab(ExpenseTabFilter.approved),
+                              ),
+                              const SizedBox(width: 8),
+                              _TabPill(
+                                label:
+                                    'Reddedilenler (${state.rejectedExpenses.length})',
+                                isSelected:
+                                    state.selectedTab ==
+                                    ExpenseTabFilter.rejected,
+                                onTap: () =>
+                                    cubit.setTab(ExpenseTabFilter.rejected),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Arama + Kategori Filtresi
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: cubit.searchController,
+                                  onChanged: cubit.setSearchQuery,
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'Personel, işyeri veya muhasebe kodu ara...',
+                                    hintStyle: AppTextStyles.bodySmall.copyWith(
+                                      color: const Color(0xFF94A3B8),
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.search_rounded,
+                                      size: 20,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    suffixIcon:
+                                        state.searchQuery.isNotEmpty ||
+                                            state.selectedCategory != 'Tümü'
+                                        ? IconButton(
+                                            icon: const Icon(
+                                              Icons.close_rounded,
+                                              size: 18,
+                                            ),
+                                            onPressed: cubit.resetFilters,
+                                          )
+                                        : null,
+                                    fillColor: Colors.transparent,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () => _showFilterDialog(context, state),
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: state.selectedCategory != 'Tümü'
+                                      ? const Color(0xFFD1FAE5)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: state.selectedCategory != 'Tümü'
+                                        ? AppColors.primaryTeal
+                                        : const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.tune_rounded,
+                                  size: 20,
+                                  color: state.selectedCategory != 'Tümü'
+                                      ? const Color(0xFF0F766E)
+                                      : AppColors.darkNavy,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 1. Bekleyen Toplam Tutar Koyu Kartı (Gerçek Toplam + Toplu Onay)
+                        _PendingSummaryHeroCard(
+                          state: state,
+                          canApprove: canApprove,
+                          onBulkApprove: () async {
+                            final approved = await cubit.approveAllPending(
+                              actorRole: authState.role,
+                              actorId: actorId,
+                            );
+                            if (approved != null &&
+                                approved.isNotEmpty &&
+                                context.mounted) {
+                              context.push(
+                                AppRoutes.businessBatchApproval,
+                                extra: BulkExpenseReceiptArgs(
+                                  approvedExpenses: approved,
+                                  approverName: actorName,
+                                  approvedAt: DateTime.now(),
+                                  batchId:
+                                      'BATCH-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // İnceleme Harcamalar Başlığı & Sıralama
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Masraf Kayıtları (${state.filteredExpenses.length})',
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.darkNavy,
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => _showSortDialog(context, state),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  '${state.sortOrder.label} ⌄',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.primaryTeal,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        // 2. 4-State Yönetimli Canlı Masraf Kartları
+                        FourStateView(
+                          status: state.listStatus,
+                          errorMessage:
+                              state.errorMessage ??
+                              'Masraf kayıtları yüklenemedi.',
+                          emptyMessage: state.searchQuery.isNotEmpty ||
+                                  state.selectedCategory != 'Tümü'
+                              ? 'Arama veya kategori filtresine uygun masraf kaydı bulunamadı.'
+                              : 'Bu sekmede görüntülenecek masraf kaydı bulunmuyor.',
+                          onRetry: cubit.refresh,
+                          child: Column(
+                            children: state.filteredExpenses.map((exp) {
+                              final isBusy =
+                                  state.isSubmitting &&
+                                  state.processingExpenseId == exp.expenseId;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _ExpenseReviewCard(
+                                  expense: exp,
+                                  isBusy: isBusy,
+                                  onApprove: canApprove && exp.isPending
+                                      ? () => cubit.approveSingle(
+                                          expense: exp,
+                                          actorRole: authState.role,
+                                          actorId: actorId,
+                                        )
+                                      : null,
+                                  onReject: canApprove && exp.isPending
+                                      ? () => _showRejectDialog(
+                                          context: context,
+                                          cubit: cubit,
+                                          expense: exp,
+                                          actorRole: authState.role,
+                                          actorId: actorId,
+                                        )
+                                      : null,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
   }
 
-  void _showFilterDialog(BuildContext context) {
-    final categories = [
-      'Tümü',
-      'Ulaşım',
-      'Yemek & Temsil',
-      'Donanım & Ofis',
-      'Yazılım & SaaS',
-    ];
-    showModalBottomSheet(
+  void _showFilterDialog(BuildContext context, ExpenseApprovalState state) {
+    final cubit = context.read<ExpenseApprovalCubit>();
+    showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -64,7 +396,7 @@ class _B2bExpenseApprovalCenterScreenState
                 ),
                 TextButton(
                   onPressed: () {
-                    setState(() => _selectedCategoryFilter = 'Tümü');
+                    cubit.setCategory('Tümü');
                     Navigator.pop(ctx);
                   },
                   child: const Text('Temizle'),
@@ -75,14 +407,14 @@ class _B2bExpenseApprovalCenterScreenState
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: categories.map((cat) {
-                final isSelected = _selectedCategoryFilter == cat;
+              children: ExpenseApprovalState.availableCategories.map((cat) {
+                final isSelected = state.selectedCategory == cat;
                 return ChoiceChip(
                   label: Text(cat),
                   selected: isSelected,
                   selectedColor: const Color(0xFF5EEAD4),
-                  onSelected: (val) {
-                    setState(() => _selectedCategoryFilter = cat);
+                  onSelected: (_) {
+                    cubit.setCategory(cat);
                     Navigator.pop(ctx);
                   },
                 );
@@ -94,15 +426,11 @@ class _B2bExpenseApprovalCenterScreenState
     );
   }
 
-  void _showSortDialog(BuildContext context) {
-    final sorts = [
-      'Tarih (En Yeni)',
-      'Tarih (En Eski)',
-      'Tutar (En Yüksek)',
-      'Tutar (En Düşük)',
-    ];
-    showModalBottomSheet(
+  void _showSortDialog(BuildContext context, ExpenseApprovalState state) {
+    final cubit = context.read<ExpenseApprovalCubit>();
+    showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -113,36 +441,47 @@ class _B2bExpenseApprovalCenterScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Sıralama Seçeneği',
+              'Sıralama Ölçütü',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            for (final sort in sorts)
-              ListTile(
-                title: Text(sort),
-                trailing: _selectedSort == sort
-                    ? const Icon(Icons.check, color: AppColors.primaryTeal)
-                    : null,
+            ...ExpenseSortOrder.values.map((s) {
+              final selected = state.sortOrder == s;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  color: selected
+                      ? AppColors.primaryTeal
+                      : const Color(0xFF94A3B8),
+                ),
+                title: Text(s.label),
                 onTap: () {
-                  setState(() => _selectedSort = sort);
+                  cubit.setSortOrder(s);
                   Navigator.pop(ctx);
                 },
-              ),
+              );
+            }),
           ],
         ),
       ),
     );
   }
 
-  void _showRejectDialog(
-    BuildContext context,
-    String expenseId,
-    String employeeName,
-  ) {
+  void _showRejectDialog({
+    required BuildContext context,
+    required ExpenseApprovalCubit cubit,
+    required ExpenseEntity expense,
+    required String actorRole,
+    required String actorId,
+  }) {
     final controller = TextEditingController(
       text: 'Şirket harcama politikasına uygun olmayan harcama kalemi.',
     );
-    showDialog(
+
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -151,9 +490,6 @@ class _B2bExpenseApprovalCenterScreenState
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: Color(0xFFE2E8F0)),
         ),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         title: Row(
           children: [
             Container(
@@ -181,7 +517,7 @@ class _B2bExpenseApprovalCenterScreenState
                     ),
                   ),
                   Text(
-                    employeeName,
+                    expense.employeeName,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: const Color(0xFF64748B),
                     ),
@@ -192,49 +528,16 @@ class _B2bExpenseApprovalCenterScreenState
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Lütfen çalışana iletilecek resmi red gerekçesini yazınız:',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: const Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: controller,
-              maxLines: 3,
-              style: AppTextStyles.bodyMedium,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryTeal),
-                ),
-                hintText: 'Red gerekçesi...',
-                hintStyle: AppTextStyles.bodySmall.copyWith(
-                  color: const Color(0xFF94A3B8),
-                ),
-              ),
-            ),
-          ],
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Resmi Red Gerekçesi',
+            hintText: 'Red gerekçesi yazınız...',
+          ),
         ),
         actions: [
           TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF64748B),
-            ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Vazgeç'),
           ),
@@ -242,788 +545,43 @@ class _B2bExpenseApprovalCenterScreenState
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.expenseRed,
               foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
-            onPressed: () async {
+            onPressed: () {
+              final reason = controller.text.trim();
               Navigator.of(ctx).pop();
-              try {
-                await _firestoreDatasource.rejectExpense(
-                  expenseId: expenseId,
-                  reason: controller.text.trim(),
-                );
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '$employeeName masraf talebi gerekçesiyle reddedildi.',
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Hata: $e')),
-                  );
-                }
-              }
+              cubit.rejectSingle(
+                expense: expense,
+                actorRole: actorRole,
+                actorId: actorId,
+                reason: reason.isEmpty
+                    ? 'Şirket finans politikası gereği reddedildi.'
+                    : reason,
+              );
             },
             child: const Text('Reddet'),
           ),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
+}
 
-  Future<void> _handleApprove(
-    BuildContext context,
-    String expenseId,
-    String employeeName,
-    String amount,
-  ) async {
-    try {
-      await _firestoreDatasource.approveExpense(expenseId: expenseId);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.primaryGreen,
-            content: Text(
-              '$employeeName ($amount) masrafı onaylandı ve cüzdanına iade edildi!',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.expenseRed,
-            content: Text('Onay başarısız: $e'),
-          ),
-        );
-      }
-    }
-  }
+class _TabPill extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TabPill({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: const RoleSwitchAppBar(isBusinessMode: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Başlık Satırı
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'Masraf Onay Merkezi',
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.headlineSmall.copyWith(
-                            color: AppColors.darkNavy,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '● 3 Bekleyen',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: const Color(0xFFDC2626),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0).withOpacity(0.6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.history_rounded,
-                    size: 18,
-                    color: AppColors.darkNavy,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Sekme Çipleri
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildTabPill('Bekleyenler', 0),
-                  const SizedBox(width: 8),
-                  _buildTabPill('Onaylananlar', 1),
-                  const SizedBox(width: 8),
-                  _buildTabPill('Reddedilenler', 2),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Arama + Filtre
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (val) => setState(() {
-                        _searchQuery = val.trim().toLowerCase();
-                      }),
-                      decoration: InputDecoration(
-                        hintText: 'Çalışan, kategori veya tutar ara...',
-                        hintStyle: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF94A3B8),
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          size: 20,
-                          color: Color(0xFF64748B),
-                        ),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : null,
-                        fillColor: Colors.transparent,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _showFilterDialog(context),
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: _selectedCategoryFilter != 'Tümü'
-                          ? const Color(0xFF5EEAD4)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: _selectedCategoryFilter != 'Tümü'
-                            ? const Color(0xFF0F766E)
-                            : const Color(0xFFE2E8F0),
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.tune_rounded,
-                      size: 20,
-                      color: _selectedCategoryFilter != 'Tümü'
-                          ? const Color(0xFF0F766E)
-                          : AppColors.darkNavy,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // 1. Bekleyen Toplam Tutar Koyu Kartı (₺3.890,50)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: AppColors.heroCardGradient,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.darkNavy.withOpacity(0.35),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'BEKLEYEN TOPLAM TUTAR',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: const Color(0xFF94A3B8),
-                          letterSpacing: 0.7,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '🧾 3 Fatura / Fiş',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: const Color(0xFF5EEAD4),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '₺3.890,50',
-                    style: AppTextStyles.numericBalance.copyWith(
-                      color: Colors.white,
-                      fontSize: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.savings_outlined,
-                                size: 16,
-                                color: Color(0xFF5EEAD4),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'KDV İndirimi Kazanımı',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: const Color(0xFF94A3B8),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '+₺648,40',
-                          style: AppTextStyles.labelMedium.copyWith(
-                            color: const Color(0xFF5EEAD4),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Kalan Aylık Masraf Bütçesi',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF94A3B8),
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        '%92 Sağlıklı',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: const Color(0xFF5EEAD4),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: const LinearProgressIndicator(
-                      value: 0.72,
-                      minHeight: 6,
-                      backgroundColor: Colors.white12,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryGreen,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Kullanılan: ₺3.890,50',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF64748B),
-                          fontSize: 10,
-                        ),
-                      ),
-                      Text(
-                        'Bütçe: ₺50.000,00',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF64748B),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.darkNavy,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () {
-                        context.push(AppRoutes.businessBatchApproval);
-                      },
-                      icon: const Icon(
-                        Icons.done_all_rounded,
-                        size: 18,
-                        color: AppColors.primaryTeal,
-                      ),
-                      label: const Text(
-                        'Tümünü İncele & Toplu Onayla (₺3.890,50)',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // İnceleme Harcamalar Başlığı & Sıralama
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _selectedTab == 0
-                      ? 'Bekleyen Harcamalar'
-                      : (_selectedTab == 1
-                          ? 'Onaylanan Harcamalar'
-                          : 'Reddedilen Harcamalar'),
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.darkNavy,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => _showSortDialog(context),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$_selectedSort ⌄',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: AppColors.primaryTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // StreamBuilder ile Canlı Firestore Masrafları (Giriş yapan şirkete göre dinamik)
-            Builder(
-              builder: (context) {
-                final activeCompanyId =
-                    context.watch<AuthBloc>().state.user?.companyId;
-
-                if (activeCompanyId == null || activeCompanyId.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFCA5A5)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.business_center_outlined,
-                          color: Color(0xFFDC2626),
-                          size: 36,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Şirket Kaydı Bulunamadı',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF991B1B),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Bu ekranı görüntülemek için kurumsal bir şirkete bağlı olmanız gerekmektedir.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final authState = context.watch<AuthBloc>().state;
-                final canApprove = authState.canApproveExpenses;
-
-                return StreamBuilder<List<ExpenseModel>>(
-                  stream:
-                      _firestoreDatasource.watchCompanyExpenses(activeCompanyId),
-                  builder: (context, snapshot) {
-                    var listToFilter = snapshot.data ?? [];
-                    if (listToFilter.isEmpty) {
-                      listToFilter = [
-                        ExpenseModel(
-                          expenseId: 'exp_001',
-                          employeeId: 'user_employee_ahmet',
-                          employeeName: 'Ahmet Yılmaz',
-                          merchantTitle: 'BiTaksi E-Fiş Entegrasyonu',
-                          category: 'Ulaşım',
-                          companyId: activeCompanyId,
-                          amount: 45000,
-                          vatAmount: 7500,
-                          receiptImageUrl:
-                              'https://images.unsplash.com/photo-1554415707-9e4966a642ed',
-                          status: 'pending',
-                          date: DateTime.now(),
-                          accountingCode: '770.01',
-                        ),
-                        ExpenseModel(
-                          expenseId: 'exp_002',
-                          employeeId: 'user_employee_elif',
-                          employeeName: 'Elif Demir',
-                          merchantTitle: 'Midpoint Levent',
-                          category: 'Yemek & Temsil',
-                          companyId: activeCompanyId,
-                          amount: 198050,
-                          vatAmount: 18005,
-                          receiptImageUrl: '',
-                          status: 'pending',
-                          date: DateTime.now().subtract(const Duration(days: 1)),
-                          accountingCode: '770.02',
-                        ),
-                        ExpenseModel(
-                          expenseId: 'exp_003',
-                          employeeId: 'user_employee_caner',
-                          employeeName: 'Caner Kılıç',
-                          merchantTitle: 'IKEA Maslak',
-                          category: 'Donanım & Ofis',
-                          companyId: activeCompanyId,
-                          amount: 146000,
-                          vatAmount: 24333,
-                          receiptImageUrl: '',
-                          status: 'approved',
-                          date: DateTime.now().subtract(const Duration(days: 2)),
-                          accountingCode: '770.03',
-                        ),
-                        ExpenseModel(
-                          expenseId: 'exp_004',
-                          employeeId: 'user_employee_ahmet',
-                          employeeName: 'Ahmet Yılmaz',
-                          merchantTitle: 'Yazılım Lisansı & Eklenti',
-                          category: 'Yazılım & SaaS',
-                          companyId: activeCompanyId,
-                          amount: 145000,
-                          vatAmount: 24167,
-                          receiptImageUrl: '',
-                          status: 'rejected',
-                          rejectReason:
-                              'Şirket ön onayı bulunmayan yazılım aboneliği.',
-                          date: DateTime.now().subtract(const Duration(days: 3)),
-                          accountingCode: '770.04',
-                        ),
-                      ];
-                    }
-
-                    final filteredExpenses = listToFilter.where((e) {
-                      // 1. Sekme / Durum Filtresi
-                      final statusMatch = (_selectedTab == 0 &&
-                              (e.status == 'pending' ||
-                                  e.status == 'ONAY_BEKLIYOR')) ||
-                          (_selectedTab == 1 &&
-                              (e.status == 'approved' ||
-                                  e.status == 'ONAYLANDI')) ||
-                          (_selectedTab == 2 &&
-                              (e.status == 'rejected' ||
-                                  e.status == 'REDDEDILDI'));
-                      if (!statusMatch) return false;
-
-                      // 2. Kategori Filtresi
-                      if (_selectedCategoryFilter != 'Tümü' &&
-                          e.category != _selectedCategoryFilter) {
-                        return false;
-                      }
-
-                      // 3. Arama Metni Filtresi
-                      if (_searchQuery.isNotEmpty) {
-                        final query = _searchQuery.toLowerCase();
-                        final nameMatch =
-                            e.employeeName.toLowerCase().contains(query);
-                        final titleMatch =
-                            e.merchantTitle.toLowerCase().contains(query);
-                        final catMatch =
-                            e.category.toLowerCase().contains(query);
-                        final codeMatch =
-                            e.accountingCode.toLowerCase().contains(query);
-                        final amtMatch =
-                            (e.amount / 100).toString().contains(query);
-                        if (!nameMatch &&
-                            !titleMatch &&
-                            !catMatch &&
-                            !codeMatch &&
-                            !amtMatch) {
-                          return false;
-                        }
-                      }
-
-                      return true;
-                    }).toList();
-
-                    // Sıralama
-                    if (_selectedSort == 'Tarih (En Yeni)') {
-                      filteredExpenses.sort((a, b) => b.date.compareTo(a.date));
-                    } else if (_selectedSort == 'Tarih (En Eski)') {
-                      filteredExpenses.sort((a, b) => a.date.compareTo(b.date));
-                    } else if (_selectedSort == 'Tutar (En Yüksek)') {
-                      filteredExpenses
-                          .sort((a, b) => b.amount.compareTo(a.amount));
-                    } else if (_selectedSort == 'Tutar (En Düşük)') {
-                      filteredExpenses
-                          .sort((a, b) => a.amount.compareTo(b.amount));
-                    }
-
-                    if (filteredExpenses.isEmpty) {
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 40,
-                          horizontal: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        alignment: Alignment.center,
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 44,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Filtreye uygun masraf kaydı bulunamadı',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.darkNavy,
-                                fontSize: 13.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? '"$_searchQuery" araması için sonuç bulunamadı.'
-                                  : 'Bu sekmede veya seçili kategoride kayıt bulunmuyor.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      children: [
-                        for (final exp in filteredExpenses) ...[
-                          _buildExpenseReviewCard(
-                            context: context,
-                            initials: exp.employeeName.isNotEmpty
-                                ? exp.employeeName
-                                    .split(' ')
-                                    .map((n) => n.isNotEmpty ? n[0] : '')
-                                    .take(2)
-                                    .join()
-                                : 'PR',
-                            employeeName: exp.employeeName.isNotEmpty
-                                ? exp.employeeName
-                                : 'Şirket Çalışanı',
-                            roleDept:
-                                '${exp.category} • ${exp.accountingCode}',
-                            amount:
-                                '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
-                            vatText:
-                                'KDV (₺${(exp.vatAmount / 100.0).toStringAsFixed(2).replaceAll('.', ',')})',
-                            categoryLine:
-                                '${exp.merchantTitle} • ${exp.date.day}.${exp.date.month}.${exp.date.year}',
-                            descLine:
-                                'Masraf Kaydı #${exp.expenseId.substring(0, exp.expenseId.length > 8 ? 8 : exp.expenseId.length)}',
-                            cardAndReceiptNo: exp.receiptImageUrl.isNotEmpty
-                                ? 'Belge: ${exp.receiptImageUrl}'
-                                : 'Yerel fiş belgesi eklenmiş',
-                            ocrTitle: '⚡ AI-OCR Doğrulandı',
-                            ocrSubtitle: exp.merchantTitle,
-                            ocrActionText: 'İncele 🔍',
-                            policyText: exp.status == 'approved'
-                                ? '✓ Onaylandı & Muhasebeleştirildi'
-                                : (exp.status == 'rejected'
-                                    ? '✕ Reddedildi (${exp.rejectReason ?? 'Gerekçeli'})'
-                                    : '● İnceleme Bekliyor'),
-                            isPolicyWarning: exp.status == 'rejected',
-                            onApprove: canApprove &&
-                                    (exp.status == 'pending' ||
-                                        exp.status == 'ONAY_BEKLIYOR')
-                                ? () => _handleApprove(
-                                      context,
-                                      exp.expenseId,
-                                      exp.employeeName,
-                                      '₺${(exp.amount / 100.0).toStringAsFixed(2).replaceAll('.', ',')}',
-                                    )
-                                : null,
-                            onReject: canApprove &&
-                                    (exp.status == 'pending' ||
-                                        exp.status == 'ONAY_BEKLIYOR')
-                                ? () => _showRejectDialog(
-                                      context,
-                                      exp.expenseId,
-                                      exp.employeeName,
-                                    )
-                                : null,
-                          ),
-                          const SizedBox(height: 14),
-                        ],
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Otomatik Muhasebe & ERP Senkronizasyonu Kartı
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.laptop_chromebook_rounded,
-                    color: AppColors.darkNavy,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Otomatik Muhasebe & ERP Senkronizasyonu 🔒',
-                          style: AppTextStyles.labelMedium.copyWith(
-                            color: AppColors.darkNavy,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Onaylanan masraflar anında Logo & Paraşüt ERP gider hesaplarına ve ilgili masraf merkezlerine otomatik fiş olarak aktarılır.',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: const Color(0xFF475569),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabPill(String label, int index) {
-    final bool isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -1043,31 +601,190 @@ class _B2bExpenseApprovalCenterScreenState
       ),
     );
   }
+}
 
-  Widget _buildExpenseReviewCard({
-    required BuildContext context,
-    required String initials,
-    required String employeeName,
-    required String roleDept,
-    required String amount,
-    required String vatText,
-    required String categoryLine,
-    required String descLine,
-    String? quoteNote,
-    required String cardAndReceiptNo,
-    required String ocrTitle,
-    required String ocrSubtitle,
-    required String ocrActionText,
-    required String policyText,
-    required bool isPolicyWarning,
-    VoidCallback? onApprove,
-    VoidCallback? onReject,
-  }) {
+class _PendingSummaryHeroCard extends StatelessWidget {
+  final ExpenseApprovalState state;
+  final bool canApprove;
+  final VoidCallback onBulkApprove;
+
+  const _PendingSummaryHeroCard({
+    required this.state,
+    required this.canApprove,
+    required this.onBulkApprove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingCount = state.pendingExpenses.length;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppColors.heroCardGradient,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.darkNavy.withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'BEKLEYEN TOPLAM TUTAR',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: const Color(0xFF94A3B8),
+                  letterSpacing: 0.7,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$pendingCount Fatura / Fiş',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: const Color(0xFF5EEAD4),
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            state.formattedPendingTotal,
+            style: AppTextStyles.numericBalance.copyWith(
+              color: Colors.white,
+              fontSize: 32,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.savings_outlined,
+                        size: 16,
+                        color: Color(0xFF5EEAD4),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'KDV İndirimi Kazanımı',
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  state.formattedPendingVat,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: const Color(0xFF5EEAD4),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (canApprove && pendingCount > 0) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.darkNavy,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: state.isSubmitting ? null : onBulkApprove,
+                icon: const Icon(
+                  Icons.done_all_rounded,
+                  size: 18,
+                  color: AppColors.primaryTeal,
+                ),
+                label: Text(
+                  state.isSubmitting
+                      ? 'Toplu Onay İşleniyor...'
+                      : 'Tümünü İncele & Toplu Onayla (${state.formattedPendingTotal})',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpenseReviewCard extends StatelessWidget {
+  final ExpenseEntity expense;
+  final bool isBusy;
+  final VoidCallback? onApprove;
+  final VoidCallback? onReject;
+
+  const _ExpenseReviewCard({
+    required this.expense,
+    required this.isBusy,
+    this.onApprove,
+    this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = expense.employeeName.trim().isNotEmpty
+        ? expense.employeeName
+              .trim()
+              .split(' ')
+              .where((p) => p.isNotEmpty)
+              .map((n) => n[0])
+              .take(2)
+              .join()
+              .toUpperCase()
+        : 'PR';
+
+    final statusLabel = expense.isApproved
+        ? '✓ Onaylandı & Muhasebeleştirildi'
+        : expense.isRejected
+        ? '✕ Reddedildi (${expense.rejectReason ?? 'Gerekçeli'})'
+        : '● İnceleme Bekliyor';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
@@ -1077,11 +794,11 @@ class _B2bExpenseApprovalCenterScreenState
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: const Color(0xFFE2E8F0),
+                backgroundColor: AppColors.darkNavy,
                 child: Text(
                   initials,
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: AppColors.darkNavy,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1092,17 +809,19 @@ class _B2bExpenseApprovalCenterScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      employeeName,
+                      expense.employeeName.isEmpty
+                          ? 'Şirket Çalışanı'
+                          : expense.employeeName,
                       style: AppTextStyles.bodyLarge.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppColors.darkNavy,
                       ),
                     ),
                     Text(
-                      roleDept,
+                      '${expense.category} • ${expense.accountingCode}',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: const Color(0xFF64748B),
-                        fontSize: 11.5,
+                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -1112,17 +831,18 @@ class _B2bExpenseApprovalCenterScreenState
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    amount,
-                    style: AppTextStyles.headlineSmall.copyWith(
-                      color: AppColors.darkNavy,
+                    FinancialAmount.format(expense.amount),
+                    style: AppTextStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.w800,
+                      color: AppColors.darkNavy,
                     ),
                   ),
                   Text(
-                    vatText,
-                    style: AppTextStyles.labelSmall.copyWith(
+                    'KDV (${FinancialAmount.format(expense.vatAmount)})',
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.primaryTeal,
-                      fontSize: 10,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -1132,7 +852,7 @@ class _B2bExpenseApprovalCenterScreenState
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
@@ -1141,201 +861,65 @@ class _B2bExpenseApprovalCenterScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  categoryLine,
-                  style: AppTextStyles.labelSmall.copyWith(
+                  '${expense.merchantTitle} • ${expense.date.day}.${expense.date.month}.${expense.date.year}',
+                  style: AppTextStyles.labelMedium.copyWith(
                     color: AppColors.darkNavy,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  descLine,
+                  statusLabel,
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: const Color(0xFF475569),
-                    fontSize: 11.5,
+                    color: expense.isRejected
+                        ? AppColors.expenseRed
+                        : expense.isApproved
+                        ? AppColors.primaryTeal
+                        : const Color(0xFFD97706),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
                   ),
                 ),
-                if (quoteNote != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    quoteNote,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF64748B),
-                      fontStyle: FontStyle.italic,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-                if (cardAndReceiptNo.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    cardAndReceiptNo,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF64748B),
-                      fontSize: 10.5,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
-          if (ocrTitle.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.darkNavy,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.receipt_outlined,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
+          if (onApprove != null || onReject != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (onReject != null)
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ocrTitle,
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.primaryTeal,
-                            fontWeight: FontWeight.w800,
-                          ),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.expenseRed,
+                        side: const BorderSide(color: Color(0xFFFECACA)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        Text(
-                          ocrSubtitle,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: const Color(0xFF475569),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Text(
-                      ocrActionText,
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: AppColors.darkNavy,
-                        fontSize: 10.5,
                       ),
+                      onPressed: isBusy ? null : onReject,
+                      child: const Text('Reddet'),
                     ),
                   ),
-                ],
-              ),
+                if (onApprove != null && onReject != null)
+                  const SizedBox(width: 10),
+                if (onApprove != null)
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryTeal,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: isBusy ? null : onApprove,
+                      child: Text(isBusy ? 'İşleniyor...' : 'Onayla'),
+                    ),
+                  ),
+              ],
             ),
           ],
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: isPolicyWarning
-                  ? const Color(0xFFFEF2F2)
-                  : const Color(0xFFD1FAE5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              policyText,
-              style: AppTextStyles.labelSmall.copyWith(
-                color: isPolicyWarning
-                    ? const Color(0xFFB91C1C)
-                    : const Color(0xFF065F46),
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFEE2E2),
-                    foregroundColor: const Color(0xFFB91C1C),
-                    elevation: 0,
-                    minimumSize: const Size(0, 42),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: onReject ??
-                      () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '$employeeName masraf talebi reddedildi.',
-                            ),
-                          ),
-                        );
-                      },
-                  child: const Text(
-                    '✕ Reddet',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 6,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.darkNavy,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 42),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: onApprove ??
-                      () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: AppColors.primaryGreen,
-                            content: Text(
-                              '$employeeName ($amount) masrafı onaylandı ve cüzdanına iade edildi!',
-                            ),
-                          ),
-                        );
-                      },
-                  child: Text(
-                    '✓ Onayla ($amount)',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

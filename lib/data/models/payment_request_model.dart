@@ -1,3 +1,5 @@
+import '../../domain/entities/payment_request_entity.dart';
+
 //Müşteriden beklenen, link veya QR ile atılmış "Tahsilat Talebi" modeli.
 
 class PaymentRequestModel {
@@ -57,5 +59,33 @@ class PaymentRequestModel {
       if (txId != null) 'txId': txId,
       if (completedAt != null) 'completedAt': completedAt!.toIso8601String(),
     };
+  }
+
+  PaymentRequestEntity toEntity() {
+    return PaymentRequestEntity(
+      requestId: requestId,
+      merchantId: merchantId,
+      amount: amount,
+      currency: currency,
+      status: status,
+      description: description,
+      payerId: payerId,
+      txId: txId,
+      completedAt: completedAt,
+    );
+  }
+
+  factory PaymentRequestModel.fromEntity(PaymentRequestEntity entity) {
+    return PaymentRequestModel(
+      requestId: entity.requestId,
+      merchantId: entity.merchantId,
+      amount: entity.amount,
+      currency: entity.currency,
+      status: entity.status,
+      description: entity.description,
+      payerId: entity.payerId,
+      txId: entity.txId,
+      completedAt: entity.completedAt,
+    );
   }
 }

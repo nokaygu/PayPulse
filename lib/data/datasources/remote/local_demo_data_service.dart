@@ -1,11 +1,18 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../../core/utils/financial_amount.dart';
 import '../../../core/utils/firestore_seeder.dart';
+import '../../../core/utils/iban_generator.dart';
+import '../../models/budget_category_model.dart';
 import '../../models/company_model.dart';
+import '../../models/einvoice_model.dart';
 import '../../models/expense_model.dart';
 import '../../models/notification_model.dart';
+import '../../models/payment_request_model.dart';
+import '../../models/pos_transaction_model.dart';
 import '../../models/safe_recipient_model.dart';
+import '../../models/savings_goal_model.dart';
 import '../../models/transaction_model.dart';
 import '../../models/user_model.dart';
 import '../../models/wallet_model.dart';
@@ -35,9 +42,15 @@ class LocalDemoDataService {
   final Map<String, CompanyModel> _companies = {};
   final Map<String, WalletModel> _wallets = {};
   final Map<String, SafeRecipientModel> _recipients = {};
+  final List<SafeRecipientModel> _savedRecipients = [];
+  final Map<String, PaymentRequestModel> _paymentRequests = {};
   final List<TransactionModel> _transactions = [];
+  final List<PosTransactionModel> _posTransactions = [];
   final List<ExpenseModel> _expenses = [];
   final List<NotificationModel> _notifications = [];
+  final List<EInvoiceModel> _invoices = [];
+  final List<BudgetCategoryModel> _budgetCategories = [];
+  SavingsGoalModel _savingsGoal = FirestoreSeeder.mockSavingsGoal;
 
   // ================= 3. BAŞLANGIÇ VERİLERİNİN YÜKLENMESİ =================
   void _initData() {
@@ -165,6 +178,16 @@ class LocalDemoDataService {
     _registerRecipient('TR560006200011223344550001', 'user_zeynep_kaya', 'Zeynep Kaya');
     _registerRecipient('TR340006200099887766550001', 'user_mert_can', 'Mert Can');
 
+    // Mod-97 geçerli transfer rehberi alıcıları (UI seçimi ve doğrulayıcı uyumlu)
+    final validZeynepIban = IbanGenerator.generateForUser('user_zeynep_kaya');
+    final validMertIban = IbanGenerator.generateForUser('user_mert_can');
+    final validAhmetIban = IbanGenerator.generateForUser('user_employee_ahmet');
+    final validCompanyIban = IbanGenerator.generateForUser('comp_paypulse_tech');
+    _registerRecipient(validZeynepIban, 'user_zeynep_kaya', 'Zeynep Kaya', addToSaved: true);
+    _registerRecipient(validMertIban, 'user_mert_can', 'Mert Can', addToSaved: true);
+    _registerRecipient(validAhmetIban, 'user_employee_ahmet', 'Ahmet Yılmaz', addToSaved: true);
+    _registerRecipient(validCompanyIban, 'comp_paypulse_tech', 'PayPulse Teknoloji A.Ş.', addToSaved: true);
+
     // 5. Başlangıç İşlemleri (Mock Transactions)
     _transactions.addAll(FirestoreSeeder.mockTransactions);
 
@@ -279,6 +302,30 @@ class LocalDemoDataService {
         relatedId: 'exp_001',
       ),
     ]);
+
+    // 8. Tahsilat Talepleri (Deep Link / QR)
+    _paymentRequests['LNK-4402'] = PaymentRequestModel(
+      requestId: 'LNK-4402',
+      merchantId: 'comp_paypulse_tech',
+      amount: 345000, // ₺3.450,00
+      currency: 'TRY',
+      status: 'pending',
+      description: 'PayPulse Tasarım Danışmanlık Faturası #LNK-4402',
+    );
+    _paymentRequests['QR-849201'] = PaymentRequestModel(
+      requestId: 'QR-849201',
+      merchantId: 'comp_paypulse_tech',
+      amount: 125000, // ₺1.250,00
+      currency: 'TRY',
+      status: 'pending',
+      description: 'Hızlı Karekod Tahsilat Talebi',
+    );
+
+    // 9. Bütçe, E-Fatura & Sanal POS Başlangıç Kayıtları
+    _budgetCategories.addAll(FirestoreSeeder.mockBudgetCategories);
+    _savingsGoal = FirestoreSeeder.mockSavingsGoal;
+    _invoices.addAll(FirestoreSeeder.mockInvoices);
+    _posTransactions.addAll(FirestoreSeeder.mockPosTransactions);
   }
 
   /// Tüm demo verilerini Kasım 2026 başlangıç durumuna sıfırlar ve yayınlar
@@ -287,9 +334,14 @@ class LocalDemoDataService {
     _companies.clear();
     _wallets.clear();
     _recipients.clear();
+    _savedRecipients.clear();
+    _paymentRequests.clear();
     _transactions.clear();
+    _posTransactions.clear();
     _expenses.clear();
     _notifications.clear();
+    _invoices.clear();
+    _budgetCategories.clear();
     _initData();
     _walletsController.add(Map.from(_wallets));
     _transactionsController.add(List.from(_transactions));
@@ -297,15 +349,24 @@ class LocalDemoDataService {
     _notificationsController.add(List.from(_notifications));
   }
 
-  void _registerRecipient(String iban, String userId, String fullName) {
+  void _registerRecipient(
+    String iban,
+    String userId,
+    String fullName, {
+    bool addToSaved = false,
+  }) {
     final normalized = iban.replaceAll(RegExp(r'\s'), '').toUpperCase();
     final words = fullName.trim().split(RegExp(r'\s+'));
     final masked = words.map((w) => w.length <= 1 ? w : '${w[0]}${'*' * (w.length - 1)}').join(' ');
-    _recipients[normalized] = SafeRecipientModel(
+    final recipient = SafeRecipientModel(
       userId: userId,
       maskedName: masked,
       iban: normalized,
     );
+    _recipients[normalized] = recipient;
+    if (addToSaved) {
+      _savedRecipients.add(recipient);
+    }
   }
 
   // ================= 4. KULLANICI & ŞİRKET İŞLEMLERİ =================
@@ -315,6 +376,18 @@ class LocalDemoDataService {
     if (uid == 'user_admin_ali' || uid == 'demo_admin_user') return _users['user_admin_ali'];
     if (uid == 'user_employee_ahmet') return _users['user_employee_ahmet'];
     return null;
+  }
+
+  List<UserModel> getAllUsers() => _users.values.toSet().toList();
+
+  void upsertUserProfile(UserModel user) {
+    _users[user.uid] = user;
+  }
+
+  List<CompanyModel> getAllCompanies() => _companies.values.toList();
+
+  void createCompany(CompanyModel company) {
+    _companies[company.companyId] = company;
   }
 
   CompanyModel? getCompany(String companyId) {
@@ -370,12 +443,22 @@ class LocalDemoDataService {
         ]);
   }
 
+  List<WalletModel> getAllWallets() => _wallets.values.toSet().toList();
+
+  void createWallet(WalletModel wallet) {
+    _wallets[wallet.walletId] = wallet;
+    _walletsController.add(Map.unmodifiable(_wallets));
+  }
+
   void updateWallet(WalletModel wallet) {
     _wallets[wallet.walletId] = wallet;
     _walletsController.add(Map.unmodifiable(_wallets));
   }
 
   // ================= 6. FAST PARA TRANSFERİ (İŞLEMSİ) =================
+  List<SafeRecipientModel> getSavedRecipients() =>
+      List<SafeRecipientModel>.unmodifiable(_savedRecipients);
+
   SafeRecipientModel? findRecipientByIban(String rawIban) {
     final normalized = rawIban.replaceAll(RegExp(r'\s'), '').toUpperCase();
     return _recipients[normalized];
@@ -767,6 +850,22 @@ class LocalDemoDataService {
     );
 
     _transactions.insert(0, tx);
+    final commissionKurus = FinancialAmount.posCommission(amountKurus);
+    _posTransactions.insert(
+      0,
+      PosTransactionModel(
+        posTxId: txId,
+        terminalId: 'TRM-8492-01',
+        customerName: 'Sanal POS Müşterisi',
+        grossAmount: amountKurus / 100.0,
+        commissionRate: 1.39,
+        commissionAmount: commissionKurus / 100.0,
+        netAmount: (amountKurus - commissionKurus) / 100.0,
+        timestamp: tx.timestamp,
+        cardMasked: maskedCardNumber,
+        status: 'Başarılı',
+      ),
+    );
 
     // Şirket yöneticilerine bildirim
     for (final adminId in ['user_admin_ali', 'demo_admin_user']) {
@@ -792,7 +891,147 @@ class LocalDemoDataService {
     return tx;
   }
 
+  List<PosTransactionModel> getPosTransactions(String companyId) =>
+      List<PosTransactionModel>.unmodifiable(_posTransactions);
+
+  Future<TransactionModel> executeQrWalletPayment({
+    required String companyId,
+    required String payerUserId,
+    required int amountKurus,
+    String currency = 'TRY',
+  }) async {
+    if (amountKurus <= 0) {
+      throw ArgumentError('Tahsilat tutarı sıfırdan büyük olmalıdır.');
+    }
+
+    final payerWallet = getUserWallet(payerUserId);
+    if (payerWallet == null) {
+      throw Exception('Müşteri cüzdanı bulunamadı.');
+    }
+    if (payerWallet.balanceTl < amountKurus) {
+      throw Exception('Yetersiz müşteri bakiyesi. İşlem gerçekleştirilemedi.');
+    }
+
+    _wallets[payerWallet.walletId] = payerWallet.copyWith(
+      balanceTl: payerWallet.balanceTl - amountKurus,
+    );
+
+    final compWallet = _wallets['wallet_$companyId'] ??
+        _wallets['wallet_comp_paypulse_tech'];
+    if (compWallet != null) {
+      final updatedComp = compWallet.copyWith(
+        balanceTl: compWallet.balanceTl + amountKurus,
+      );
+      _wallets[compWallet.walletId] = updatedComp;
+      _wallets['wallet_comp_paypulse_tech'] = updatedComp;
+    }
+
+    final txId =
+        'PP-QR-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(999)}';
+    final tx = TransactionModel(
+      txId: txId,
+      senderId: payerUserId,
+      receiverId: companyId,
+      amount: amountKurus,
+      currency: currency,
+      timestamp: DateTime.now(),
+      type: 'qr_pos_payment',
+      title: 'TR Karekod Ödemesi',
+      category: 'QR Ödeme',
+      isExpense: true,
+      dateGroup: 'BUGÜN, ${DateTime.now().day} KASIM',
+      status: 'Başarılı',
+    );
+    _transactions.insert(0, tx);
+
+    _walletsController.add(Map.unmodifiable(_wallets));
+    _transactionsController.add(List.unmodifiable(_transactions));
+    return tx;
+  }
+
+  // ================= 8B. TAHSİLAT TALEPLERİ (ÖDEME LİNKİ & QR) =================
+  Future<void> createPaymentRequest(PaymentRequestModel request) async {
+    _paymentRequests[request.requestId] = request;
+  }
+
+  PaymentRequestModel? getPaymentRequest(String requestId) {
+    return _paymentRequests[requestId];
+  }
+
+  List<PaymentRequestModel> getAllPaymentRequests() {
+    return _paymentRequests.values.toList();
+  }
+
+  Future<TransactionModel> completePaymentRequestWithWallet({
+    required String requestId,
+    required String payerUserId,
+  }) async {
+    final request = _paymentRequests[requestId];
+    if (request == null) {
+      throw Exception('Ödeme talebi bulunamadı.');
+    }
+    if (request.status != 'pending') {
+      throw StateError('Bu ödeme talebi daha önce tamamlanmış veya iptal edilmiş.');
+    }
+    final payerWallet = getUserWallet(payerUserId);
+    if (payerWallet == null || payerWallet.balanceTl < request.amount) {
+      throw Exception('Yetersiz bakiye. Ödeme talebi gerçekleştirilemedi.');
+    }
+
+    _wallets[payerWallet.walletId] = payerWallet.copyWith(
+      balanceTl: payerWallet.balanceTl - request.amount,
+    );
+
+    final compWallet = _wallets['wallet_${request.merchantId}'] ??
+        _wallets['wallet_comp_paypulse_tech'];
+    if (compWallet != null) {
+      _wallets[compWallet.walletId] = compWallet.copyWith(
+        balanceTl: compWallet.balanceTl + request.amount,
+      );
+    }
+
+    final txId =
+        'PP-LNK-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(999)}';
+    final tx = TransactionModel(
+      txId: txId,
+      senderId: payerUserId,
+      receiverId: request.merchantId,
+      amount: request.amount,
+      currency: request.currency,
+      timestamp: DateTime.now(),
+      type: 'payment_link',
+      title: request.description,
+      category: 'Ödeme Linki',
+      isExpense: true,
+      dateGroup: 'BUGÜN, ${DateTime.now().day} KASIM',
+      status: 'Başarılı',
+      relatedId: requestId,
+    );
+    _transactions.insert(0, tx);
+
+    _paymentRequests[requestId] = PaymentRequestModel(
+      requestId: request.requestId,
+      merchantId: request.merchantId,
+      amount: request.amount,
+      currency: request.currency,
+      status: 'completed',
+      description: request.description,
+      payerId: payerUserId,
+      txId: txId,
+      completedAt: DateTime.now(),
+    );
+
+    _walletsController.add(Map.unmodifiable(_wallets));
+    _transactionsController.add(List.unmodifiable(_transactions));
+    return tx;
+  }
+
   // ================= 9. İŞLEM GEÇMİŞİ & SORGULAR =================
+  List<TransactionModel> getAllTransactions() =>
+      List<TransactionModel>.unmodifiable(_transactions);
+
+  List<TransactionModel> getSentTransactions(String userId) =>
+      _transactions.where((t) => t.senderId == userId).toList();
   TransactionModel? getTransaction(String txId) {
     try {
       return _transactions.firstWhere((t) => t.txId == txId);
@@ -827,6 +1066,8 @@ class LocalDemoDataService {
   }
 
   // ================= 10. MASRAFLAR DİNLEME =================
+  List<ExpenseModel> getAllExpenses() => List<ExpenseModel>.unmodifiable(_expenses);
+
   Stream<List<ExpenseModel>> watchCompanyExpenses(String companyId) {
     List<ExpenseModel> filter() => List<ExpenseModel>.from(_expenses);
     return Stream<List<ExpenseModel>>.value(filter()).concatWith([
@@ -896,6 +1137,44 @@ class LocalDemoDataService {
       }
     }
     _notificationsController.add(List.unmodifiable(_notifications));
+  }
+
+  Future<void> createNotification(NotificationModel notification) async {
+    _notifications.insert(0, notification);
+    _notificationsController.add(List.unmodifiable(_notifications));
+  }
+
+  // ================= 12. BÜTÇE & E-FATURA (DEMO) =================
+  List<BudgetCategoryModel> getBudgetCategories(String period) {
+    final multiplier = period == 'Haftalık'
+        ? 0.25
+        : period == 'Yıllık'
+            ? 12.0
+            : 1.0;
+    return _budgetCategories
+        .map(
+          (cat) => cat.copyWith(
+            spentAmount: double.parse((cat.spentAmount * multiplier).toStringAsFixed(2)),
+            allocatedAmount:
+                double.parse((cat.allocatedAmount * multiplier).toStringAsFixed(2)),
+          ),
+        )
+        .toList();
+  }
+
+  SavingsGoalModel getSavingsGoal() => _savingsGoal;
+
+  List<EInvoiceModel> getInvoices(String companyId) =>
+      List<EInvoiceModel>.unmodifiable(_invoices);
+
+  Future<void> markInvoicePaid(String invoiceId) async {
+    final idx = _invoices.indexWhere((i) => i.invoiceId == invoiceId);
+    if (idx != -1) {
+      _invoices[idx] = _invoices[idx].copyWith(
+        isPaid: true,
+        canPayWithFast: false,
+      );
+    }
   }
 }
 

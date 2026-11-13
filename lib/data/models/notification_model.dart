@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../domain/entities/notification_entity.dart';
+
 /// Firestore tabanlı uygulama içi bildirim modeli.
 /// macOS sunumu dahil tüm platformlarda gerçek zamanlı bildirim akışı sağlar.
 class NotificationModel {
@@ -80,6 +82,32 @@ class NotificationModel {
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
       relatedId: relatedId ?? this.relatedId,
+    );
+  }
+
+  NotificationEntity toEntity() {
+    return NotificationEntity(
+      notificationId: notificationId,
+      userId: userId,
+      title: title,
+      body: body,
+      type: type,
+      isRead: isRead,
+      createdAt: createdAt,
+      relatedId: relatedId,
+    );
+  }
+
+  factory NotificationModel.fromEntity(NotificationEntity entity) {
+    return NotificationModel(
+      notificationId: entity.notificationId,
+      userId: entity.userId,
+      title: entity.title,
+      body: entity.body,
+      type: entity.type,
+      isRead: entity.isRead,
+      createdAt: entity.createdAt,
+      relatedId: entity.relatedId,
     );
   }
 }

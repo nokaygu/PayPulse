@@ -44,7 +44,7 @@ class StatusBadgeWidget extends StatelessWidget {
         fg = const Color(0xFF0369A1);
         break;
       case BadgeType.darkGlass:
-        bg = Colors.white.withOpacity(0.12);
+        bg = Colors.white.withValues(alpha: 0.12);
         fg = AppColors.primaryGreen;
         break;
     }
@@ -54,7 +54,7 @@ class StatusBadgeWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: fg.withOpacity(0.15), width: 0.8),
+        border: Border.all(color: fg.withValues(alpha: 0.15), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

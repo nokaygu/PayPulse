@@ -1,16 +1,15 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_mode.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../data/models/notification_model.dart';
 import '../screens/auth/bloc/auth_bloc.dart';
 import '../screens/auth/bloc/auth_event.dart';
+import 'bloc/notification_cubit.dart';
 
 /// Görsellerin en üstünde yer alan PayPulse (B2C) veya Nova Tasarım Ltd. İşletme Paneli (B2B) üst barı.
 class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -35,10 +34,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final authUser = context.watch<AuthBloc>().state.user;
-    final firebaseUser =
-        AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
-    final String currentUserId =
-        authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
+    final String currentUserId = authUser?.uid ?? AppStrings.demoB2CUid;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final appBarBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final appBarBorder =
@@ -269,14 +265,12 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
 
-            if (extraActions != null) ...extraActions!,
+            if (extraActions != null) ...?extraActions,
 
-            // Canlı Firestore Bildirim İkonu & Rozeti
-            StreamBuilder<int>(
-              stream: FirebaseFirestoreDatasource()
-                  .watchUnreadNotificationCount(currentUserId),
-              builder: (context, notifSnapshot) {
-                final unreadCount = notifSnapshot.data ?? 0;
+            // BLoC Bildirim İkonu & Rozeti
+            BlocBuilder<NotificationCubit, NotificationState>(
+              builder: (context, notifState) {
+                final unreadCount = notifState.unreadCount;
                 return Stack(
                   children: [
                     IconButton(
@@ -343,7 +337,10 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   void _showRoleSwitchSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currentRole = context.read<AuthBloc>().state.role;
+    final authBloc = context.read<AuthBloc>();
+    final authState = authBloc.state;
+    final currentRole = authState.role;
+    final isDemo = AppMode.isDemoMode;
     final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final handleColor =
         isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
@@ -405,7 +402,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Mod ve Rol Değiştir (Dual-Role)',
+                              isDemo
+                                  ? 'Mod ve Rol Değiştir (Dual-Role)'
+                                  : 'Hesap ve Görünüm Modu',
                               style: AppTextStyles.headlineSmall.copyWith(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 18,
@@ -414,7 +413,9 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Bireysel Cüzdan ile İşletme Paneli arasında anında geçiş yapın.',
+                              isDemo
+                                  ? 'Bireysel Cüzdan ile İşletme Paneli arasında anında geçiş yapın.'
+                                  : 'Yetkili hesabınızın panel görünümünü ve oturumunu yönetin.',
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: subtitleColor,
                                 fontSize: 12,
@@ -436,61 +437,127 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // 1. Deniz Aksoy — B2C
-                  _buildRoleCard(
-                    context: context,
-                    ctx: ctx,
-                    isDark: isDark,
-                    role: 'b2c',
-                    isActive: currentRole == 'b2c',
-                    icon: Icons.account_balance_wallet_rounded,
-                    iconBg: const Color(0xFFD1FAE5),
-                    iconColor: AppColors.primaryGreen,
-                    title: 'Deniz Aksoy',
-                    roleBadge: 'Bireysel (B2C)',
-                    badgeBg: const Color(0xFFD1FAE5),
-                    badgeColor: const Color(0xFF065F46),
-                    subtitle: 'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
-                    targetRoute: AppRoutes.home,
-                  ),
-                  const SizedBox(height: 10),
+                  if (isDemo) ...[
+                    // 1. Deniz Aksoy — B2C
+                    _buildRoleCard(
+                      context: context,
+                      ctx: ctx,
+                      isDark: isDark,
+                      role: AppStrings.roleB2C,
+                      isActive: currentRole == AppStrings.roleB2C,
+                      icon: Icons.account_balance_wallet_rounded,
+                      iconBg: const Color(0xFFD1FAE5),
+                      iconColor: AppColors.primaryGreen,
+                      title: 'Deniz Aksoy',
+                      roleBadge: 'Bireysel (B2C)',
+                      badgeBg: const Color(0xFFD1FAE5),
+                      badgeColor: const Color(0xFF065F46),
+                      subtitle: 'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
+                      targetRoute: AppRoutes.home,
+                    ),
+                    const SizedBox(height: 10),
 
-                  // 2. Ahmet Yılmaz — Employee
-                  _buildRoleCard(
-                    context: context,
-                    ctx: ctx,
-                    isDark: isDark,
-                    role: 'employee',
-                    isActive: currentRole == 'employee',
-                    icon: Icons.badge_outlined,
-                    iconBg: const Color(0xFFFEF3C7),
-                    iconColor: const Color(0xFFD97706),
-                    title: 'Ahmet Yılmaz',
-                    roleBadge: 'Şirket Çalışanı',
-                    badgeBg: const Color(0xFFFEF3C7),
-                    badgeColor: const Color(0xFF92400E),
-                    subtitle: 'PayPulse Teknoloji • ₺5.000,00 • Masraf Bildirimi',
-                    targetRoute: AppRoutes.home,
-                  ),
-                  const SizedBox(height: 10),
+                    // 2. Ahmet Yılmaz — Employee
+                    _buildRoleCard(
+                      context: context,
+                      ctx: ctx,
+                      isDark: isDark,
+                      role: AppStrings.roleEmployee,
+                      isActive: currentRole == AppStrings.roleEmployee,
+                      icon: Icons.badge_outlined,
+                      iconBg: const Color(0xFFFEF3C7),
+                      iconColor: const Color(0xFFD97706),
+                      title: 'Ahmet Yılmaz',
+                      roleBadge: 'Şirket Çalışanı',
+                      badgeBg: const Color(0xFFFEF3C7),
+                      badgeColor: const Color(0xFF92400E),
+                      subtitle: 'PayPulse Teknoloji • ₺5.000,00 • Masraf Bildirimi',
+                      targetRoute: AppRoutes.home,
+                    ),
+                    const SizedBox(height: 10),
 
-                  // 3. Ali Yılmaz — Admin
-                  _buildRoleCard(
-                    context: context,
-                    ctx: ctx,
-                    isDark: isDark,
-                    role: 'admin',
-                    isActive: currentRole == 'admin',
-                    icon: Icons.business_center_rounded,
-                    iconBg: const Color(0xFFE0F2FE),
-                    iconColor: AppColors.darkNavy,
-                    title: 'Ali Yılmaz',
-                    roleBadge: 'Şirket Yöneticisi',
-                    badgeBg: const Color(0xFFE0F2FE),
-                    badgeColor: const Color(0xFF0369A1),
-                    subtitle: 'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Onay',
-                    targetRoute: AppRoutes.businessOverview,
-                  ),
+                    // 3. Ali Yılmaz — Admin
+                    _buildRoleCard(
+                      context: context,
+                      ctx: ctx,
+                      isDark: isDark,
+                      role: AppStrings.roleAdmin,
+                      isActive: currentRole == AppStrings.roleAdmin,
+                      icon: Icons.business_center_rounded,
+                      iconBg: const Color(0xFFE0F2FE),
+                      iconColor: AppColors.darkNavy,
+                      title: 'Ali Yılmaz',
+                      roleBadge: 'Şirket Yöneticisi',
+                      badgeBg: const Color(0xFFE0F2FE),
+                      badgeColor: const Color(0xFF0369A1),
+                      subtitle: 'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Onay',
+                      targetRoute: AppRoutes.businessOverview,
+                    ),
+                  ] else if (authState.canAccessBusinessPanel) ...[
+                    _buildRoleCard(
+                      context: context,
+                      ctx: ctx,
+                      isDark: isDark,
+                      role: AppStrings.roleB2C,
+                      isActive: !authState.isBusinessMode,
+                      icon: Icons.account_balance_wallet_rounded,
+                      iconBg: const Color(0xFFD1FAE5),
+                      iconColor: AppColors.primaryGreen,
+                      title: authState.user?.name ?? 'Kullanıcı',
+                      roleBadge: 'Bireysel Görünüm',
+                      badgeBg: const Color(0xFFD1FAE5),
+                      badgeColor: const Color(0xFF065F46),
+                      subtitle: 'Kişisel cüzdan ve FAST transfer görünümü',
+                      targetRoute: AppRoutes.home,
+                      onTapOverride: () {
+                        authBloc.add(
+                          const AuthPanelModeToggled(isBusinessMode: false),
+                        );
+                        context.go(AppRoutes.home);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _buildRoleCard(
+                      context: context,
+                      ctx: ctx,
+                      isDark: isDark,
+                      role: currentRole,
+                      isActive: authState.isBusinessMode,
+                      icon: Icons.business_center_rounded,
+                      iconBg: const Color(0xFFE0F2FE),
+                      iconColor: AppColors.darkNavy,
+                      title: AppStrings.defaultCompanyName,
+                      roleBadge: authState.isAdmin ? 'Yönetici' : 'Personel',
+                      badgeBg: const Color(0xFFE0F2FE),
+                      badgeColor: const Color(0xFF0369A1),
+                      subtitle: 'Kurumsal kasa, masraf ve tahsilat görünümü',
+                      targetRoute: AppRoutes.businessOverview,
+                      onTapOverride: () {
+                        authBloc.add(
+                          const AuthPanelModeToggled(isBusinessMode: true),
+                        );
+                        context.go(AppRoutes.businessOverview);
+                      },
+                    ),
+                  ] else ...[
+                    _buildRoleCard(
+                      context: context,
+                      ctx: ctx,
+                      isDark: isDark,
+                      role: currentRole,
+                      isActive: true,
+                      icon: Icons.verified_user_rounded,
+                      iconBg: const Color(0xFFD1FAE5),
+                      iconColor: AppColors.primaryGreen,
+                      title: authState.user?.name ?? 'Kullanıcı',
+                      roleBadge: 'Bireysel Hesap',
+                      badgeBg: const Color(0xFFD1FAE5),
+                      badgeColor: const Color(0xFF065F46),
+                      subtitle: authState.user?.email ?? '',
+                      targetRoute: AppRoutes.home,
+                      onTapOverride: () {},
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // 4. Güvenli Çıkış Butonu
@@ -581,6 +648,7 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
     required Color badgeColor,
     required String subtitle,
     required String targetRoute,
+    VoidCallback? onTapOverride,
   }) {
     final cardBg = isActive
         ? (isDark
@@ -599,8 +667,12 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
     return InkWell(
       onTap: () {
         Navigator.pop(ctx);
-        context.read<AuthBloc>().add(AuthRoleChanged(role));
-        context.go(targetRoute);
+        if (onTapOverride != null) {
+          onTapOverride();
+        } else if (AppMode.isDemoMode) {
+          context.read<AuthBloc>().add(AuthRoleChanged(role));
+          context.go(targetRoute);
+        }
       },
       borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
@@ -708,6 +780,8 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _showNotificationsSheet(BuildContext context, String userId) {
+    final notificationCubit = context.read<NotificationCubit>();
+    notificationCubit.watchForUser(userId);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final titleColor = isDark ? Colors.white : AppColors.darkNavy;
@@ -731,128 +805,135 @@ class RoleSwitchAppBar extends StatelessWidget implements PreferredSizeWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        final datasource = FirebaseFirestoreDatasource();
-        return Container(
-          decoration: BoxDecoration(
-            color: sheetBg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.all(16),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Bildirimler',
-                    style: AppTextStyles.headlineSmall.copyWith(
-                      color: titleColor,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close_rounded, color: secondaryColor),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-              Divider(height: 1, color: dividerColor),
-              Expanded(
-                child: StreamBuilder<List<NotificationModel>>(
-                  stream: datasource.watchUserNotifications(userId),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting &&
-                        !snapshot.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primaryTeal,
+        return BlocProvider<NotificationCubit>.value(
+          value: notificationCubit,
+          child: Container(
+            decoration: BoxDecoration(
+              color: sheetBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.all(16),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            child: BlocBuilder<NotificationCubit, NotificationState>(
+              builder: (context, notifState) {
+                final notifications = notifState.notifications;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bildirimler',
+                          style: AppTextStyles.headlineSmall.copyWith(
+                            color: titleColor,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      );
-                    }
-                    final notifications = snapshot.data ?? [];
-                    if (notifications.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.notifications_off_outlined,
-                              size: 40,
-                              color: emptyIconColor,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Yeni bildirim bulunmuyor.',
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: secondaryColor,
+                            if (notifState.unreadCount > 0)
+                              TextButton(
+                                onPressed: () => notificationCubit.markAllAsRead(),
+                                child: const Text('Tümünü Oku'),
                               ),
+                            IconButton(
+                              icon: Icon(Icons.close_rounded, color: secondaryColor),
+                              onPressed: () => Navigator.of(ctx).pop(),
                             ),
                           ],
                         ),
-                      );
-                    }
-
-                    return ListView.separated(
-                      itemCount: notifications.length,
-                      separatorBuilder: (context, index) =>
-                          Divider(height: 1, color: dividerColor),
-                      itemBuilder: (context, i) {
-                        final n = notifications[i];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                          leading: CircleAvatar(
-                            backgroundColor:
-                                n.isRead ? readAvatarBg : unreadAvatarBg,
-                            child: Icon(
-                              Icons.notifications_active_outlined,
-                              size: 20,
-                              color: n.isRead
-                                  ? secondaryColor
-                                  : AppColors.primaryTeal,
-                            ),
-                          ),
-                          title: Text(
-                            n.title,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              fontWeight: n.isRead
-                                  ? FontWeight.w600
-                                  : FontWeight.w800,
-                              color: titleColor,
-                            ),
-                          ),
-                          subtitle: Text(
-                            n.body,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: secondaryColor,
-                              fontSize: 11,
-                            ),
-                          ),
-                          trailing: n.isRead
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Okundu İşaretle',
-                                  icon: const Icon(
-                                    Icons.done_all_rounded,
-                                    size: 18,
-                                    color: AppColors.primaryGreen,
+                      ],
+                    ),
+                    Divider(height: 1, color: dividerColor),
+                    Expanded(
+                      child: notifState.isLoading && notifications.isEmpty
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primaryTeal,
+                              ),
+                            )
+                          : notifications.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 40,
+                                    color: emptyIconColor,
                                   ),
-                                  onPressed: () =>
-                                      datasource.markNotificationAsRead(n.notificationId),
-                                ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Yeni bildirim bulunmuyor.',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: secondaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: notifications.length,
+                              separatorBuilder: (context, index) =>
+                                  Divider(height: 1, color: dividerColor),
+                              itemBuilder: (context, i) {
+                                final n = notifications[i];
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
+                                  leading: CircleAvatar(
+                                    backgroundColor:
+                                        n.isRead ? readAvatarBg : unreadAvatarBg,
+                                    child: Icon(
+                                      Icons.notifications_active_outlined,
+                                      size: 20,
+                                      color: n.isRead
+                                          ? secondaryColor
+                                          : AppColors.primaryTeal,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    n.title,
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontWeight: n.isRead
+                                          ? FontWeight.w600
+                                          : FontWeight.w800,
+                                      color: titleColor,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    n.body,
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: secondaryColor,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  trailing: n.isRead
+                                      ? null
+                                      : IconButton(
+                                          tooltip: 'Okundu İşaretle',
+                                          icon: const Icon(
+                                            Icons.done_all_rounded,
+                                            size: 18,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                          onPressed: () => notificationCubit
+                                              .markAsRead(n.notificationId),
+                                        ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         );
       },

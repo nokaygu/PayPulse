@@ -1,3 +1,5 @@
+import '../../domain/entities/company_entity.dart';
+
 //B2B KOBİ panelinin temel modeli.
 
 class CompanyModel {
@@ -33,5 +35,25 @@ class CompanyModel {
       'adminIds': adminIds,
       'corporateIban': corporateIban,
     };
+  }
+
+  CompanyEntity toEntity() {
+    return CompanyEntity(
+      companyId: companyId,
+      name: name,
+      taxNumber: taxNumber,
+      adminIds: adminIds,
+      corporateIban: corporateIban,
+    );
+  }
+
+  factory CompanyModel.fromEntity(CompanyEntity entity) {
+    return CompanyModel(
+      companyId: entity.companyId,
+      name: entity.name,
+      taxNumber: entity.taxNumber,
+      adminIds: entity.adminIds,
+      corporateIban: entity.corporateIban,
+    );
   }
 }

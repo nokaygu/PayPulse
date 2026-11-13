@@ -1,383 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../data/datasources/remote/firebase_auth_datasource.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
-import '../../../data/datasources/remote/firebase_notification_datasource.dart';
 import '../../../data/models/expense_model.dart';
 import '../../../data/models/notification_model.dart';
-import '../../../data/models/safe_recipient_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/wallet_model.dart';
+import 'bloc/dev_console_cubit.dart';
 
-/// PayPulse macOS & Android Firebase Test ve Jüri Değerlendirme Tezgahı.
-/// Tüm Firebase Auth, Canlı Cüzdan, FAST Transferi, Masraf Onay Masası,
-/// Firestore Bildirimleri ve POS simülasyonunu tek bir ekranda canlı test ettirir.
-class HomeAndWalletEkrani extends StatefulWidget {
+/// PayPulse macOS & Android Firebase Test ve Jüri Değerlendirme Tezgahı (Stateless + DevConsoleCubit).
+class HomeAndWalletEkrani extends StatelessWidget {
   const HomeAndWalletEkrani({super.key});
 
   @override
-  State<HomeAndWalletEkrani> createState() => _HomeAndWalletEkraniState();
+  Widget build(BuildContext context) {
+    return BlocProvider<DevConsoleCubit>(
+      create: (_) => DevConsoleCubit(),
+      child: const _DevConsoleView(),
+    );
+  }
 }
 
-class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final nameController = TextEditingController();
+class _DevConsoleView extends StatelessWidget {
+  const _DevConsoleView();
 
-  // FAST Transfer kontrolleri
-  final targetIbanController = TextEditingController();
-  final transferAmountController = TextEditingController();
-
-  // Masraf kontrolleri
-  final expenseAmountController = TextEditingController();
-  final expenseVatController = TextEditingController();
-  final rejectReasonController = TextEditingController();
-
-  // POS kontrolü
-  final posAmountController = TextEditingController();
-
-  final authService = FirebaseAuthDatasource();
-  final firestoreService = FirebaseFirestoreDatasource();
-  final notificationService = FirebaseNotificationDatasource();
-
-  String mesaj = 'Sistem hazır. Giriş yapabilir veya test edebilirsiniz.';
-  bool isLoading = false;
-  SafeRecipientModel? searchedRecipient;
-
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    nameController.dispose();
-    targetIbanController.dispose();
-    transferAmountController.dispose();
-    expenseAmountController.dispose();
-    expenseVatController.dispose();
-    rejectReasonController.dispose();
-    posAmountController.dispose();
-    super.dispose();
-  }
-
-  void mesajGuncelle(String yeniMesaj) {
-    if (!mounted) return;
-    setState(() {
-      mesaj = yeniMesaj;
-      isLoading = false;
-    });
-  }
-
-  // ================= 1. AUTH İŞLEMLERİ =================
-  Future<void> kayitOl() async {
-    setState(() => isLoading = true);
-    try {
-      await authService.register(
-        emailController.text.trim(),
-        passwordController.text,
-        name: nameController.text.trim().isEmpty
-            ? 'Kullanıcı'
-            : nameController.text.trim(),
-      );
-      await notificationService.saveTokenToFirestore();
-      mesajGuncelle(
-        'Kayıt başarılı! Otomatik sıfır bakiyeli cüzdan ve IBAN oluşturuldu.',
-      );
-    } catch (e) {
-      mesajGuncelle('Kayıt hatası: $e');
-    }
-  }
-
-  Future<void> girisYap() async {
-    setState(() => isLoading = true);
-    try {
-      await authService.login(
-        emailController.text.trim(),
-        passwordController.text,
-      );
-      await notificationService.saveTokenToFirestore();
-      mesajGuncelle('Giriş başarılı!');
-    } catch (e) {
-      mesajGuncelle('Giriş hatası: $e');
-    }
-  }
-
-  Future<void> cikisYap() async {
-    setState(() => isLoading = true);
-    try {
-      final user = authService.getCurrentUser();
-      if (user != null) {
-        await notificationService.deleteTokenOnLogout(user.uid);
-      }
-      await authService.logout();
-      mesajGuncelle('Çıkış yapıldı.');
-    } catch (e) {
-      mesajGuncelle('Çıkış hatası: $e');
-    }
-  }
-
-  // ================= 2. ALICI ARAMA & FAST TRANSFERİ =================
-  Future<void> aliciyiSorgula() async {
-    final iban = targetIbanController.text.trim();
-    if (iban.isEmpty) {
-      mesajGuncelle('Lütfen hedef IBAN giriniz.');
-      return;
-    }
-
-    setState(() => isLoading = true);
-    try {
-      final recipient = await firestoreService.findRecipientByIban(iban);
-      setState(() {
-        searchedRecipient = recipient;
-        isLoading = false;
-      });
-
-      if (recipient != null) {
-        mesajGuncelle(
-          'Alıcı Bulundu: ${recipient.maskedName} (${recipient.iban})',
-        );
-      } else {
-        mesajGuncelle(
-          'IBAN bulunamadı. Lütfen geçerli bir PayPulse IBAN girin.',
-        );
-      }
-    } catch (e) {
-      mesajGuncelle('Sorgulama hatası: $e');
-    }
-  }
-
-  Future<void> fastTransferiYap() async {
-    final user = authService.getCurrentUser();
-    if (user == null) {
-      mesajGuncelle('Önce oturum açmalısınız!');
-      return;
-    }
-
-    final targetIban = targetIbanController.text.trim();
-    final amountText = transferAmountController.text.trim();
-    final amountTl = double.tryParse(amountText.replaceAll(',', '.'));
-
-    if (amountTl == null || amountTl <= 0) {
-      mesajGuncelle('Geçerli bir transfer tutarı giriniz.');
-      return;
-    }
-
-    final kurus = (amountTl * 100).round();
-
-    setState(() => isLoading = true);
-    try {
-      final tx = await firestoreService.executeFastTransferByIban(
-        senderUserId: user.uid,
-        targetIban: targetIban,
-        amountKurus: kurus,
-      );
-
-      mesajGuncelle(
-        'FAST Transferi Başarılı!\n'
-        'İşlem No: ${tx.txId}\n'
-        'Tutar: ${(tx.amount / 100).toStringAsFixed(2)} TL\n'
-        'Alıcıya bildirim iletildi.',
-      );
-      transferAmountController.clear();
-    } catch (e) {
-      mesajGuncelle('Transfer hatası: $e');
-    }
-  }
-
-  // ================= 3. MASRAF OLUŞTURMA & ONAY MASASI =================
-  Future<void> masrafGonder() async {
-    final user = authService.getCurrentUser();
-    if (user == null) {
-      mesajGuncelle('Önce oturum açmalısınız!');
-      return;
-    }
-
-    final amountText = expenseAmountController.text.trim();
-    final amountTl = double.tryParse(amountText.replaceAll(',', '.'));
-    if (amountTl == null || amountTl <= 0) {
-      mesajGuncelle('Geçerli bir masraf tutarı girin.');
-      return;
-    }
-
-    final kurus = (amountTl * 100).round();
-    final vatKurus = (kurus * 0.20).round(); // %20 KDV
-
-    setState(() => isLoading = true);
-    try {
-      final expense = ExpenseModel(
-        expenseId: 'exp_${DateTime.now().millisecondsSinceEpoch}',
-        employeeId: user.uid,
-        companyId: 'company_001',
-        amount: kurus,
-        vatAmount: vatKurus,
-        receiptImageUrl: '/local/device/storage/receipt_test.jpg',
-        status: 'pending',
-      );
-
-      await firestoreService.createExpense(expense);
-      mesajGuncelle(
-        'Masraf oluşturuldu ve yönetici onayına sunuldu!\n'
-        'Masraf ID: ${expense.expenseId}\n'
-        'Tutar: ${(expense.amount / 100).toStringAsFixed(2)} TL',
-      );
-      expenseAmountController.clear();
-    } catch (e) {
-      mesajGuncelle('Masraf gönderme hatası: $e');
-    }
-  }
-
-  Future<void> masrafiOnayla(String expenseId) async {
-    setState(() => isLoading = true);
-    try {
-      await firestoreService.approveExpense(
-        expenseId: expenseId,
-        accountingCode: 'ACC-770-OFFICE',
-      );
-      mesajGuncelle(
-        'Masraf onaylandı! Şirket kasasından düşülüp çalışana aktarıldı.',
-      );
-    } catch (e) {
-      mesajGuncelle('Masraf onay hatası: $e');
-    }
-  }
-
-  Future<void> masrafiReddet(String expenseId) async {
-    final reason = rejectReasonController.text.trim().isEmpty
-        ? 'Politika dışı harcama'
-        : rejectReasonController.text.trim();
-
-    setState(() => isLoading = true);
-    try {
-      await firestoreService.rejectExpense(
-        expenseId: expenseId,
-        reason: reason,
-      );
-      mesajGuncelle('Masraf gerekçeli reddedildi: $reason');
-    } catch (e) {
-      mesajGuncelle('Masraf ret hatası: $e');
-    }
-  }
-
-  // ================= 4. POS VE KART ÇEKİM SİMÜLASYONU =================
-  Future<void> kartlaPosTahsilatYap() async {
-    final amountText = posAmountController.text.trim();
-    final amountTl = double.tryParse(amountText.replaceAll(',', '.'));
-    if (amountTl == null || amountTl <= 0) {
-      mesajGuncelle('Geçerli bir POS tutarı giriniz.');
-      return;
-    }
-
-    final kurus = (amountTl * 100).round();
-    setState(() => isLoading = true);
-    try {
-      final tx = await firestoreService.executeCardPosPayment(
-        companyId: 'company_001',
-        maskedCardNumber: '**** **** **** 4242',
-        amountKurus: kurus,
-      );
-      mesajGuncelle(
-        'POS Tahsilatı Başarılı!\n'
-        'Slip No: ${tx.txId}\n'
-        'Tahsilat: ${(tx.amount / 100).toStringAsFixed(2)} TL\n'
-        'Şirket kasasına eklendi.',
-      );
-      posAmountController.clear();
-    } catch (e) {
-      mesajGuncelle('POS hatası: $e');
-    }
-  }
-
-  // ================= WIDGET BUILD =================
   @override
   Widget build(BuildContext context) {
-    final currentUser = authService.getCurrentUser();
+    return BlocBuilder<DevConsoleCubit, DevConsoleState>(
+      builder: (context, state) {
+        final cubit = context.read<DevConsoleCubit>();
+        final currentUser = state.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('PayPulse — macOS Demo & Test Tezgahı'),
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        actions: [
-          if (currentUser != null)
-            StreamBuilder<int>(
-              stream: firestoreService.watchUnreadNotificationCount(
-                currentUser.uid,
-              ),
-              builder: (context, snapshot) {
-                final count = snapshot.data ?? 0;
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Badge(
-                      isLabelVisible: count > 0,
-                      label: Text('$count'),
-                      child: const Icon(Icons.notifications_rounded),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('PayPulse — macOS Demo & Test Tezgahı'),
+            backgroundColor: const Color(0xFF0F172A),
+            foregroundColor: Colors.white,
+            actions: [
+              if (currentUser != null)
+                StreamBuilder<int>(
+                  stream: cubit.watchUnreadNotificationCount(currentUser.uid),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: Badge(
+                          isLabelVisible: count > 0,
+                          label: Text('$count'),
+                          child: const Icon(Icons.notifications_rounded),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blueGrey.shade200),
+                  ),
+                  child: Text(
+                    state.statusMessage,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
                   ),
-                );
-              },
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Durum Göstergesi
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blueGrey.shade200),
-              ),
-              child: Text(
-                mesaj,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
                 ),
-              ),
+                const SizedBox(height: 16),
+
+                if (currentUser != null) ...[
+                  _buildActiveUserSection(cubit, currentUser.email, currentUser.uid),
+                  const SizedBox(height: 16),
+                ],
+
+                _buildAuthSection(cubit, state),
+                const SizedBox(height: 16),
+
+                if (currentUser != null) ...[
+                  _buildTransferSection(cubit, state),
+                  const SizedBox(height: 16),
+                  _buildNotificationsSection(cubit, currentUser.uid),
+                  const SizedBox(height: 16),
+                  _buildTransactionsSection(cubit, currentUser.uid),
+                  const SizedBox(height: 16),
+                  _buildExpenseSection(cubit, state),
+                  const SizedBox(height: 16),
+                  _buildPosSection(cubit, state),
+                ],
+              ],
             ),
-            const SizedBox(height: 16),
-
-            // AKTİF KULLANICI VE CANLI CÜZDAN KARTI
-            if (currentUser != null) ...[
-              _buildActiveUserSection(currentUser),
-              const SizedBox(height: 16),
-            ],
-
-            // 1. KULLANICI OTURUM KARTI
-            _buildAuthSection(currentUser),
-            const SizedBox(height: 16),
-
-            // 2. FAST PARA TRANSFERİ & ALICI BULMA
-            if (currentUser != null) ...[
-              _buildTransferSection(),
-              const SizedBox(height: 16),
-
-              // 3. CANLI BİLDİRİMLER (macOS Gerçek Zamanlı Akış)
-              _buildNotificationsSection(currentUser.uid),
-              const SizedBox(height: 16),
-
-              // 4. CANLI İŞLEM GEÇMİŞİ
-              _buildTransactionsSection(currentUser.uid),
-              const SizedBox(height: 16),
-
-              // 5. MASRAF YÖNETİMİ & ONAY MASASI
-              _buildExpenseSection(currentUser.uid),
-              const SizedBox(height: 16),
-
-              // 6. SANAL POS SİMÜLASYONU
-              _buildPosSection(),
-            ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildActiveUserSection(dynamic user) {
+  Widget _buildActiveUserSection(
+    DevConsoleCubit cubit,
+    String? email,
+    String uid,
+  ) {
     return Card(
       color: const Color(0xFF1E293B),
       child: Padding(
@@ -389,14 +121,14 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Aktif Oturum: ${user.email}',
+                  'Aktif Oturum: ${email ?? "-"}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 OutlinedButton(
-                  onPressed: cikisYap,
+                  onPressed: cubit.logout,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                   ),
@@ -406,7 +138,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const Divider(color: Colors.white24),
             StreamBuilder<WalletModel?>(
-              stream: firestoreService.watchUserWallet(user.uid as String),
+              stream: cubit.watchUserWallet(uid),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const LinearProgressIndicator();
@@ -443,7 +175,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
                               Clipboard.setData(
                                 ClipboardData(text: wallet.iban!),
                               );
-                              mesajGuncelle(
+                              cubit.updateMessage(
                                 'IBAN panoya kopyalandı: ${wallet.iban}',
                               );
                             }
@@ -505,7 +237,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     );
   }
 
-  Widget _buildAuthSection(dynamic currentUser) {
+  Widget _buildAuthSection(DevConsoleCubit cubit, DevConsoleState state) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -518,7 +250,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: nameController,
+              controller: cubit.nameController,
               decoration: const InputDecoration(
                 labelText: 'Ad Soyad (Kayıt için)',
                 border: OutlineInputBorder(),
@@ -526,7 +258,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 8),
             TextField(
-              controller: emailController,
+              controller: cubit.emailController,
               decoration: const InputDecoration(
                 labelText: 'E-posta',
                 border: OutlineInputBorder(),
@@ -534,7 +266,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 8),
             TextField(
-              controller: passwordController,
+              controller: cubit.passwordController,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Şifre',
@@ -546,14 +278,14 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : kayitOl,
+                    onPressed: state.isLoading ? null : cubit.register,
                     child: const Text('Kayıt Ol'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : girisYap,
+                    onPressed: state.isLoading ? null : cubit.login,
                     child: const Text('Giriş Yap'),
                   ),
                 ),
@@ -565,7 +297,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     );
   }
 
-  Widget _buildTransferSection() {
+  Widget _buildTransferSection(DevConsoleCubit cubit, DevConsoleState state) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -578,7 +310,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: targetIbanController,
+              controller: cubit.targetIbanController,
               decoration: const InputDecoration(
                 labelText: 'Hedef TR IBAN',
                 border: OutlineInputBorder(),
@@ -586,15 +318,15 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: isLoading ? null : aliciyiSorgula,
+              onPressed: state.isLoading ? null : cubit.lookupRecipient,
               icon: const Icon(Icons.person_search),
               label: const Text('Alıcıyı Güvenli Doğrula (Directory)'),
             ),
-            if (searchedRecipient != null)
+            if (state.searchedRecipient != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Doğrulanan Alıcı: ${searchedRecipient!.maskedName}',
+                  'Doğrulanan Alıcı: ${state.searchedRecipient!.maskedName}',
                   style: const TextStyle(
                     color: Colors.teal,
                     fontWeight: FontWeight.bold,
@@ -603,7 +335,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
               ),
             const SizedBox(height: 8),
             TextField(
-              controller: transferAmountController,
+              controller: cubit.transferAmountController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Tutar (TL)',
@@ -612,7 +344,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 12),
             ElevatedButton(
-              onPressed: isLoading ? null : fastTransferiYap,
+              onPressed: state.isLoading ? null : cubit.executeFastTransfer,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
@@ -625,7 +357,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     );
   }
 
-  Widget _buildNotificationsSection(String userId) {
+  Widget _buildNotificationsSection(DevConsoleCubit cubit, String userId) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -640,14 +372,16 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             SizedBox(
               height: 160,
               child: StreamBuilder<List<NotificationModel>>(
-                stream: firestoreService.watchUserNotifications(userId),
+                stream: cubit.watchUserNotifications(userId),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final list = snapshot.data ?? [];
                   if (list.isEmpty) {
-                    return const Center(child: Text('Henüz bir bildirim yok.'));
+                    return const Center(
+                      child: Text('Henüz bir bildirim yok.'),
+                    );
                   }
 
                   return ListView.builder(
@@ -683,10 +417,9 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
                               )
                             : IconButton(
                                 icon: const Icon(Icons.done, size: 16),
-                                onPressed: () =>
-                                    firestoreService.markNotificationAsRead(
-                                      notif.notificationId,
-                                    ),
+                                onPressed: () => cubit.markNotificationAsRead(
+                                  notif.notificationId,
+                                ),
                               ),
                       );
                     },
@@ -700,7 +433,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     );
   }
 
-  Widget _buildTransactionsSection(String userId) {
+  Widget _buildTransactionsSection(DevConsoleCubit cubit, String userId) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -715,7 +448,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             SizedBox(
               height: 160,
               child: StreamBuilder<List<TransactionModel>>(
-                stream: firestoreService.watchUserTransactions(userId),
+                stream: cubit.watchUserTransactions(userId),
                 builder: (context, snapshot) {
                   final list = snapshot.data ?? [];
                   if (list.isEmpty) {
@@ -753,7 +486,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     );
   }
 
-  Widget _buildExpenseSection(String userId) {
+  Widget _buildExpenseSection(DevConsoleCubit cubit, DevConsoleState state) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -766,7 +499,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: expenseAmountController,
+              controller: cubit.expenseAmountController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Harcama Tutarı (TL)',
@@ -775,7 +508,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: isLoading ? null : masrafGonder,
+              onPressed: state.isLoading ? null : cubit.submitExpense,
               child: const Text('Masraf Talebi Gönder'),
             ),
             const Divider(),
@@ -786,13 +519,14 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             SizedBox(
               height: 170,
               child: StreamBuilder<List<ExpenseModel>>(
-                stream: firestoreService.watchCompanyExpenses('company_001'),
+                stream: cubit.watchCompanyExpenses('company_001'),
                 builder: (context, snapshot) {
                   final list = snapshot.data ?? [];
-                  if (list.isEmpty)
+                  if (list.isEmpty) {
                     return const Center(
                       child: Text('Onay bekleyen masraf yok.'),
                     );
+                  }
 
                   return ListView.builder(
                     itemCount: list.length,
@@ -817,7 +551,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
                                         color: Colors.green,
                                       ),
                                       onPressed: () =>
-                                          masrafiOnayla(exp.expenseId),
+                                          cubit.approveExpense(exp.expenseId),
                                     ),
                                     IconButton(
                                       icon: const Icon(
@@ -825,7 +559,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
                                         color: Colors.red,
                                       ),
                                       onPressed: () =>
-                                          masrafiReddet(exp.expenseId),
+                                          cubit.rejectExpense(exp.expenseId),
                                     ),
                                   ],
                                 )
@@ -843,7 +577,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
     );
   }
 
-  Widget _buildPosSection() {
+  Widget _buildPosSection(DevConsoleCubit cubit, DevConsoleState state) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -856,7 +590,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: posAmountController,
+              controller: cubit.posAmountController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Çekim Tutarı (TL)',
@@ -865,7 +599,7 @@ class _HomeAndWalletEkraniState extends State<HomeAndWalletEkrani> {
             ),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: isLoading ? null : kartlaPosTahsilatYap,
+              onPressed: state.isLoading ? null : cubit.collectPosPayment,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo,
                 foregroundColor: Colors.white,

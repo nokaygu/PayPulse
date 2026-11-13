@@ -31,10 +31,13 @@ class DarkGradientHeroCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: AppColors.heroCardGradient,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.darkNavy.withOpacity(0.4),
+              color: AppColors.darkNavy.withValues(alpha: 0.4),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -55,7 +58,7 @@ class DarkGradientHeroCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (topRightBadge != null) topRightBadge!,
+                ?topRightBadge,
               ],
             ),
             const SizedBox(height: 10),
@@ -78,7 +81,10 @@ class DarkGradientHeroCard extends StatelessWidget {
             ],
             if (bottomChild != null) ...[
               const SizedBox(height: 16),
-              Divider(color: Colors.white.withOpacity(0.12), height: 1),
+              Divider(
+                color: Colors.white.withValues(alpha: 0.12),
+                height: 1,
+              ),
               const SizedBox(height: 14),
               bottomChild!,
             ],

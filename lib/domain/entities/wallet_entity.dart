@@ -1,5 +1,7 @@
+import '../../core/utils/equatable.dart';
+
 /// Bakiyeleri kuruş cinsinden tutan ve negatif bakiye ile kuruş kaybını engelleyen saf Domain Entity sınıfı.
-class WalletEntity {
+class WalletEntity extends Equatable {
   final String walletId;
   final String ownerId; // userId veya companyId olabilir
   final int balanceTl; // Kuruş bazında (Örn: 150.50 TL -> 15050)
@@ -62,4 +64,14 @@ class WalletEntity {
       iban: iban ?? this.iban,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    walletId,
+    ownerId,
+    balanceTl,
+    balanceUsd,
+    balanceEur,
+    iban,
+  ];
 }

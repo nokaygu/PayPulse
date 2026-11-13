@@ -17,6 +17,7 @@ import '../../presentation/screens/home_wallet_and_safe/home_screen.dart';
 import '../../presentation/screens/profile_and_cards/cards_management_screen.dart';
 import '../../presentation/screens/profile_and_cards/profile_settings_screen.dart';
 import '../../presentation/screens/splash_and_onboarding/splash_screen.dart';
+import '../../presentation/screens/qr_and_ocr/bloc/ocr_verification_cubit.dart';
 import '../../presentation/screens/qr_and_ocr/e_invoice_gib_list_screen.dart';
 import '../../presentation/screens/qr_and_ocr/ocr_camera_scanner_screen.dart';
 import '../../presentation/screens/qr_and_ocr/ocr_data_verification_screen.dart';
@@ -93,10 +94,10 @@ class AppRouter {
                         amountInKurus: extra['amountInKurus'] as int? ?? 150000,
                         description:
                             extra['description'] as String? ??
-                            'Hafta sonu kahvaltı payı 🥐',
+                            'FAST Para Transferi',
                       );
                     }
-                    return const TransferSummaryScreen();
+                    return const TransferRecipientScreen();
                   },
                   routes: [
                     GoRoute(
@@ -106,7 +107,20 @@ class AppRouter {
                     ),
                     GoRoute(
                       path: 'amount',
-                      builder: (context, state) => const TransferAmountScreen(),
+                      builder: (context, state) {
+                        final extra = state.extra;
+                        if (extra is Map<String, dynamic>) {
+                          return TransferAmountScreen(
+                            recipientIban:
+                                extra['recipientIban'] as String? ??
+                                'TR34 0006 2000 0001 2345 6789 01',
+                            recipientName:
+                                extra['recipientName'] as String? ??
+                                'Zeynep Kaya',
+                          );
+                        }
+                        return const TransferAmountScreen();
+                      },
                     ),
                     GoRoute(
                       path: 'receipt/:txId',
@@ -155,8 +169,12 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'ocr-verify',
-                  builder: (context, state) =>
-                      const OcrDataVerificationScreen(),
+                  builder: (context, state) {
+                    final extra = state.extra;
+                    return OcrDataVerificationScreen(
+                      initialData: extra is OcrExtractedData ? extra : null,
+                    );
+                  },
                 ),
               ],
             ),
@@ -175,8 +193,12 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: 'batch-approval',
-                  builder: (context, state) =>
-                      const BulkExpenseErpReceiptScreen(),
+                  builder: (context, state) {
+                    final extra = state.extra;
+                    return BulkExpenseErpReceiptScreen(
+                      args: extra is BulkExpenseReceiptArgs ? extra : null,
+                    );
+                  },
                 ),
               ],
             ),
@@ -188,7 +210,9 @@ class AppRouter {
             // ================= DEEP LINK ÖZEL ROTASI =================
             GoRoute(
               path: AppRoutes.paymentRequestDeepLink,
-              builder: (context, state) => const TransferSummaryScreen(),
+              builder: (context, state) => TransferSummaryScreen(
+                paymentRequestId: state.pathParameters['requestId'],
+              ),
             ),
           ],
         ),
@@ -232,8 +256,10 @@ class AppRouter {
       return AppRoutes.home;
     }
 
-    // 4. KALKAN: Sadece 'admin' rolüne açık olan toplu masraf onay rotası:
-    final isAdminOnlyRoute = location == AppRoutes.businessBatchApproval;
+    // 4. KALKAN: Sadece 'admin' rolüne açık olan toplu masraf onay ve KDV/vergi rapor rotaları:
+    final isAdminOnlyRoute =
+        location == AppRoutes.businessBatchApproval ||
+        location == AppRoutes.businessReports;
 
     if (isAdminOnlyRoute && !authState.canApproveExpenses) {
       return AppRoutes.businessOverview;

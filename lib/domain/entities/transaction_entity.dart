@@ -1,8 +1,9 @@
+import '../../core/constants/app_limits.dart';
 import '../../core/utils/equatable.dart';
 
 /// Sistemdeki tüm gerçekleşmiş finansal hareketleri (FAST, POS, Cüzdan) temsil eden Domain Entity sınıfı.
 class TransactionEntity extends Equatable {
-  static const int fraudLimitInKurus = 5000000; // 50.000,00 TL
+  static const int fraudLimitInKurus = AppLimits.fraudLimitInKurus;
 
   final String txId;
   final String senderId;
