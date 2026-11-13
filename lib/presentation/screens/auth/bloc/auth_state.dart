@@ -1,10 +1,10 @@
-import '../../../../data/models/user_model.dart';
+import '../../../../domain/entities/user_entity.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthState {
   final AuthStatus status;
-  final UserModel? user;
+  final UserEntity? user;
   final String role; // 'b2c', 'employee', 'admin'
   final bool isBusinessMode;
 
@@ -18,19 +18,22 @@ class AuthState {
   bool get isAuthenticated => status == AuthStatus.authenticated;
 
   /// İşletme paneline sadece 'admin' ve 'employee' rolleri erişebilir.
-  bool get canAccessBusinessPanel => role == 'admin' || role == 'employee';
+  bool get canAccessBusinessPanel =>
+      (user?.canAccessBusinessPanel ?? false) ||
+      role == 'admin' ||
+      role == 'employee';
 
   /// Toplu masraf onayı ve vergi/KDV raporlarına sadece 'admin' erişebilir.
   bool get isAdmin => role == 'admin';
 
   /// Masraf onay yetkisi (admin rolü)
-  bool get canApproveExpenses => isAdmin;
+  bool get canApproveExpenses => user?.canApproveExpenses ?? isAdmin;
 
   bool get isEmployee => role == 'employee';
 
   AuthState copyWith({
     AuthStatus? status,
-    UserModel? user,
+    UserEntity? user,
     String? role,
     bool? isBusinessMode,
     bool clearUser = false,

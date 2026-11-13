@@ -10,11 +10,15 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/formatters/currency_and_card_formatters.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/financial_amount.dart';
 import '../../../core/utils/qr_payload_parser.dart';
 import '../../../core/validators/financial_validators.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
 import '../../../data/models/payment_request_model.dart';
-import '../../../data/models/transaction_model.dart';
+import '../../../data/repositories/payment_request_repository.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/entities/transaction_entity.dart';
+import '../../../domain/repositories/i_payment_request_repository.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/status_badge_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -33,6 +37,10 @@ class VirtualPosTerminalScreen extends StatefulWidget {
 
 class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
   static const int _qrRefreshIntervalSeconds = 48;
+
+  final ITransactionRepository _transactionRepository = TransactionRepository();
+  final IPaymentRequestRepository _paymentRequestRepository =
+      PaymentRequestRepository();
 
   bool _isCardTab = true;
   double _amount = 3750.00;
@@ -154,14 +162,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
     return '$mins:$secs';
   }
 
-  String _formatCurrency(double value) {
-    final parts = value.toStringAsFixed(2).split('.');
-    final intPart = parts[0].replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-    return '₺$intPart,${parts[1]}';
-  }
+  String _formatCurrency(double value) => FinancialAmount.formatLira(value);
 
   String _getMaskedCardPreview() {
     final raw = FinancialValidators.normalizeCard(_cardNumberController.text);
@@ -273,13 +274,13 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
         customQrShortToken ?? _b2bQrToken.substring(_b2bQrToken.length - 8);
 
     try {
-      TransactionModel tx;
+      TransactionEntity tx;
       if (isQrPayment) {
         // QR ödeme talebini Firestore'a kaydetmeyi dene ve başarılı QR POS işlemi üret
         final reqId =
             'payreq_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}';
         try {
-          await FirebaseFirestoreDatasource().createPaymentRequest(
+          await _paymentRequestRepository.createPaymentRequest(
             PaymentRequestModel(
               requestId: reqId,
               merchantId: companyId,
@@ -294,7 +295,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
         }
 
         await Future<void>.delayed(const Duration(milliseconds: 450));
-        tx = TransactionModel(
+        tx = TransactionEntity(
           txId:
               'tx_pos_qr_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999)}',
           senderId: 'QR:PP-849201',
@@ -309,7 +310,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
           status: 'Başarılı',
         );
       } else {
-        tx = await FirebaseFirestoreDatasource().executeCardPosPayment(
+        tx = await _transactionRepository.executeCardPosPayment(
           companyId: companyId,
           maskedCardNumber: maskedCard,
           amountKurus: amountKurus,
@@ -378,7 +379,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
   }
 
   void _showSlipDialog({
-    required TransactionModel tx,
+    required TransactionEntity tx,
     required bool isQrPayment,
     required String customerName,
     required String maskedCard,
@@ -390,7 +391,12 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
         title: Row(
           children: [
             const Icon(
@@ -408,6 +414,7 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                   fontWeight: FontWeight.w800,
                   color: AppColors.darkNavy,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -837,10 +844,12 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
               fontSize: 11,
             ),
           ),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(
               value,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.darkNavy,
                 fontWeight: FontWeight.w700,
@@ -990,7 +999,9 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                                 color: _isCardTab
                                     ? AppColors.darkNavy
                                     : const Color(0xFF64748B),
-                                fontWeight: FontWeight.w800,
+                                fontWeight: _isCardTab
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 height: 1.15,
                               ),
                             ),
@@ -1028,7 +1039,9 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
                                 color: !_isCardTab
                                     ? AppColors.darkNavy
                                     : const Color(0xFF64748B),
-                                fontWeight: FontWeight.w800,
+                                fontWeight: !_isCardTab
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 height: 1.15,
                               ),
                             ),

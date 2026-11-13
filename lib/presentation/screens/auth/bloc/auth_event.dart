@@ -1,4 +1,4 @@
-import '../../../../data/models/user_model.dart';
+import '../../../../domain/entities/user_entity.dart';
 
 sealed class AuthEvent {
   const AuthEvent();
@@ -11,7 +11,7 @@ final class AuthSubscriptionRequested extends AuthEvent {
 
 /// Firestore'dan yüklenen gerçek kullanıcı profilini duruma kaydeder.
 final class AuthUserProfileLoaded extends AuthEvent {
-  final UserModel user;
+  final UserEntity user;
 
   const AuthUserProfileLoaded(this.user);
 }
@@ -30,12 +30,11 @@ final class AuthRoleChanged extends AuthEvent {
   const AuthRoleChanged(this.role);
 }
 
-/// Jüri sunumu ve hızlı demo girişi için oturumu aktif hale getirir.
+/// Jüri sunumu ve hızlı demo girişi için Firebase kimlik doğrulaması olmadan oturumu aktif hale getirir.
 final class AuthDemoLoginRequested extends AuthEvent {
-  final String role;
-  final String? email;
+  final String role; // 'b2c' veya 'admin'
 
-  const AuthDemoLoginRequested({required this.role, this.email});
+  const AuthDemoLoginRequested(this.role);
 }
 
 /// Mevcut oturumu kapatır.

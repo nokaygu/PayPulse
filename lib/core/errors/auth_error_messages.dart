@@ -20,6 +20,8 @@ class AuthErrorMessages {
         return 'Bu kullanıcı hesabı devre dışı bırakılmış.';
       case 'network-request-failed':
         return 'Ağ bağlantısı hatası. Lütfen internetinizi kontrol edin.';
+      case 'keychain-error':
+        return 'macOS Anahtar Zinciri (Keychain) erişim hatası. Uygulama yetkilendirmesi gerekiyor.';
       default:
         return 'Bir kimlik doğrulama hatası oluştu ($code).';
     }

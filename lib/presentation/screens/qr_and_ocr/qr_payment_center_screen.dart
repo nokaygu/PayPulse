@@ -7,10 +7,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/config/app_mode.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/financial_amount.dart';
 import '../../../core/utils/qr_payload_parser.dart';
-import '../../../data/datasources/remote/firebase_firestore_datasource.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/repositories/i_transaction_repository.dart';
 import '../../widgets/role_switch_app_bar.dart';
 import '../../widgets/status_badge_widget.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -106,14 +109,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
     return '$mins:$secs';
   }
 
-  String _formatAmount(double amount) {
-    final parts = amount.toStringAsFixed(2).split('.');
-    final intPart = parts[0].replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.',
-    );
-    return '₺$intPart,${parts[1]}';
-  }
+  String _formatAmount(double amount) => FinancialAmount.formatLira(amount);
 
   /// Kamera veya Manuel Yapıştırma ile gelen gerçek QR verisini ayrıştırır ve işler
   Future<void> _handleScannedRawQrData(String rawData) async {
@@ -253,19 +249,21 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
     setState(() => _isSimulatingScanPayment = true);
 
     final authUser = context.read<AuthBloc>().state.user;
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseUser =
+        AppMode.isDemoMode ? null : FirebaseAuth.instance.currentUser;
     final payerId = authUser?.uid ?? firebaseUser?.uid ?? 'user_deniz_aksoy';
+    final ITransactionRepository transactionRepository = TransactionRepository();
 
     String txId =
         'PP-QR-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
     try {
-      if (firebaseUser != null) {
+      if (AppMode.isDemoMode || firebaseUser != null) {
         if (mode == 'B2C' &&
             targetUserId != null &&
             targetUserId.isNotEmpty &&
             targetUserId != payerId) {
-          final tx = await FirebaseFirestoreDatasource().executeFastTransfer(
+          final tx = await transactionRepository.executeFastTransfer(
             senderUserId: payerId,
             receiverUserId: targetUserId,
             amountKurus: (amount * 100).round(),
@@ -273,7 +271,7 @@ class _QrPaymentCenterScreenState extends State<QrPaymentCenterScreen> {
           );
           txId = tx.txId;
         } else {
-          final tx = await FirebaseFirestoreDatasource().executeQrWalletPayment(
+          final tx = await transactionRepository.executeQrWalletPayment(
             companyId: companyId,
             payerUserId: payerId,
             amountKurus: (amount * 100).round(),

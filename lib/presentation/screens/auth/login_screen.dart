@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_mode.dart';
 import '../../../core/errors/auth_error_messages.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -40,17 +41,44 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Firebase Authentication ile gerçek kullanıcı girişi yapar.
+  /// Giriş işlemini yürütür: macOS üzerinde Apple hesapsız demo modunu çalıştırır,
+  /// Android üzerinde canlı Firebase Authentication ile giriş yapar.
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
+    if (AppMode.isDemoMode) {
+      // macOS Demo Modu: Firebase Auth Keychain erişim hatasını önler.
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+
+      final targetRole = _isB2BSelected ? 'admin' : 'b2c';
+      context.read<AuthBloc>().add(AuthDemoLoginRequested(targetRole));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isB2BSelected
+                ? 'B2B Kurumsal Demo Paneline giriş başarılı!'
+                : 'B2C Bireysel Demo Cüzdana giriş başarılı!',
+          ),
+          backgroundColor: AppColors.incomeGreen,
+        ),
+      );
+
+      context.go(
+        targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
+      );
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      // Firebase Authentication ile giriş
+      // Canlı Firebase Authentication ile giriş (Android)
       await FirebaseAuthDatasource().login(email, password);
 
       if (!mounted) return;
@@ -64,7 +92,19 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppColors.incomeGreen,
         ),
       );
+
+      final targetRole = _isB2BSelected ? 'admin' : 'b2c';
+      if (_isB2BSelected) {
+        context.read<AuthBloc>().add(const AuthRoleChanged('admin'));
+      }
+      context.go(
+        targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
+      );
     } on FirebaseAuthException catch (e) {
+      debugPrint('🚨 [Firebase Auth Exception]');
+      debugPrint('   • Error Code: ${e.code}');
+      debugPrint('   • Message: ${e.message}');
+      debugPrint('   • Plugin: ${e.plugin}');
       if (!mounted) return;
       final msg = AuthErrorMessages.fromCode(e.code);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,7 +113,9 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppColors.expenseRed,
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('🚨 [General Auth Exception]: $e');
+      debugPrint('   • StackTrace: $stack');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -86,13 +128,32 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Jüri sunumu ve hızlı demo için tek tıkla test girişi sağlar.
-  void _handleDemoLogin() {
-    final targetRole = _isB2BSelected ? 'admin' : 'b2c';
-    context.read<AuthBloc>().add(AuthRoleChanged(targetRole));
-    context.go(
-      targetRole == 'admin' ? AppRoutes.businessOverview : AppRoutes.home,
+  /// Jüri sunumu ve hızlı demo için tek tıkla test rol girişi sağlar.
+  void _loginAsDemoRole(String role) {
+    context.read<AuthBloc>().add(AuthDemoLoginRequested(role));
+
+    final String roleName;
+    final String targetRoute;
+    if (role == 'admin') {
+      roleName = 'Ali Yılmaz (Şirket Yöneticisi)';
+      targetRoute = AppRoutes.businessOverview;
+    } else if (role == 'employee') {
+      roleName = 'Ahmet Yılmaz (Şirket Çalışanı)';
+      targetRoute = AppRoutes.home;
+    } else {
+      roleName = 'Deniz Aksoy (Bireysel Cüzdan)';
+      targetRoute = AppRoutes.home;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$roleName olarak demo girişi yapıldı!'),
+        backgroundColor: AppColors.incomeGreen,
+        duration: const Duration(seconds: 2),
+      ),
     );
+
+    context.go(targetRoute);
   }
 
   @override
@@ -136,17 +197,54 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('PayPulse', style: AppTextStyles.headlineMedium),
-                        Text(
-                          'Yeni Nesil Dijital Cüzdan & POS',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('PayPulse', style: AppTextStyles.headlineMedium),
+                          Text(
+                            'Yeni Nesil Dijital Cüzdan & POS',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                          if (AppMode.isDemoMode)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE0F2FE),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFBAE6FD),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 13,
+                                    color: AppColors.primaryTeal,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Demo Modu (macOS)',
+                                    style: AppTextStyles.labelSmall.copyWith(
+                                      color: AppColors.primaryTeal,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -321,6 +419,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
+                      elevation: 0,
                     ),
                     onPressed: _isLoading ? null : _handleLogin,
                     child: _isLoading
@@ -343,62 +442,217 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // 6. Doğrudan Demo Rol Seçimi Bölümü (Jüri & Eğitim)
+                Row(
+                  children: [
+                    const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        'VEYA DOĞRUDAN DEMO ROLÜ İLE GİRİN',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: const Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                  ],
+                ),
                 const SizedBox(height: 12),
 
-                // 6. Hızlı Jüri / Demo Girişi Butonu
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                // Demo Rol Kartı 1: Deniz Aksoy (B2C)
+                _buildDemoRoleCard(
+                  title: 'Deniz Aksoy',
+                  roleBadge: 'Bireysel (B2C)',
+                  subtitle: 'Bakiye: ₺12.500,00 • FAST Transfer & Cüzdan',
+                  icon: Icons.account_balance_wallet_rounded,
+                  iconBg: const Color(0xFFD1FAE5),
+                  iconColor: AppColors.primaryGreen,
+                  badgeBg: const Color(0xFFD1FAE5),
+                  badgeColor: const Color(0xFF065F46),
+                  role: 'b2c',
+                ),
+                const SizedBox(height: 8),
+
+                // Demo Rol Kartı 2: Ahmet Yılmaz (Employee)
+                _buildDemoRoleCard(
+                  title: 'Ahmet Yılmaz',
+                  roleBadge: 'Çalışan (Employee)',
+                  subtitle: 'PayPulse Teknoloji • Bakiye: ₺5.000,00 • Masraf',
+                  icon: Icons.badge_outlined,
+                  iconBg: const Color(0xFFFEF3C7),
+                  iconColor: const Color(0xFFD97706),
+                  badgeBg: const Color(0xFFFEF3C7),
+                  badgeColor: const Color(0xFF92400E),
+                  role: 'employee',
+                ),
+                const SizedBox(height: 8),
+
+                // Demo Rol Kartı 3: Ali Yılmaz (Admin)
+                _buildDemoRoleCard(
+                  title: 'Ali Yılmaz',
+                  roleBadge: 'Yönetici (Admin)',
+                  subtitle: 'PayPulse Teknoloji • Kasa: ₺50.000,00 • POS & Onay',
+                  icon: Icons.business_center_rounded,
+                  iconBg: const Color(0xFFE0F2FE),
+                  iconColor: AppColors.darkNavy,
+                  badgeBg: const Color(0xFFE0F2FE),
+                  badgeColor: const Color(0xFF0369A1),
+                  role: 'admin',
+                ),
+                const SizedBox(height: 20),
+
+                // 7. Kayıt Ekranına Yönlendirme (Taşmayı önleyen Wrap yerleşimi)
+                Center(
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'Henüz hesabınız yok mu?',
+                        style: AppTextStyles.bodyMedium,
                       ),
-                    ),
-                    onPressed: _handleDemoLogin,
-                    icon: const Icon(
-                      Icons.play_circle_outline_rounded,
-                      color: AppColors.primaryTeal,
-                      size: 20,
-                    ),
-                    label: Text(
-                      _isB2BSelected
-                          ? 'Hızlı Demo: Yönetici Olarak Gir (Admin)'
-                          : 'Hızlı Demo: Deniz Aksoy Olarak Gir (B2C)',
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: AppColors.darkNavy,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(width: 4),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () {
+                          context.push(AppRoutes.register);
+                        },
+                        child: Text(
+                          'Hemen Kayıt Olun',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: AppColors.primaryGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-                // 7. Kayıt Ekranına Yönlendirme
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+  /// Doğrudan demo rol seçim kartı bileşeni
+  Widget _buildDemoRoleCard({
+    required String title,
+    required String roleBadge,
+    required String subtitle,
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required Color badgeBg,
+    required Color badgeColor,
+    required String role,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _loginAsDemoRole(role),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'Henüz hesabınız yok mu?',
-                      style: AppTextStyles.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        context.push(AppRoutes.register);
-                      },
-                      child: Text(
-                        'Hemen Kayıt Olun',
-                        style: AppTextStyles.labelLarge.copyWith(
-                          color: AppColors.primaryGreen,
-                          fontWeight: FontWeight.w700,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.labelLarge.copyWith(
+                              color: AppColors.darkNavy,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            roleBadge,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: badgeColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: const Color(0xFF64748B),
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_routes.dart';
 import '../screens/auth/bloc/auth_bloc.dart';
-import '../screens/auth/bloc/auth_event.dart';
 import '../screens/auth/bloc/auth_state.dart';
 
 class MainShellWrapperScreen extends StatelessWidget {
@@ -90,6 +89,21 @@ class MainShellWrapperScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final navBarBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final navBarBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final indicatorColor = isDark
+        ? const Color(0xFF0D9488).withValues(alpha: 0.35)
+        : const Color(0xFF63E6BE);
+    final selectedIconColor =
+        isDark ? const Color(0xFF10B981) : const Color(0xFF0F172A);
+    final unselectedIconColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final selectedTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final unselectedTextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
@@ -99,37 +113,38 @@ class MainShellWrapperScreen extends StatelessWidget {
         final selectedIndex = _calculateSelectedIndex(location, tabs);
 
         return Scaffold(
-          body: Column(
-            children: [
-              _RoleAndModeBanner(authState: authState, isBusiness: isBusiness),
-              Expanded(child: child),
-            ],
-          ),
+          body: child,
           bottomNavigationBar: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: navBarBg,
               border: Border(
-                top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                top: BorderSide(color: navBarBorder, width: 1),
               ),
             ),
             child: NavigationBarTheme(
               data: NavigationBarThemeData(
-                backgroundColor: Colors.white,
-                indicatorColor: const Color(0xFF63E6BE),
+                backgroundColor: navBarBg,
+                indicatorColor: indicatorColor,
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   final isSelected = states.contains(WidgetState.selected);
                   return TextStyle(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? const Color(0xFF0F172A)
-                        : const Color(0xFF64748B),
+                    color: isSelected ? selectedTextColor : unselectedTextColor,
+                  );
+                }),
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  final isSelected = states.contains(WidgetState.selected);
+                  return IconThemeData(
+                    color: isSelected ? selectedIconColor : unselectedIconColor,
+                    size: 24,
                   );
                 }),
               ),
               child: NavigationBar(
                 height: 68,
                 elevation: 0,
+                backgroundColor: navBarBg,
                 selectedIndex: selectedIndex,
                 onDestinationSelected: (index) {
                   final targetPath = tabs[index].path;
@@ -140,10 +155,10 @@ class MainShellWrapperScreen extends StatelessWidget {
                 destinations: tabs
                     .map(
                       (tab) => NavigationDestination(
-                        icon: Icon(tab.icon, color: const Color(0xFF64748B)),
+                        icon: Icon(tab.icon, color: unselectedIconColor),
                         selectedIcon: Icon(
                           tab.activeIcon,
-                          color: const Color(0xFF0F172A),
+                          color: selectedIconColor,
                         ),
                         label: tab.label,
                       ),
@@ -154,137 +169,6 @@ class MainShellWrapperScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _RoleAndModeBanner extends StatelessWidget {
-  final AuthState authState;
-  final bool isBusiness;
-
-  const _RoleAndModeBanner({required this.authState, required this.isBusiness});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isBusiness ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-          border: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isBusiness
-                    ? const Color(0xFF1E293B)
-                    : const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                isBusiness
-                    ? 'Nova Tasarım Ltd. • İşletme'
-                    : 'PayPulse Bireysel',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: isBusiness ? Colors.white : const Color(0xFF0F172A),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            PopupMenuButton<String>(
-              tooltip: 'Rol Seç (Guard Testi)',
-              onSelected: (role) {
-                context.read<AuthBloc>().add(AuthRoleChanged(role));
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'b2c', child: Text('Rol: b2c (Bireysel)')),
-                PopupMenuItem(
-                  value: 'employee',
-                  child: Text('Rol: employee (Çalışan)'),
-                ),
-                PopupMenuItem(
-                  value: 'admin',
-                  child: Text('Rol: admin (Yönetici)'),
-                ),
-              ],
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF63E6BE).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Rol: ${authState.role}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isBusiness
-                            ? const Color(0xFF63E6BE)
-                            : const Color(0xFF0F172A),
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_drop_down,
-                      size: 16,
-                      color: isBusiness
-                          ? const Color(0xFF63E6BE)
-                          : const Color(0xFF0F172A),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const Spacer(),
-            if (authState.canAccessBusinessPanel)
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: isBusiness
-                      ? const Color(0xFF63E6BE)
-                      : const Color(0xFF0F172A),
-                  foregroundColor: isBusiness
-                      ? const Color(0xFF0F172A)
-                      : Colors.white,
-                ),
-                onPressed: () {
-                  final nextMode = !isBusiness;
-                  context.read<AuthBloc>().add(
-                    AuthPanelModeToggled(isBusinessMode: nextMode),
-                  );
-                  context.go(
-                    nextMode ? AppRoutes.businessOverview : AppRoutes.home,
-                  );
-                },
-                icon: Icon(
-                  isBusiness
-                      ? Icons.account_balance_wallet_outlined
-                      : Icons.business_center_outlined,
-                  size: 14,
-                ),
-                label: Text(
-                  isBusiness ? 'Kişisel Cüzdana Dön' : 'İşletme Paneli',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
