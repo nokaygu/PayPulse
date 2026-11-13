@@ -30,6 +30,14 @@ final class AuthRoleChanged extends AuthEvent {
   const AuthRoleChanged(this.role);
 }
 
+/// Jüri sunumu ve hızlı demo girişi için oturumu aktif hale getirir.
+final class AuthDemoLoginRequested extends AuthEvent {
+  final String role;
+  final String? email;
+
+  const AuthDemoLoginRequested({required this.role, this.email});
+}
+
 /// Mevcut oturumu kapatır.
 final class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
