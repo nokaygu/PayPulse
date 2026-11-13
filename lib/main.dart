@@ -11,9 +11,9 @@ import 'presentation/screens/auth/bloc/auth_event.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Canlı Firebase ve FCM yalnızca Android üzerinde başlatılır.
-  // macOS üzerinde ise Apple Developer hesabı ve Keychain erişim hatalarını önlemek için
-  // yerel eğitim/sunum demo modu devrededir.
+  // Canlı Firebase ve FCM yalnızca Android (Live) üzerinde başlatılır.
+  // macOS üzerinde ise Apple Developer hesabı ve Keychain erişim hatalarını (OSStatus error 13)
+  // önlemek için Firebase initialization tamamen atlanır ve yerel demo modu çalışır.
   if (AppMode.isLiveFirebase) {
     try {
       await FirebaseConfigure.initialize();
@@ -21,13 +21,6 @@ Future<void> main() async {
       await notificationService.initialize();
     } catch (e) {
       debugPrint('Firebase başlatma hatası: $e');
-    }
-  } else {
-    // macOS Demo Modu: Firebase konfigürasyonunu güvenle dener; hata olursa sessizce atlar
-    try {
-      await FirebaseConfigure.initialize();
-    } catch (e) {
-      debugPrint('Demo Modu: Firebase başlatımı atlandı: $e');
     }
   }
 
@@ -65,7 +58,19 @@ class _PayPulseApplicationState extends State<PayPulseApplication> {
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
         title: 'PayPulse',
-        theme: ThemeData(useMaterial3: true),
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+          dialogTheme: DialogThemeData(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+          ),
+        ),
         routerConfig: _appRouter.router,
       ),
     );

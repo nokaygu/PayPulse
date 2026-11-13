@@ -27,7 +27,12 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
         title: Row(
           children: [
             const Icon(
@@ -36,11 +41,14 @@ class _VirtualPosTerminalScreenState extends State<VirtualPosTerminalScreen> {
               size: 24,
             ),
             const SizedBox(width: 8),
-            Text(
-              'POS Satış Slipi (Eğitim Amaçlı POS Simülasyonu)',
-              style: AppTextStyles.labelLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.darkNavy,
+            Expanded(
+              child: Text(
+                'POS Satış Slipi (Simülasyon)',
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.darkNavy,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

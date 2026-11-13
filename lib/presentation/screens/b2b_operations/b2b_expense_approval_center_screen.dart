@@ -145,31 +145,96 @@ class _B2bExpenseApprovalCenterScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
-          '$employeeName - Masraf Reddi',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.expenseRed,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Masraf Talebini Reddet',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkNavy,
+                    ),
+                  ),
+                  Text(
+                    employeeName,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: const Color(0xFF64748B),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Lütfen çalışana iletilecek resmi red gerekçesini yazınız:',
-              style: TextStyle(fontSize: 12),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: const Color(0xFF64748B),
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: controller,
               maxLines: 3,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              style: AppTextStyles.bodyMedium,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primaryTeal),
+                ),
                 hintText: 'Red gerekçesi...',
+                hintStyle: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF94A3B8),
+                ),
               ),
             ),
           ],
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Vazgeç'),
           ),
@@ -177,6 +242,11 @@ class _B2bExpenseApprovalCenterScreenState
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.expenseRed,
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
             onPressed: () async {
               Navigator.of(ctx).pop();

@@ -1917,21 +1917,149 @@ class _EInvoiceGibListScreenState extends State<EInvoiceGibListScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('TCMB FAST ile E-SMM Ödemesi'),
-        content: const Text(
-          'Aydın Hukuk & Danışmanlık adına kayıtlı AYD202600000319 numaralı '
-          '₺15.000,00 (Stopaj sonrası Net: ₺12.300,00) tutarındaki makbuz '
-          'Nova Tasarım Ltd. ticari hesabınızdan 7/24 FAST ile ödenecektir.',
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.bolt_rounded,
+                color: AppColors.primaryGreen,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TCMB FAST ile E-SMM Ödemesi',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkNavy,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '7/24 Anında Kurumsal Transfer',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'ÖDENECEK NET TUTAR',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: const Color(0xFF64748B),
+                          fontSize: 10,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD1FAE5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'FAST 7/24',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: const Color(0xFF065F46),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        '₺12.300,00',
+                        style: AppTextStyles.numericBalance.copyWith(
+                          color: AppColors.darkNavy,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '(Brüt: ₺15.000,00)',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Aydın Hukuk & Danışmanlık adına kayıtlı AYD202600000319 numaralı '
+              'serbest meslek makbuzu, Nova Tasarım Ltd. ticari hesabınızdan ödenecektir.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF334155),
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+            ),
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Vazgeç'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F766E),
+              backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
             onPressed: () {
               Navigator.pop(ctx);
